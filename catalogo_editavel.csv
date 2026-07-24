@@ -1,0 +1,15 @@
+categoria;id;nome;unidade;preco;fator_perda;consumo_por_m2;preco_por_m2;forro_integrado;vao_maximo_padrao_m;observacao
+telha;TL-TERMO-30;Telha Termoacústica EPS 30mm;m2;89,90;1,08;;;SIM;;forro de isopor já integrado
+telha;TL-TERMO-40;Telha Termoacústica EPS 40mm;m2;99,90;1,08;;;SIM;;forro de isopor já integrado
+telha;TL-GALV-SIMPLES;Telha Galvanizada Simples trapezoidal;m2;49,90;1,08;;;NAO;;forro cotado à parte
+forro;FR-NENHUM;Sem forro;m2;0,00;1,00;;;;;
+forro;FR-ISOPOR;Forro de Isopor EPS 20mm c/ perfil;m2;32,00;1,05;;;;;
+forro;FR-PVC;Forro PVC Branco 200mm;m2;45,00;1,05;;;;;
+estrutura;ES-NENHUMA;Sem estrutura (cliente já possui);m2;;;;0,00;;;
+estrutura;ES-METALON;Estrutura metálica metalon/terças;m2;;;;65,00;;6;vão acima de 6m vai p/ vendedor
+estrutura;ES-MADEIRA;Estrutura de madeira;m2;;;;48,00;;5;vão acima de 5m vai p/ vendedor
+acessorio;parafuso_fixacao;Parafuso autobrocante c/ vedação;un;0,85;;6;;;;6 parafusos por m2
+acessorio;fita_vedacao;Fita de vedação;m;3,50;;0,3;;;;0,3m por m2
+acessorio;cumeeira;Cumeeira galvanizada;m;38,00;;;;;;cobrado por metro linear informado
+acessorio;rufo;Rufo galvanizado;m;28,00;;;;;;cobrado por metro linear informado
+acessorio;calha;Calha galvanizada corte 33;m;42,00;;;;;;cobrado por metro linear informado

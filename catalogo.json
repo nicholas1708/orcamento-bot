@@ -1,0 +1,99 @@
+{
+  "_comentario": "CATÁLOGO BASE DE EXEMPLO — substitua preços e coeficientes pelos valores reais da empresa. Quando a API da GestãoClick estiver ativa, o campo 'gc_id' liga cada item ao produto no ERP.",
+  "moeda": "BRL",
+  "validade_orcamento_dias": 7,
+
+  "telhas": [
+    {
+      "id": "TL-TERMO-30",
+      "gc_id": null,
+      "nome": "Telha Termoacústica (sanduíche) EPS 30mm",
+      "descricao": "Aço galvanizado 0,43mm + isopor 30mm + filme. Já inclui o forro de isopor integrado.",
+      "unidade": "m2",
+      "preco": 89.90,
+      "largura_util_m": 1.0,
+      "forro_integrado": true,
+      "fator_perda": 1.08
+    },
+    {
+      "id": "TL-TERMO-40",
+      "gc_id": null,
+      "nome": "Telha Termoacústica (sanduíche) EPS 40mm",
+      "descricao": "Aço galvanizado 0,43mm + isopor 40mm + filme. Já inclui o forro de isopor integrado.",
+      "unidade": "m2",
+      "preco": 99.90,
+      "largura_util_m": 1.0,
+      "forro_integrado": true,
+      "fator_perda": 1.08
+    },
+    {
+      "id": "TL-GALV-SIMPLES",
+      "gc_id": null,
+      "nome": "Telha Galvanizada Simples (trapezoidal)",
+      "descricao": "Aço galvanizado 0,43mm, sem isolamento. Forro é cotado à parte.",
+      "unidade": "m2",
+      "preco": 49.90,
+      "largura_util_m": 1.0,
+      "forro_integrado": false,
+      "fator_perda": 1.08
+    }
+  ],
+
+  "forros": [
+    { "id": "FR-NENHUM", "gc_id": null, "nome": "Sem forro", "unidade": "m2", "preco": 0, "fator_perda": 1.0 },
+    {
+      "id": "FR-ISOPOR",
+      "gc_id": null,
+      "nome": "Forro de Isopor (EPS) 20mm com perfil PVC",
+      "descricao": "Placas EPS 1,25 x 0,625m + perfis de fixação.",
+      "unidade": "m2",
+      "preco": 32.00,
+      "fator_perda": 1.05
+    },
+    {
+      "id": "FR-PVC",
+      "gc_id": null,
+      "nome": "Forro PVC Branco 200mm (régua)",
+      "descricao": "Régua PVC + perfis de acabamento.",
+      "unidade": "m2",
+      "preco": 45.00,
+      "fator_perda": 1.05
+    }
+  ],
+
+  "estruturas": [
+    { "id": "ES-NENHUMA", "gc_id": null, "nome": "Sem estrutura (já possuo)", "unidade": "m2", "preco_por_m2": 0 },
+    {
+      "id": "ES-METALON",
+      "gc_id": null,
+      "nome": "Estrutura metálica (metalon/terças)",
+      "descricao": "Terças em metalon, espaçamento padrão 1,50m. Valor médio por m² coberto. Vãos acima de 6m: orçamento com vendedor.",
+      "unidade": "m2",
+      "preco_por_m2": 65.00,
+      "vao_maximo_padrao_m": 6
+    },
+    {
+      "id": "ES-MADEIRA",
+      "gc_id": null,
+      "nome": "Estrutura de madeira",
+      "descricao": "Caibros/terças de madeira, espaçamento padrão. Valor médio por m² coberto. Vãos acima de 5m: orçamento com vendedor.",
+      "unidade": "m2",
+      "preco_por_m2": 48.00,
+      "vao_maximo_padrao_m": 5
+    }
+  ],
+
+  "acessorios": {
+    "parafuso_fixacao": { "gc_id": null, "nome": "Parafuso autobrocante c/ vedação", "unidade": "un", "preco": 0.85, "consumo_por_m2": 6 },
+    "fita_vedacao":     { "gc_id": null, "nome": "Fita de vedação (metro)", "unidade": "m", "preco": 3.50, "consumo_por_m2": 0.3 },
+    "cumeeira":         { "gc_id": null, "nome": "Cumeeira galvanizada (metro linear)", "unidade": "m", "preco": 38.00 },
+    "rufo":             { "gc_id": null, "nome": "Rufo galvanizado (metro linear)", "unidade": "m", "preco": 28.00 },
+    "calha":            { "gc_id": null, "nome": "Calha galvanizada corte 33 (metro linear)", "unidade": "m", "preco": 42.00 }
+  },
+
+  "regras": {
+    "area_minima_m2": 5,
+    "area_maxima_autoatendimento_m2": 300,
+    "observacao_pdf": "Orçamento estimativo gerado automaticamente. Sujeito a confirmação de medidas no local. Não inclui frete e instalação, salvo indicação em contrário."
+  }
+}

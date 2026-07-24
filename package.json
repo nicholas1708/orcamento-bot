@@ -1,0 +1,17 @@
+{
+  "name": "orcamento-bot",
+  "version": "0.1.0",
+  "description": "Orçamento automático de telhas/forro via WhatsApp (WAHA) com motor de cálculo determinístico e PDF. Preços via catálogo local, plugável para API GestãoClick.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.0",
+    "dotenv": "^16.4.0",
+    "express": "^4.19.0",
+    "pdfkit": "^0.15.0"
+  },
+  "engines": { "node": ">=18" }
+}

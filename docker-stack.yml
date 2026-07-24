@@ -1,0 +1,49 @@
+# Stack para Docker Swarm + Traefik (Portainer) — mesmo padrão do Kairos.
+# Imagem construída pelo GitHub Action e publicada no GHCR.
+version: "3.8"
+
+services:
+  orcamento-bot:
+    image: ghcr.io/nicholas1708/orcamento-bot:latest
+    environment:
+      PORT: "3000"
+
+      # WAHA já existente no servidor (o mesmo do Kairos/AtendeNexo)
+      WAHA_URL: "https://wh.atendenexo.com.br"
+      WAHA_SESSION: "telhas"                 # sessão DEDICADA pra empresa de telhas
+      WAHA_API_KEY: "DEFINIR_NO_PORTAINER"   # mesma chave configurada no WAHA
+
+      # Fonte de preços: local (catalogo.json) | gestaoclick (quando contratar a API)
+      PRICING_SOURCE: "local"
+      GC_ACCESS_TOKEN: ""
+      GC_SECRET_TOKEN: ""
+
+      # Dados da empresa (aparecem no PDF)
+      EMPRESA_NOME: "DEFINIR_NO_PORTAINER"
+      EMPRESA_TELEFONE: "DEFINIR_NO_PORTAINER"
+      EMPRESA_CIDADE: "DEFINIR_NO_PORTAINER"
+    volumes:
+      - orcamento-sessions:/app/sessions   # fichas de conversa sobrevivem a redeploy
+      - orcamento-pdfs:/app/out            # PDFs gerados
+    networks:
+      - network_public
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.orcamento.rule=Host(`orcamento.atendenexo.com.br`)"
+        - "traefik.http.routers.orcamento.entrypoints=websecure"
+        - "traefik.http.routers.orcamento.tls=true"
+        - "traefik.http.routers.orcamento.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.orcamento.loadbalancer.server.port=3000"
+        - "traefik.docker.network=network_public"
+
+networks:
+  network_public:
+    external: true
+
+volumes:
+  orcamento-sessions:
+  orcamento-pdfs:
