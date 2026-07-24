@@ -8,6 +8,7 @@ const state = require('./state');
 const { getCatalogo } = require('./pricing');
 const { calcularOrcamento } = require('./engine');
 const { gerarPDF } = require('./pdf');
+const ai = require('./ai');
 const path = require('path');
 
 const MAX_ERROS = 3; // depois disso, encaminha pro vendedor
@@ -25,6 +26,21 @@ const escolha = (txt, lista) => {
   const i = parseInt(String(txt).trim(), 10);
   return i >= 1 && i <= lista.length ? lista[i - 1] : null;
 };
+
+/** Número do menu OU texto livre interpretado pela IA (se configurada). */
+async function escolhaInteligente(txt, lista, nomes, contexto) {
+  const direto = escolha(txt, lista);
+  if (direto) return direto;
+  const n = await ai.escolherOpcao(txt, nomes, contexto);
+  return n ? lista[n - 1] : null;
+}
+
+/** Número direto OU extraído do texto livre pela IA ("uns 100m²", "10 por 8"). */
+async function numInteligente(txt, contexto) {
+  const direto = num(txt);
+  if (direto !== null) return direto;
+  return await ai.extrairNumero(txt, contexto);
+}
 
 /**
  * Processa uma mensagem recebida. Retorna array de ações:
@@ -74,7 +90,7 @@ async function processar(chatId, textoRaw) {
     }
 
     case 'TELHA': {
-      const t = escolha(texto, catalogo.telhas);
+      const t = await escolhaInteligente(texto, catalogo.telhas, catalogo.telhas.map(x => x.nome), 'tipo de telha');
       if (!t) { erro('Não entendi 🤔 Responda só com o *número* da telha desejada.'); break; }
       ficha.pedido.telhaId = t.id;
       ficha.tentativasErro = 0;
@@ -91,7 +107,7 @@ async function processar(chatId, textoRaw) {
     }
 
     case 'FORRO': {
-      const f = escolha(texto, catalogo.forros);
+      const f = await escolhaInteligente(texto, catalogo.forros, catalogo.forros.map(x => x.nome), 'tipo de forro');
       if (!f) { erro('Responda com o *número* da opção de forro, por favor.'); break; }
       ficha.pedido.forroId = f.id;
       ficha.tentativasErro = 0;
@@ -101,7 +117,7 @@ async function processar(chatId, textoRaw) {
     }
 
     case 'ESTRUTURA': {
-      const e = escolha(texto, catalogo.estruturas);
+      const e = await escolhaInteligente(texto, catalogo.estruturas, catalogo.estruturas.map(x => x.nome), 'estrutura de sustentação do telhado');
       if (!e) { erro('Responda com o *número* da opção de estrutura.'); break; }
       ficha.pedido.estruturaId = e.id;
       ficha.tentativasErro = 0;
@@ -111,7 +127,7 @@ async function processar(chatId, textoRaw) {
     }
 
     case 'AREA': {
-      const a = num(texto);
+      const a = await numInteligente(texto, 'área do telhado em metros quadrados');
       if (!a || a <= 0) { erro('Preciso de um número em m². Ex: *100*'); break; }
       ficha.pedido.areaM2 = a;
       ficha.tentativasErro = 0;
@@ -121,7 +137,7 @@ async function processar(chatId, textoRaw) {
     }
 
     case 'CUMEEIRA': {
-      const v = num(texto);
+      const v = await numInteligente(texto, 'metros de cumeeira (0 se não quer)');
       if (v === null || v < 0) { erro('Responda com o número de metros (ou *0*).'); break; }
       ficha.pedido.cumeeiraM = v;
       ficha.tentativasErro = 0;
@@ -131,7 +147,7 @@ async function processar(chatId, textoRaw) {
     }
 
     case 'RUFO': {
-      const v = num(texto);
+      const v = await numInteligente(texto, 'metros de rufo (0 se não quer)');
       if (v === null || v < 0) { erro('Responda com o número de metros (ou *0*).'); break; }
       ficha.pedido.rufoM = v;
       ficha.tentativasErro = 0;
@@ -141,7 +157,7 @@ async function processar(chatId, textoRaw) {
     }
 
     case 'CALHA': {
-      const v = num(texto);
+      const v = await numInteligente(texto, 'metros de calha (0 se não quer)');
       if (v === null || v < 0) { erro('Responda com o número de metros (ou *0*).'); break; }
       ficha.pedido.calhaM = v;
       ficha.tentativasErro = 0;
@@ -182,12 +198,14 @@ async function processar(chatId, textoRaw) {
     }
 
     case 'CONFIRMA': {
-      if (texto === '2') {
+      let opc = texto === '1' ? 1 : texto === '2' ? 2 : null;
+      if (!opc) opc = await ai.escolherOpcao(texto, ['Sim, pode gerar o orçamento', 'Não, quero recomeçar/mudar algo'], 'confirmação do pedido');
+      if (opc === 2) {
         ficha = state.resetar(chatId);
         say('Sem problemas, vamos de novo! Digite qualquer coisa pra recomeçar. 🙂');
         break;
       }
-      if (texto !== '1') { erro('Responda *1* pra gerar o orçamento ou *2* pra recomeçar.'); break; }
+      if (opc !== 1) { erro('Responda *1* pra gerar o orçamento ou *2* pra recomeçar.'); break; }
 
       // ==== AQUI ENTRA A MATEMÁTICA PURA — nada de IA ====
       const t = catalogo.telhas.find(x => x.id === ficha.pedido.telhaId);
