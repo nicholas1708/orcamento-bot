@@ -77,4 +77,26 @@ async function extrairNumero(texto, contexto) {
   }
 }
 
-module.exports = { escolherOpcao, extrairNumero, ativa };
+/**
+ * Chat genérico com resposta JSON — usado pelo modo conversacional (conversa.js).
+ * messages = [{role, content}, ...]
+ */
+async function chat(messages, maxTokens = 400) {
+  const { data } = await axios.post(
+    'https://api.openai.com/v1/chat/completions',
+    {
+      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+      temperature: 0.4,
+      max_tokens: maxTokens,
+      response_format: { type: 'json_object' },
+      messages,
+    },
+    {
+      headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+      timeout: 15000,
+    }
+  );
+  return JSON.parse(data.choices[0].message.content);
+}
+
+module.exports = { escolherOpcao, extrairNumero, ativa, chat };

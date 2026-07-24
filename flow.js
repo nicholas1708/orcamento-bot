@@ -9,6 +9,7 @@ const { getCatalogo } = require('./pricing');
 const { calcularOrcamento } = require('./engine');
 const { gerarPDF } = require('./pdf');
 const ai = require('./ai');
+const conversa = require('./conversa');
 const path = require('path');
 
 const MAX_ERROS = 3; // depois disso, encaminha pro vendedor
@@ -65,6 +66,18 @@ async function processar(chatId, textoRaw) {
     return acoes;
   }
   if (ficha.etapa === 'HUMANO') return acoes; // bot silencia quando humano assumiu
+
+  // ===== MODO CONVERSACIONAL (IA configurada) =====
+  // A IA conduz o papo e preenche a ficha; confirmação, cálculo e PDF
+  // continuam 100% no código (etapas CONFIRMA/FIM caem no switch abaixo).
+  if (ai.ativa() && !['CONFIRMA', 'FIM'].includes(ficha.etapa)) {
+    const r = await conversa.coletar(ficha, texto, catalogo);
+    if (r.humano) ficha.etapa = 'HUMANO';
+    else if (r.confirmar) ficha.etapa = 'CONFIRMA';
+    else ficha.etapa = 'COLETA_IA';
+    state.salvar(ficha);
+    return r.acoes;
+  }
 
   const erro = (msgAjuda) => {
     ficha.tentativasErro++;
@@ -199,6 +212,8 @@ async function processar(chatId, textoRaw) {
 
     case 'CONFIRMA': {
       let opc = texto === '1' ? 1 : texto === '2' ? 2 : null;
+      if (!opc && /^(sim|pode|ok|isso|confirmo|gerar?|s)$/i.test(texto)) opc = 1;
+      if (!opc && /^(n[aã]o|errado|mudar|n)$/i.test(texto)) opc = 2;
       if (!opc) opc = await ai.escolherOpcao(texto, ['Sim, pode gerar o orçamento', 'Não, quero recomeçar/mudar algo'], 'confirmação do pedido');
       if (opc === 2) {
         ficha = state.resetar(chatId);

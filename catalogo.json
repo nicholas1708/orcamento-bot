@@ -3,38 +3,49 @@
   "moeda": "BRL",
   "validade_orcamento_dias": 7,
 
+  "_como_escalar": "Com muitas telhas (100+), o segredo é: 'familia' agrupa (o cliente escolhe a família primeiro, depois a variação) e 'forros_compativeis' restringe o que combina com cada telha. A IA só vê a fatia relevante do catálogo em cada etapa.",
+
   "telhas": [
     {
       "id": "TL-TERMO-30",
       "gc_id": null,
-      "nome": "Telha Termoacústica (sanduíche) EPS 30mm",
+      "familia": "Termoacústica (sanduíche)",
+      "nome": "Telha Termoacústica EPS 30mm",
       "descricao": "Aço galvanizado 0,43mm + isopor 30mm + filme. Já inclui o forro de isopor integrado.",
+      "atributos": { "espessura": "30mm", "isolamento": "EPS" },
       "unidade": "m2",
       "preco": 89.90,
       "largura_util_m": 1.0,
       "forro_integrado": true,
+      "forros_compativeis": [],
       "fator_perda": 1.08
     },
     {
       "id": "TL-TERMO-40",
       "gc_id": null,
-      "nome": "Telha Termoacústica (sanduíche) EPS 40mm",
+      "familia": "Termoacústica (sanduíche)",
+      "nome": "Telha Termoacústica EPS 40mm",
       "descricao": "Aço galvanizado 0,43mm + isopor 40mm + filme. Já inclui o forro de isopor integrado.",
+      "atributos": { "espessura": "40mm", "isolamento": "EPS" },
       "unidade": "m2",
       "preco": 99.90,
       "largura_util_m": 1.0,
       "forro_integrado": true,
+      "forros_compativeis": [],
       "fator_perda": 1.08
     },
     {
       "id": "TL-GALV-SIMPLES",
       "gc_id": null,
+      "familia": "Galvanizada simples",
       "nome": "Telha Galvanizada Simples (trapezoidal)",
       "descricao": "Aço galvanizado 0,43mm, sem isolamento. Forro é cotado à parte.",
+      "atributos": { "espessura": "0,43mm", "isolamento": "nenhum" },
       "unidade": "m2",
       "preco": 49.90,
       "largura_util_m": 1.0,
       "forro_integrado": false,
+      "forros_compativeis": ["FR-NENHUM", "FR-ISOPOR", "FR-PVC"],
       "fator_perda": 1.08
     }
   ],

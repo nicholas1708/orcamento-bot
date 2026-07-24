@@ -11,6 +11,7 @@ const app = express();
 app.use(express.json({ limit: '5mb' }));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
+app.get('/', (_req, res) => res.redirect('/simulador')); // raiz → simulador
 
 // ===== SIMULADOR LOCAL (testes sem WhatsApp) =====
 // Abra /simulador — conversa com o mesmo flow.js do WhatsApp.
