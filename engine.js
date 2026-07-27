@@ -50,15 +50,26 @@ function calcularOrcamento(pedido, catalogo) {
   // 3) Estrutura: preço médio por m² coberto
   if (estrutura.preco_por_m2 > 0) add(estrutura.nome, area, 'm²', estrutura.preco_por_m2);
 
-  // 4) Fixação (sempre que há telha)
+  // 4) Fixação (sempre que há telha) — qualquer acessório com consumo_por_m2 entra automático
   const ac = catalogo.acessorios;
-  add(ac.parafuso_fixacao.nome, area * ac.parafuso_fixacao.consumo_por_m2, 'un', ac.parafuso_fixacao.preco);
-  add(ac.fita_vedacao.nome, area * ac.fita_vedacao.consumo_por_m2, 'm', ac.fita_vedacao.preco);
+  for (const item of Object.values(ac)) {
+    if (item.consumo_por_m2 > 0) add(item.nome, area * item.consumo_por_m2, item.unidade, item.preco);
+  }
 
   // 5) Acabamentos por metro linear (informados pelo cliente; 0 = não quer)
-  add(ac.cumeeira.nome, Number(pedido.cumeeiraM) || 0, 'm', ac.cumeeira.preco);
-  add(ac.rufo.nome, Number(pedido.rufoM) || 0, 'm', ac.rufo.preco);
-  add(ac.calha.nome, Number(pedido.calhaM) || 0, 'm', ac.calha.preco);
+  add(ac.cumeeira.nome, Number(pedido.cumeeiraM) || 0, ac.cumeeira.unidade, ac.cumeeira.preco);
+  add(ac.rufo.nome, Number(pedido.rufoM) || 0, ac.rufo.unidade, ac.rufo.preco);
+  add(ac.calha.nome, Number(pedido.calhaM) || 0, ac.calha.unidade, ac.calha.preco);
+
+  // 6) Frete por localidade — tabela cadastrável no catálogo (nunca inventado)
+  const normalizar = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const cidade = normalizar(pedido.cidade);
+  const regraFrete = (catalogo.fretes?.tabela || []).find((f) => cidade.includes(normalizar(f.localidade)));
+  if (regraFrete) {
+    add(`Frete — ${pedido.cidade}`, 1, 'vb', regraFrete.valor);
+  } else {
+    avisos.push('Frete NÃO incluso — valor a confirmar pelo vendedor para sua localidade.');
+  }
 
   const total = money(itens.reduce((s, i) => s + i.subtotal, 0));
   return { itens, total, avisos, escalarParaVendedor };

@@ -34,6 +34,16 @@ async function sendPdf(chatId, filePath, caption = '') {
   });
 }
 
+/** Envia imagem por URL (ex: foto do acabamento no site) com legenda */
+async function sendImage(chatId, url, caption = '') {
+  await api().post('/api/sendImage', {
+    session: session(),
+    chatId,
+    caption,
+    file: { url },
+  });
+}
+
 /** Simula "digitando..." — dá tempo humano entre mensagens (mitiga ban) */
 async function typing(chatId, ms = 1200) {
   try {
@@ -43,4 +53,4 @@ async function typing(chatId, ms = 1200) {
   } catch { /* endpoint opcional — ignora se indisponível */ }
 }
 
-module.exports = { sendText, sendPdf, typing };
+module.exports = { sendText, sendPdf, sendImage, typing };

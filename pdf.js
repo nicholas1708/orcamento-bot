@@ -26,6 +26,7 @@ function gerarPDF({ cliente, pedido, orcamento, catalogo, empresa }, destino) {
   doc.fillColor('#000').fontSize(11).font('Helvetica-Bold').text('Cliente');
   doc.fontSize(10).font('Helvetica')
     .text(`${cliente.nome} — ${cliente.cidade}`)
+    .text(`Entrega: ${cliente.endereco || 'a confirmar'}`)
     .text(`WhatsApp: ${cliente.telefone}`);
   doc.moveDown(0.8);
 

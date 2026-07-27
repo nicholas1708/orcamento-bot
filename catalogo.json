@@ -1,110 +1,98 @@
 {
-  "_comentario": "CATÁLOGO BASE DE EXEMPLO — substitua preços e coeficientes pelos valores reais da empresa. Quando a API da GestãoClick estiver ativa, o campo 'gc_id' liga cada item ao produto no ERP.",
+  "_comentario": "CATÁLOGO 4A REPRESENTAÇÃO — produtos e fotos reais de www.4arepresentacao.com.br. 'site_id' = id do produto no site da 4A. 'gc_id' = id no GestãoClick (preencher quando a API for contratada).",
   "moeda": "BRL",
   "validade_orcamento_dias": 7,
-
-  "_como_escalar": "Com muitas telhas (100+), o segredo é: 'familia' agrupa (o cliente escolhe a família primeiro, depois a variação) e 'forros_compativeis' restringe o que combina com cada telha. A IA só vê a fatia relevante do catálogo em cada etapa.",
+  "_base_img": "https://d4polyhz8pjtz.cloudfront.net/5223/",
 
   "telhas": [
-    {
-      "id": "TL-TERMO-30",
-      "gc_id": null,
-      "familia": "Termoacústica (sanduíche)",
-      "nome": "Telha Termoacústica EPS 30mm",
-      "descricao": "Aço galvanizado 0,43mm + isopor 30mm + filme. Já inclui o forro de isopor integrado.",
-      "atributos": { "espessura": "30mm", "isolamento": "EPS" },
-      "unidade": "m2",
-      "preco": 89.90,
-      "largura_util_m": 1.0,
-      "forro_integrado": true,
-      "forros_compativeis": [],
-      "fator_perda": 1.08
-    },
-    {
-      "id": "TL-TERMO-40",
-      "gc_id": null,
-      "familia": "Termoacústica (sanduíche)",
-      "nome": "Telha Termoacústica EPS 40mm",
-      "descricao": "Aço galvanizado 0,43mm + isopor 40mm + filme. Já inclui o forro de isopor integrado.",
-      "atributos": { "espessura": "40mm", "isolamento": "EPS" },
-      "unidade": "m2",
-      "preco": 99.90,
-      "largura_util_m": 1.0,
-      "forro_integrado": true,
-      "forros_compativeis": [],
-      "fator_perda": 1.08
-    },
-    {
-      "id": "TL-GALV-SIMPLES",
-      "gc_id": null,
-      "familia": "Galvanizada simples",
-      "nome": "Telha Galvanizada Simples (trapezoidal)",
-      "descricao": "Aço galvanizado 0,43mm, sem isolamento. Forro é cotado à parte.",
-      "atributos": { "espessura": "0,43mm", "isolamento": "nenhum" },
-      "unidade": "m2",
-      "preco": 49.90,
-      "largura_util_m": 1.0,
-      "forro_integrado": false,
-      "forros_compativeis": ["FR-NENHUM", "FR-ISOPOR", "FR-PVC"],
-      "fator_perda": 1.08
-    }
+    { "id": "TL-EPS-SEMI",      "gc_id": null, "site_id": 8,  "familia": "Telha Termoisolante EPS", "nome": "Telha Manta/Filme Semi-Sanduíche Galvalume", "atributos": { "nucleo": "EPS", "acabamento_inferior": "manta/filme" }, "unidade": "m2", "preco": 55.00, "forro_integrado": true, "forros_compativeis": [], "fator_perda": 1.08, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/quero-saber-mais-20241210094138.jpeg" },
+    { "id": "TL-EPS-SEMI-BR",   "gc_id": null, "site_id": 60, "familia": "Telha Termoisolante EPS", "nome": "Telha Manta/Filme Semi-Sanduíche Branco Galvalume", "atributos": { "nucleo": "EPS", "acabamento_inferior": "manta/filme branco" }, "unidade": "m2", "preco": 58.00, "forro_integrado": true, "forros_compativeis": [], "fator_perda": 1.08, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/quero-saber-mais-20241210102825.jpeg" },
+    { "id": "TL-EPS-SAND",      "gc_id": null, "site_id": 9,  "familia": "Telha Termoisolante EPS", "nome": "Telha Sanduíche Galvalume (aço/EPS/aço)", "atributos": { "nucleo": "EPS", "acabamento_inferior": "chapa de aço" }, "unidade": "m2", "preco": 95.00, "forro_integrado": true, "forros_compativeis": [], "fator_perda": 1.08, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/TELHA-SANDUiCHE-GALVALUME-20221010175030-06-15-2023-15-51-44-000000.jpg" },
+    { "id": "TL-EPS-FORRO-BR",  "gc_id": null, "site_id": 10, "familia": "Telha Termoisolante EPS", "nome": "Telha Forro Branco Galvalume", "atributos": { "nucleo": "EPS", "acabamento_inferior": "forro branco" }, "unidade": "m2", "preco": 65.00, "forro_integrado": true, "forros_compativeis": [], "fator_perda": 1.08, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/quero-saber-mais-20241210085755.jpeg" },
+    { "id": "TL-EPS-FORRO-PT",  "gc_id": null, "site_id": 61, "familia": "Telha Termoisolante EPS", "nome": "Telha Forro Preto Galvalume", "atributos": { "nucleo": "EPS", "acabamento_inferior": "forro preto" }, "unidade": "m2", "preco": 65.00, "forro_integrado": true, "forros_compativeis": [], "fator_perda": 1.08, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/quero-saber-mais-20241210082927.jpeg" },
+    { "id": "TL-EPS-AMAD-TRAD", "gc_id": null, "site_id": 37, "familia": "Telha Termoisolante EPS", "nome": "Telha Forro Efeito Amadeirado Tradicional", "atributos": { "nucleo": "EPS", "acabamento_inferior": "amadeirado tradicional" }, "unidade": "m2", "preco": 78.00, "forro_integrado": true, "forros_compativeis": [], "fator_perda": 1.08, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/quero-saber-mais-20250407202331.jpg" },
+    { "id": "TL-EPS-AMAD-3D",   "gc_id": null, "site_id": 38, "familia": "Telha Termoisolante EPS", "nome": "Telha Forro Efeito Amadeirado 3D", "atributos": { "nucleo": "EPS", "acabamento_inferior": "amadeirado 3D" }, "unidade": "m2", "preco": 82.00, "forro_integrado": true, "forros_compativeis": [], "fator_perda": 1.08, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/telha-forro-efeito-amadeirado--20240224164858.jpeg" },
+    { "id": "TL-EPS-AMAD-EC",   "gc_id": null, "site_id": 67, "familia": "Telha Termoisolante EPS", "nome": "Telha Forro Efeito Amadeirado Escuro e Claro", "atributos": { "nucleo": "EPS", "acabamento_inferior": "amadeirado escuro/claro" }, "unidade": "m2", "preco": 78.00, "forro_integrado": true, "forros_compativeis": [], "fator_perda": 1.08, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/quero-saber-mais-20241210090419.jpeg" },
+    { "id": "TL-EPS-AMAD-PARIS","gc_id": null, "site_id": 74, "familia": "Telha Termoisolante EPS", "nome": "Telha Forro Efeito Amadeirado Paris", "atributos": { "nucleo": "EPS", "acabamento_inferior": "amadeirado Paris" }, "unidade": "m2", "preco": 82.00, "forro_integrado": true, "forros_compativeis": [], "fator_perda": 1.08, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/quero-saber-mais-20250408144911.jpg" },
+    { "id": "TL-EPS-AMAD-JACAR","gc_id": null, "site_id": 75, "familia": "Telha Termoisolante EPS", "nome": "Telha Forro Efeito Amadeirado Jacar", "atributos": { "nucleo": "EPS", "acabamento_inferior": "amadeirado Jacar" }, "unidade": "m2", "preco": 82.00, "forro_integrado": true, "forros_compativeis": [], "fator_perda": 1.08, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/quero-saber-mais-20250408151609.jpg" },
+
+    { "id": "TL-PIR-SAND",     "gc_id": null, "site_id": 59, "familia": "Telha Termoisolante PIR", "nome": "Telha Sanduíche PIR", "atributos": { "nucleo": "PIR (melhor isolamento/anti-chama)", "acabamento_inferior": "chapa de aço" }, "unidade": "m2", "preco": 120.00, "forro_integrado": true, "forros_compativeis": [], "fator_perda": 1.08, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/telha-sanduiche-pir-20251028160541.jpeg" },
+    { "id": "TL-PIR-AMAD-CLA", "gc_id": null, "site_id": 91, "familia": "Telha Termoisolante PIR", "nome": "Telha Termoisolante PIR Amadeirado Claro", "atributos": { "nucleo": "PIR", "acabamento_inferior": "amadeirado claro" }, "unidade": "m2", "preco": 128.00, "forro_integrado": true, "forros_compativeis": [], "fator_perda": 1.08, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/telha-termoisolante-pir-amadei-20251028152440.jpeg" },
+    { "id": "TL-PIR-AMAD-ESC", "gc_id": null, "site_id": 68, "familia": "Telha Termoisolante PIR", "nome": "Telha Termoisolante PIR Amadeirado Escuro", "atributos": { "nucleo": "PIR", "acabamento_inferior": "amadeirado escuro" }, "unidade": "m2", "preco": 128.00, "forro_integrado": true, "forros_compativeis": [], "fator_perda": 1.08, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/quero-saber-mais-20250704164932.jpeg" },
+    { "id": "TL-PIR-FORRO-PT", "gc_id": null, "site_id": 76, "familia": "Telha Termoisolante PIR", "nome": "Telha Forro Preto PIR", "atributos": { "nucleo": "PIR", "acabamento_inferior": "forro preto" }, "unidade": "m2", "preco": 110.00, "forro_integrado": true, "forros_compativeis": [], "fator_perda": 1.08, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/quero-saber-mais-20250704163750.jpeg" },
+    { "id": "TL-PIR-FORRO-BR", "gc_id": null, "site_id": 77, "familia": "Telha Termoisolante PIR", "nome": "Telha Forro Branco PIR", "atributos": { "nucleo": "PIR", "acabamento_inferior": "forro branco" }, "unidade": "m2", "preco": 110.00, "forro_integrado": true, "forros_compativeis": [], "fator_perda": 1.08, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/quero-saber-mais-20250704164407.jpeg" },
+
+    { "id": "TL-COL-TER-PT", "gc_id": null, "site_id": 78, "familia": "Telha Colonial PIR (Isotelha)", "nome": "Isotelha Colonial Terracota com Forro Preto", "atributos": { "cor": "terracota", "forro": "preto" }, "unidade": "m2", "preco": 135.00, "forro_integrado": true, "forros_compativeis": [], "fator_perda": 1.10, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/994ab7fd0be913970fdf89eb47c45269-20250928194151.jpeg" },
+    { "id": "TL-COL-TER-BR", "gc_id": null, "site_id": 79, "familia": "Telha Colonial PIR (Isotelha)", "nome": "Isotelha Colonial Terracota com Forro Branco", "atributos": { "cor": "terracota", "forro": "branco" }, "unidade": "m2", "preco": 135.00, "forro_integrado": true, "forros_compativeis": [], "fator_perda": 1.10, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/37a549f52d9d9bb2ca2c4625d44682ad-20250928202710.jpeg" },
+    { "id": "TL-COL-TER-AE", "gc_id": null, "site_id": 80, "familia": "Telha Colonial PIR (Isotelha)", "nome": "Isotelha Colonial Terracota Forro Amadeirado Escuro", "atributos": { "cor": "terracota", "forro": "amadeirado escuro" }, "unidade": "m2", "preco": 142.00, "forro_integrado": true, "forros_compativeis": [], "fator_perda": 1.10, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/f344fd90cff54654f49948ed15a89a38-20250928204107.jpeg" },
+    { "id": "TL-COL-TER-AC", "gc_id": null, "site_id": 81, "familia": "Telha Colonial PIR (Isotelha)", "nome": "Isotelha Colonial Terracota Forro Amadeirado Claro", "atributos": { "cor": "terracota", "forro": "amadeirado claro" }, "unidade": "m2", "preco": 142.00, "forro_integrado": true, "forros_compativeis": [], "fator_perda": 1.10, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/3c6b82e670da8ee9efabbc54fea4d51e-20250928205135.jpeg" },
+    { "id": "TL-COL-CIN-PT", "gc_id": null, "site_id": 82, "familia": "Telha Colonial PIR (Isotelha)", "nome": "Isotelha Colonial Cinza Ardósia com Forro Preto", "atributos": { "cor": "cinza ardósia", "forro": "preto" }, "unidade": "m2", "preco": 135.00, "forro_integrado": true, "forros_compativeis": [], "fator_perda": 1.10, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/05351307567cc718186363094aa6d2ff-20250928210258.jpeg" },
+    { "id": "TL-COL-CIN-BR", "gc_id": null, "site_id": 83, "familia": "Telha Colonial PIR (Isotelha)", "nome": "Isotelha Colonial Cinza Ardósia com Forro Branco", "atributos": { "cor": "cinza ardósia", "forro": "branco" }, "unidade": "m2", "preco": 135.00, "forro_integrado": true, "forros_compativeis": [], "fator_perda": 1.10, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/c2e704990d150366977584ae937f4f3f-20250928211359.jpeg" },
+    { "id": "TL-COL-CIN-AE", "gc_id": null, "site_id": 84, "familia": "Telha Colonial PIR (Isotelha)", "nome": "Isotelha Colonial Cinza Ardósia Forro Amadeirado Escuro", "atributos": { "cor": "cinza ardósia", "forro": "amadeirado escuro" }, "unidade": "m2", "preco": 142.00, "forro_integrado": true, "forros_compativeis": [], "fator_perda": 1.10, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/de48fecd2169cba7ded1e962d92349c5-20250928212337.jpeg" },
+    { "id": "TL-COL-CIN-AC", "gc_id": null, "site_id": 85, "familia": "Telha Colonial PIR (Isotelha)", "nome": "Isotelha Colonial Cinza Ardósia Forro Amadeirado Claro", "atributos": { "cor": "cinza ardósia", "forro": "amadeirado claro" }, "unidade": "m2", "preco": 142.00, "forro_integrado": true, "forros_compativeis": [], "fator_perda": 1.10, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/910f7262539facc13dc7f499863babf9-20250928213004.jpeg" },
+    { "id": "TL-COL-MAR-PT", "gc_id": null, "site_id": 86, "familia": "Telha Colonial PIR (Isotelha)", "nome": "Isotelha Colonial Marfim com Forro Preto", "atributos": { "cor": "marfim", "forro": "preto" }, "unidade": "m2", "preco": 135.00, "forro_integrado": true, "forros_compativeis": [], "fator_perda": 1.10, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/83466de574ca8b283856b5e6fbb55b8d-20250928213604.jpeg" },
+    { "id": "TL-COL-MAR-BR", "gc_id": null, "site_id": 87, "familia": "Telha Colonial PIR (Isotelha)", "nome": "Isotelha Colonial Marfim com Forro Branco", "atributos": { "cor": "marfim", "forro": "branco" }, "unidade": "m2", "preco": 135.00, "forro_integrado": true, "forros_compativeis": [], "fator_perda": 1.10, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/f2f3b2232b57f5f2f4d81ff85eec9506-20250928214656.jpeg" },
+    { "id": "TL-COL-MAR-AE", "gc_id": null, "site_id": 88, "familia": "Telha Colonial PIR (Isotelha)", "nome": "Isotelha Colonial Marfim Forro Amadeirado Escuro", "atributos": { "cor": "marfim", "forro": "amadeirado escuro" }, "unidade": "m2", "preco": 142.00, "forro_integrado": true, "forros_compativeis": [], "fator_perda": 1.10, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/045f81fe6c118c75f17fa9e02b40584d-20250928215440.jpeg" },
+    { "id": "TL-COL-MAR-AC", "gc_id": null, "site_id": 89, "familia": "Telha Colonial PIR (Isotelha)", "nome": "Isotelha Colonial Marfim Forro Amadeirado Claro", "atributos": { "cor": "marfim", "forro": "amadeirado claro" }, "unidade": "m2", "preco": 142.00, "forro_integrado": true, "forros_compativeis": [], "fator_perda": 1.10, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/865429ceeb52d2371fdd1b0e5600fe45-20250928220036.jpeg" },
+
+    { "id": "TL-GV-OND",      "gc_id": null, "site_id": 7,  "familia": "Telha Galvalume (simples)", "nome": "Telha Comum Galvalume Ondulada", "atributos": { "perfil": "ondulada" }, "unidade": "m2", "preco": 35.00, "forro_integrado": false, "forros_compativeis": ["FR-NENHUM"], "fator_perda": 1.08, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/TELHA-COMUM-GALVALUME-20240111230014.png" },
+    { "id": "TL-GV-TP25",     "gc_id": null, "site_id": 48, "familia": "Telha Galvalume (simples)", "nome": "Telha Galvalume TP 25/1020", "atributos": { "perfil": "trapezoidal TP25", "largura_util": "1020mm" }, "unidade": "m2", "preco": 38.00, "forro_integrado": false, "forros_compativeis": ["FR-NENHUM"], "fator_perda": 1.08, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/telha-galvalume-trapezio-20240626183139.jpg" },
+    { "id": "TL-GV-TP40-980", "gc_id": null, "site_id": 49, "familia": "Telha Galvalume (simples)", "nome": "Telha Comum Galvalume TP 40/980", "atributos": { "perfil": "trapezoidal TP40", "largura_util": "980mm" }, "unidade": "m2", "preco": 42.00, "forro_integrado": false, "forros_compativeis": ["FR-NENHUM"], "fator_perda": 1.08, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/telha-comum-galvalume-trapezio-20240626183507.png" },
+    { "id": "TL-GV-TP40-1020","gc_id": null, "site_id": 51, "familia": "Telha Galvalume (simples)", "nome": "Telha Comum Galvalume TP 40/1020", "atributos": { "perfil": "trapezoidal TP40", "largura_util": "1020mm" }, "unidade": "m2", "preco": 42.00, "forro_integrado": false, "forros_compativeis": ["FR-NENHUM"], "fator_perda": 1.08, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/telha-comum-galvalume-tp-40-10-20240626184235.png" },
+    { "id": "TL-GV-TP100",    "gc_id": null, "site_id": 50, "familia": "Telha Galvalume (simples)", "nome": "Telha Comum Galvalume TP 100/950", "atributos": { "perfil": "trapezoidal TP100 (estrutural)", "largura_util": "950mm" }, "unidade": "m2", "preco": 55.00, "forro_integrado": false, "forros_compativeis": ["FR-NENHUM"], "fator_perda": 1.08, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/quero-saber-mais-20250407200849.jpg" },
+
+    { "id": "TL-CONC-TRAD", "gc_id": null, "site_id": 71, "familia": "Telha de Concreto", "nome": "Telha de Concreto Tradição", "atributos": {}, "unidade": "m2", "preco": 48.00, "forro_integrado": false, "forros_compativeis": ["FR-NENHUM"], "fator_perda": 1.10, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/quero-saber-mais-20240924111723.png" },
+
+    { "id": "TL-FIBRA-NAT",   "gc_id": null, "site_id": 11, "familia": "Telha Fibra de Vidro", "nome": "Telha Fibra de Vidro (natural)", "atributos": { "cor": "natural/translúcida" }, "unidade": "m2", "preco": 60.00, "forro_integrado": false, "forros_compativeis": ["FR-NENHUM"], "fator_perda": 1.08, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/TELHA-FIBRA-DE-VIDRO-20221010191149-06-15-2023-15-52-11-000000.jpg" },
+    { "id": "TL-FIBRA-COLOR", "gc_id": null, "site_id": 14, "familia": "Telha Fibra de Vidro", "nome": "Telha Fibra de Vidro Colorida", "atributos": { "cor": "colorida" }, "unidade": "m2", "preco": 68.00, "forro_integrado": false, "forros_compativeis": ["FR-NENHUM"], "fator_perda": 1.08, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/TELHA-FIBRA-DE-VIDRO-COLORIDAS-20221011092910-06-15-2023-15-52-31-000000.jpg" },
+    { "id": "TL-FIBRA-FIBRO", "gc_id": null, "site_id": 26, "familia": "Telha Fibra de Vidro", "nome": "Telha Fibra de Vidro Medidas Fibrocimento", "atributos": { "compatibilidade": "medidas de fibrocimento" }, "unidade": "m2", "preco": 62.00, "forro_integrado": false, "forros_compativeis": ["FR-NENHUM"], "fator_perda": 1.08, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/TELHA-FIBRA-DE-VIDRO-MODELO-FI-20221011180141-06-15-2023-15-53-18-000000.jpeg" },
+
+    { "id": "TL-TRANS-ISOLUZ", "gc_id": null, "site_id": 70, "familia": "Telha Translúcida", "nome": "Isoluz Translúcida de Policarbonato 3 Trapézios", "atributos": { "material": "policarbonato", "uso": "iluminação natural" }, "unidade": "m2", "preco": 180.00, "forro_integrado": false, "forros_compativeis": ["FR-NENHUM"], "fator_perda": 1.05, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/quero-saber-mais-20240925174105.jpeg" },
+
+    { "id": "PN-EPS-FRIGO",  "gc_id": null, "site_id": 73, "familia": "Painel EPS (fechamento)", "nome": "Painel EPS - Frigo", "atributos": { "uso": "câmara fria / fechamento" }, "unidade": "m2", "preco": 150.00, "forro_integrado": true, "forros_compativeis": [], "fator_perda": 1.05, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/quero-saber-mais-20240925150816.jpeg" },
+    { "id": "PN-PIR-SALA",   "gc_id": null, "site_id": 72, "familia": "Painel PIR (fechamento)", "nome": "Painel Térmico PIR - Sala Limpa", "atributos": { "uso": "sala limpa" }, "unidade": "m2", "preco": 210.00, "forro_integrado": true, "forros_compativeis": [], "fator_perda": 1.05, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/isopainel-termico-pir---sala-l-20251006213651.jpeg" },
+    { "id": "PN-PIR-FRIGO",  "gc_id": null, "site_id": 90, "familia": "Painel PIR (fechamento)", "nome": "Painel Térmico PIR - Frigo", "atributos": { "uso": "câmara fria" }, "unidade": "m2", "preco": 200.00, "forro_integrado": true, "forros_compativeis": [], "fator_perda": 1.05, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/painel-termico-pir---frigo-20251028200104.jpeg" }
   ],
 
   "forros": [
-    { "id": "FR-NENHUM", "gc_id": null, "nome": "Sem forro", "unidade": "m2", "preco": 0, "fator_perda": 1.0 },
-    {
-      "id": "FR-ISOPOR",
-      "gc_id": null,
-      "nome": "Forro de Isopor (EPS) 20mm com perfil PVC",
-      "descricao": "Placas EPS 1,25 x 0,625m + perfis de fixação.",
-      "unidade": "m2",
-      "preco": 32.00,
-      "fator_perda": 1.05
-    },
-    {
-      "id": "FR-PVC",
-      "gc_id": null,
-      "nome": "Forro PVC Branco 200mm (régua)",
-      "descricao": "Régua PVC + perfis de acabamento.",
-      "unidade": "m2",
-      "preco": 45.00,
-      "fator_perda": 1.05
-    }
+    { "id": "FR-NENHUM", "gc_id": null, "nome": "Sem forro avulso", "unidade": "m2", "preco": 0, "fator_perda": 1.0 }
   ],
 
   "estruturas": [
     { "id": "ES-NENHUMA", "gc_id": null, "nome": "Sem estrutura (já possuo)", "unidade": "m2", "preco_por_m2": 0 },
     {
-      "id": "ES-METALON",
+      "id": "ES-GALV",
       "gc_id": null,
-      "nome": "Estrutura metálica (metalon/terças)",
-      "descricao": "Terças em metalon, espaçamento padrão 1,50m. Valor médio por m² coberto. Vãos acima de 6m: orçamento com vendedor.",
+      "nome": "Estrutura Linha Galvanizada (caibros, ripas e vigas)",
+      "descricao": "Caibro aberto/fechado 80x40, ripa 30x20x10, viga 130x50, conexões e contravento. Valor médio por m² coberto. Vãos acima de 6m: orçamento com vendedor.",
       "unidade": "m2",
-      "preco_por_m2": 65.00,
+      "preco_por_m2": 70.00,
       "vao_maximo_padrao_m": 6
-    },
-    {
-      "id": "ES-MADEIRA",
-      "gc_id": null,
-      "nome": "Estrutura de madeira",
-      "descricao": "Caibros/terças de madeira, espaçamento padrão. Valor médio por m² coberto. Vãos acima de 5m: orçamento com vendedor.",
-      "unidade": "m2",
-      "preco_por_m2": 48.00,
-      "vao_maximo_padrao_m": 5
     }
   ],
 
   "acessorios": {
-    "parafuso_fixacao": { "gc_id": null, "nome": "Parafuso autobrocante c/ vedação", "unidade": "un", "preco": 0.85, "consumo_por_m2": 6 },
-    "fita_vedacao":     { "gc_id": null, "nome": "Fita de vedação (metro)", "unidade": "m", "preco": 3.50, "consumo_por_m2": 0.3 },
-    "cumeeira":         { "gc_id": null, "nome": "Cumeeira galvanizada (metro linear)", "unidade": "m", "preco": 38.00 },
-    "rufo":             { "gc_id": null, "nome": "Rufo galvanizado (metro linear)", "unidade": "m", "preco": 28.00 },
-    "calha":            { "gc_id": null, "nome": "Calha galvanizada corte 33 (metro linear)", "unidade": "m", "preco": 42.00 }
+    "parafuso_fixacao": { "gc_id": null, "nome": "Parafuso Fixação 4\" Auto Brocante BW 12x4 - Aço", "unidade": "un", "preco": 0.95, "consumo_por_m2": 6 },
+    "parafuso_costura": { "gc_id": null, "nome": "Parafuso Costura Auto Brocante BW 12x7/8", "unidade": "un", "preco": 0.65, "consumo_por_m2": 2 },
+    "cumeeira":         { "gc_id": null, "nome": "Cumeeira Galvalume (metro linear)", "unidade": "m", "preco": 45.00 },
+    "rufo":             { "gc_id": null, "nome": "Rufo Galvalume (metro linear)", "unidade": "m", "preco": 32.00 },
+    "calha":            { "gc_id": null, "nome": "Calha Galvalume (metro linear)", "unidade": "m", "preco": 48.00 }
+  },
+
+  "fretes": {
+    "_como_funciona": "Frete por localidade (cadastrável). O sistema procura a localidade no texto da cidade informada (sem acento/maiúscula). Se não encontrar, o orçamento sai com aviso 'frete a confirmar' e o vendedor completa.",
+    "tabela": [
+      { "localidade": "belo horizonte", "valor": 250.00 },
+      { "localidade": "contagem", "valor": 200.00 },
+      { "localidade": "betim", "valor": 220.00 },
+      { "localidade": "nova lima", "valor": 260.00 },
+      { "localidade": "sabara", "valor": 230.00 }
+    ]
   },
 
   "regras": {
     "area_minima_m2": 5,
     "area_maxima_autoatendimento_m2": 300,
-    "observacao_pdf": "Orçamento estimativo gerado automaticamente. Sujeito a confirmação de medidas no local. Não inclui frete e instalação, salvo indicação em contrário."
+    "observacao_pdf": "Orçamento estimativo gerado automaticamente. Sujeito a confirmação de medidas e disponibilidade. Não inclui frete e instalação, salvo indicação em contrário."
   }
 }

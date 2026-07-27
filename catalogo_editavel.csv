@@ -1,15 +1,44 @@
-categoria;id;nome;unidade;preco;fator_perda;consumo_por_m2;preco_por_m2;forro_integrado;vao_maximo_padrao_m;observacao
-telha;TL-TERMO-30;Telha Termoacústica EPS 30mm;m2;89,90;1,08;;;SIM;;forro de isopor já integrado
-telha;TL-TERMO-40;Telha Termoacústica EPS 40mm;m2;99,90;1,08;;;SIM;;forro de isopor já integrado
-telha;TL-GALV-SIMPLES;Telha Galvanizada Simples trapezoidal;m2;49,90;1,08;;;NAO;;forro cotado à parte
-forro;FR-NENHUM;Sem forro;m2;0,00;1,00;;;;;
-forro;FR-ISOPOR;Forro de Isopor EPS 20mm c/ perfil;m2;32,00;1,05;;;;;
-forro;FR-PVC;Forro PVC Branco 200mm;m2;45,00;1,05;;;;;
-estrutura;ES-NENHUMA;Sem estrutura (cliente já possui);m2;;;;0,00;;;
-estrutura;ES-METALON;Estrutura metálica metalon/terças;m2;;;;65,00;;6;vão acima de 6m vai p/ vendedor
-estrutura;ES-MADEIRA;Estrutura de madeira;m2;;;;48,00;;5;vão acima de 5m vai p/ vendedor
-acessorio;parafuso_fixacao;Parafuso autobrocante c/ vedação;un;0,85;;6;;;;6 parafusos por m2
-acessorio;fita_vedacao;Fita de vedação;m;3,50;;0,3;;;;0,3m por m2
-acessorio;cumeeira;Cumeeira galvanizada;m;38,00;;;;;;cobrado por metro linear informado
-acessorio;rufo;Rufo galvanizado;m;28,00;;;;;;cobrado por metro linear informado
-acessorio;calha;Calha galvanizada corte 33;m;42,00;;;;;;cobrado por metro linear informado
+categoria;familia;id;nome;unidade;preco;fator_perda;consumo_por_m2;preco_por_m2;forro_integrado;observacao
+telha;Telha Termoisolante EPS;TL-EPS-SEMI;Telha Manta/Filme Semi-Sanduíche Galvalume;m2;55,00;1,08;;;SIM;confirmado
+telha;Telha Termoisolante EPS;TL-EPS-SEMI-BR;Telha Manta/Filme Semi-Sanduíche Branco Galvalume;m2;58,00;1,08;;;SIM;confirmado
+telha;Telha Termoisolante EPS;TL-EPS-SAND;Telha Sanduíche Galvalume;m2;95,00;1,08;;;SIM;confirmado
+telha;Telha Termoisolante EPS;TL-EPS-FORRO-BR;Telha Forro Branco Galvalume;m2;65,00;1,08;;;SIM;confirmado
+telha;Telha Termoisolante EPS;TL-EPS-FORRO-PT;Telha Forro Preto Galvalume;m2;65,00;1,08;;;SIM;confirmado
+telha;Telha Termoisolante EPS;TL-EPS-AMAD-TRAD;Telha Forro Efeito Amadeirado Tradicional;m2;78,00;1,08;;;SIM;confirmado
+telha;Telha Termoisolante EPS;TL-EPS-AMAD-3D;Telha Forro Efeito Amadeirado 3D;m2;82,00;1,08;;;SIM;confirmado
+telha;Telha Termoisolante EPS;TL-EPS-AMAD-EC;Telha Forro Efeito Amadeirado Escuro e Claro;m2;78,00;1,08;;;SIM;confirmado
+telha;Telha Termoisolante EPS;TL-EPS-AMAD-PARIS;Telha Forro Efeito Amadeirado Paris;m2;82,00;1,08;;;SIM;confirmado
+telha;Telha Termoisolante EPS;TL-EPS-AMAD-JACAR;Telha Forro Efeito Amadeirado Jacar;m2;82,00;1,08;;;SIM;confirmado
+telha;Telha Termoisolante PIR;TL-PIR-SAND;Telha Sanduíche PIR;m2;120,00;1,08;;;SIM;confirmado
+telha;Telha Termoisolante PIR;TL-PIR-AMAD-CLA;Telha PIR Amadeirado Claro;m2;128,00;1,08;;;SIM;confirmado
+telha;Telha Termoisolante PIR;TL-PIR-AMAD-ESC;Telha PIR Amadeirado Escuro;m2;128,00;1,08;;;SIM;confirmado
+telha;Telha Termoisolante PIR;TL-PIR-FORRO-PT;Telha Forro Preto PIR;m2;110,00;1,08;;;SIM;confirmado
+telha;Telha Termoisolante PIR;TL-PIR-FORRO-BR;Telha Forro Branco PIR;m2;110,00;1,08;;;SIM;confirmado
+telha;Telha Colonial PIR (Isotelha);TL-COL-TER-PT;Isotelha Colonial Terracota Forro Preto;m2;135,00;1,10;;;SIM;confirmado
+telha;Telha Colonial PIR (Isotelha);TL-COL-TER-BR;Isotelha Colonial Terracota Forro Branco;m2;135,00;1,10;;;SIM;confirmado
+telha;Telha Colonial PIR (Isotelha);TL-COL-TER-AE;Isotelha Colonial Terracota Forro Amadeirado Escuro;m2;142,00;1,10;;;SIM;confirmado
+telha;Telha Colonial PIR (Isotelha);TL-COL-TER-AC;Isotelha Colonial Terracota Forro Amadeirado Claro;m2;142,00;1,10;;;SIM;confirmado
+telha;Telha Colonial PIR (Isotelha);TL-COL-CIN-PT;Isotelha Colonial Cinza Ardósia Forro Preto;m2;135,00;1,10;;;SIM;confirmado
+telha;Telha Colonial PIR (Isotelha);TL-COL-CIN-BR;Isotelha Colonial Cinza Ardósia Forro Branco;m2;135,00;1,10;;;SIM;confirmado
+telha;Telha Colonial PIR (Isotelha);TL-COL-CIN-AE;Isotelha Colonial Cinza Ardósia Forro Amadeirado Escuro;m2;142,00;1,10;;;SIM;confirmado
+telha;Telha Colonial PIR (Isotelha);TL-COL-CIN-AC;Isotelha Colonial Cinza Ardósia Forro Amadeirado Claro;m2;142,00;1,10;;;SIM;confirmado
+telha;Telha Colonial PIR (Isotelha);TL-COL-MAR-PT;Isotelha Colonial Marfim Forro Preto;m2;135,00;1,10;;;SIM;confirmado
+telha;Telha Colonial PIR (Isotelha);TL-COL-MAR-BR;Isotelha Colonial Marfim Forro Branco;m2;135,00;1,10;;;SIM;confirmado
+telha;Telha Colonial PIR (Isotelha);TL-COL-MAR-AE;Isotelha Colonial Marfim Forro Amadeirado Escuro;m2;142,00;1,10;;;SIM;confirmado
+telha;Telha Colonial PIR (Isotelha);TL-COL-MAR-AC;Isotelha Colonial Marfim Forro Amadeirado Claro;m2;142,00;1,10;;;SIM;confirmado
+telha;Telha Galvalume (simples);TL-GV-OND;Telha Comum Galvalume Ondulada;m2;35,00;1,08;;;NAO;confirmado
+telha;Telha Galvalume (simples);TL-GV-TP25;Telha Galvalume TP 25/1020;m2;38,00;1,08;;;NAO;confirmado
+telha;Telha Galvalume (simples);TL-GV-TP40-980;Telha Galvalume TP 40/980;m2;42,00;1,08;;;NAO;confirmado
+telha;Telha Galvalume (simples);TL-GV-TP40-1020;Telha Galvalume TP 40/1020;m2;42,00;1,08;;;NAO;confirmado
+telha;Telha Galvalume (simples);TL-GV-TP100;Telha Galvalume TP 100/950;m2;55,00;1,08;;;NAO;confirmado
+telha;Telha de Concreto;TL-CONC-TRAD;Telha de Concreto Tradição;m2;48,00;1,10;;;NAO;confirmado
+telha;Telha Fibra de Vidro;TL-FIBRA-NAT;Telha Fibra de Vidro natural;m2;60,00;1,08;;;NAO;confirmado
+telha;Telha Fibra de Vidro;TL-FIBRA-COLOR;Telha Fibra de Vidro Colorida;m2;68,00;1,08;;;NAO;confirmado
+telha;Telha Fibra de Vidro;TL-FIBRA-FIBRO;Telha Fibra de Vidro Medidas Fibrocimento;m2;62,00;1,08;;;NAO;confirmado
+telha;Telha Translúcida;TL-TRANS-ISOLUZ;Isoluz Translúcida Policarbonato 3 Trapézios;m2;180,00;1,05;;;NAO;confirmado
+telha;Painel EPS (fechamento);PN-EPS-FRIGO;Painel EPS - Frigo;m2;150,00;1,05;;;SIM;confirmado
+telha;Painel PIR (fechamento);PN-PIR-SALA;Painel Térmico PIR - Sala Limpa;m2;210,00;1,05;;;SIM;confirmado
+telha;Painel PIR (fechamento);PN-PIR-FRIGO;Painel Térmico PIR - Frigo;m2;200,00;1,05;;;SIM;confirmado
+estrutura;;ES-NENHUMA;Sem estrutura (cliente já possui);m2;;;;0,00;;
+estrutura;;ES-GALV;Estrutura Linha Galvanizada (caibros/ripas/vigas);m2;;;;70,00;;PREÇO ESTIMADO por m² coberto - confirmar
+acessorio;;parafuso_fixacao;Parafuso Fixação 4" Auto Brocante BW 12x4 Aço;un;0,95;;6;;;6 por m²acessorio;;parafuso_costura;Parafuso Costura Auto Brocante BW 12x7/8;un;0,65;;2;;;2 por m²acessorio;;cumeeira;Cumeeira Galvalume;m;45,00;;;;;por metro linear - confirmadoacessorio;;rufo;Rufo Galvalume;m;32,00;;;;;por metro linearacessorio;;calha;Calha Galvalume;m;48,00;;;;;por metro linear

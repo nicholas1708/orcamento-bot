@@ -17,7 +17,7 @@ function novaFicha(chatId) {
     chatId,
     etapa: 'INICIO',
     tentativasErro: 0,
-    cliente: { nome: null, cidade: null, telefone: chatId.replace(/@.*$/, '') },
+    cliente: { nome: null, cidade: null, endereco: null, telefone: chatId.replace(/@.*$/, '') },
     pedido: {
       telhaId: null, forroId: null, estruturaId: null,
       areaM2: null, cumeeiraM: null, rufoM: null, calhaM: null,

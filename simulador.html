@@ -80,6 +80,9 @@
       if (error) { add('⚠️ Erro: ' + error, 'msg bot'); return; }
       for (const a of acoes || []) {
         if (a.type === 'text') add(wa(a.text), 'msg bot');
+        if (a.type === 'image') add(
+          `<img src="${a.url}" style="max-width:100%;border-radius:6px;display:block;margin-bottom:4px">` +
+          `<small style="color:#8696a0">${wa(a.caption || '')}</small>`, 'msg bot');
         if (a.type === 'pdf') add(
           `<div class="ico">📄</div><div><a href="${a.url}" target="_blank">Abrir orçamento (PDF)</a><small>${wa(a.caption || '')}</small></div>`,
           'pdfcard');

@@ -22,6 +22,7 @@ const CAMPOS_OBRIGATORIOS = [
   ['pedido', 'calhaM', 'metros de calha (0 se não quer)'],
   ['cliente', 'nome', 'nome do cliente'],
   ['cliente', 'cidade', 'cidade do cliente'],
+  ['cliente', 'endereco', 'endereço completo da obra/entrega (rua, número e bairro) — OBRIGATÓRIO para o frete'],
 ];
 
 const fmtPreco = (v) => 'R$ ' + Number(v).toFixed(2).replace('.', ',');
@@ -99,9 +100,9 @@ ${estruturas}
 
 REGRAS INEGOCIÁVEIS:
 1. NUNCA calcule nem estime o TOTAL do orçamento. Se perguntarem o total, diga que o sistema gera o orçamento certinho em PDF assim que fechar os dados. Pode citar os preços por m² do catálogo.
-2. NUNCA prometa prazo, desconto, frete ou condição de pagamento — diga que o vendedor confirma.
+2. NUNCA prometa prazo, desconto ou condição de pagamento — diga que o vendedor confirma. O FRETE é calculado pelo sistema com base no endereço — por isso o endereço completo (rua, número, bairro e cidade) é OBRIGATÓRIO: sem ele o orçamento não pode ser gerado. Nunca diga um valor de frete você mesmo.
 3. Se a telha escolhida tem forro integrado, defina forroId = "FR-NENHUM" e avise o cliente que o isopor já vem incluso.
-4. Se o cliente não quer cumeeira/rufo/calha, registre 0. Se ele não souber o que é, explique em 1 frase simples.
+4. Prefira pedir as MEDIDAS do telhado (ex: 10x20) em vez da área — assim você registra areaM2 (=multiplicação) e sabe o comprimento. Para a cumeeira, NÃO pergunte "quantos metros de cumeeira" — pergunte se o telhado terá *1 queda* (caída única) ou *2 quedas*: 1 queda → cumeeiraM = 0; 2 quedas → cumeeiraM = comprimento do telhado (maior medida). Rufo = metros que encostam em parede/muro; calha = metros de beirada com coleta de chuva; explique em 1 frase simples se o cliente não souber o que são, e registre 0 quando não quiser.
 5. Se o cliente pedir humano, fugir muito do assunto ou você não conseguir ajudar, use "handoff": true.
 6. Área plausível: entre ${catalogo.regras.area_minima_m2} e 2000 m². Se der dimensões (ex: 10x8), você pode multiplicar SÓ pra registrar a área.
 
@@ -110,8 +111,10 @@ ${JSON.stringify({ pedido: ficha.pedido, cliente: { nome: ficha.cliente.nome, ci
 
 AINDA FALTA: ${faltam.length ? faltam.join(', ') : 'nada — a ficha está completa'}
 
+FOTOS: se o cliente estiver em dúvida entre acabamentos/cores, você pode pedir pro sistema enviar as fotos dos produtos incluindo "fotos": ["id1","id2"] (ids do catálogo acima, máx 4). Só funciona pra produtos com foto cadastrada. Se o cliente ENVIAR uma foto, agradeça e diga que ela fica anexada pro vendedor conferir — NUNCA tire medidas ou conclusões técnicas de fotos.
+
 RESPONDA APENAS JSON válido neste formato:
-{"reply": "sua mensagem pro cliente", "campos": {somente os campos que ficaram CERTOS nesta mensagem, ex: {"telhaId":"TL-TERMO-40","areaM2":80}}, "handoff": false}
+{"reply": "sua mensagem pro cliente", "campos": {somente os campos que ficaram CERTOS nesta mensagem, ex: {"telhaId":"TL-TERMO-40","areaM2":80}}, "fotos": [], "handoff": false}
 Campos possíveis em "campos": familia, telhaId, forroId, estruturaId, areaM2, cumeeiraM, rufoM, calhaM, nome, cidade. Só inclua um campo se o cliente deixou claro. Não inclua o que já está na ficha, a menos que ele corrija. Só use telhaId de telhas listadas acima; se as telhas ainda não apareceram, escolha a familia primeiro.`
   );
 }
@@ -149,6 +152,10 @@ function aplicarCampos(ficha, campos, catalogo) {
   if (okNum(campos.calhaM, 0, 500)) ficha.pedido.calhaM = Number(campos.calhaM);
   if (typeof campos.nome === 'string' && campos.nome.trim().length >= 2) ficha.cliente.nome = campos.nome.trim();
   if (typeof campos.cidade === 'string' && campos.cidade.trim().length >= 2) ficha.cliente.cidade = campos.cidade.trim();
+  // endereço: exige rua + número (frete depende dele) — validação do CÓDIGO, não da IA
+  if (typeof campos.endereco === 'string' && campos.endereco.trim().length >= 8 && /\d/.test(campos.endereco)) {
+    ficha.cliente.endereco = campos.endereco.trim();
+  }
 
   // telha sem forro escolhida e cliente não quer forro → IA manda forroId FR-NENHUM; default:
   if (ficha.pedido.telhaId && ficha.pedido.forroId === undefined) ficha.pedido.forroId = null;
@@ -169,7 +176,8 @@ function resumoConfirmacao(ficha, catalogo) {
     `• Forro: ${t.forro_integrado ? 'Isopor integrado à telha' : f.nome}\n` +
     `• Estrutura: ${e.nome}\n` +
     `• Área: ${ficha.pedido.areaM2} m²\n` +
-    `• Cumeeira: ${ficha.pedido.cumeeiraM} m · Rufo: ${ficha.pedido.rufoM} m · Calha: ${ficha.pedido.calhaM} m\n\n` +
+    `• Cumeeira: ${ficha.pedido.cumeeiraM} m · Rufo: ${ficha.pedido.rufoM} m · Calha: ${ficha.pedido.calhaM} m\n` +
+    `• Entrega: ${ficha.cliente.endereco} — ${ficha.cliente.cidade}\n\n` +
     `Posso gerar o orçamento em PDF? (*sim* / *não*)`
   );
 }
@@ -198,6 +206,14 @@ async function coletar(ficha, texto, catalogo) {
   }
 
   aplicarCampos(ficha, r.campos, catalogo);
+
+  // fotos de produtos: só envia o que EXISTE no catálogo e TEM imagem cadastrada
+  if (Array.isArray(r.fotos)) {
+    for (const id of r.fotos.slice(0, 4)) {
+      const p = catalogo.telhas.find(t => t.id === id);
+      if (p && p.imagem) acoes.push({ type: 'image', url: p.imagem, caption: p.nome });
+    }
+  }
 
   if (r.handoff) {
     acoes.push({ type: 'handoff', motivo: 'Solicitado na conversa (IA)' });

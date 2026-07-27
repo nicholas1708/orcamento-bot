@@ -12,15 +12,16 @@ const path = require('path');
 (async () => {
   const catalogo = await getCatalogo();
 
-  // Pedido de exemplo: 100 m², telha sanduíche 40mm, estrutura metálica
+  // Pedido de exemplo: 100 m², Telha Sanduíche Galvalume EPS + estrutura galvanizada
   const pedido = {
-    telhaId: 'TL-TERMO-40',
+    telhaId: 'TL-EPS-SAND',
     forroId: 'FR-NENHUM',
-    estruturaId: 'ES-METALON',
+    estruturaId: 'ES-GALV',
     areaM2: 100,
     cumeeiraM: 10,
     rufoM: 12,
     calhaM: 10,
+    cidade: 'Belo Horizonte - MG', // frete deve entrar pela tabela de localidades
   };
 
   const orc = calcularOrcamento(pedido, catalogo);
@@ -40,7 +41,7 @@ const path = require('path');
   const e = catalogo.estruturas.find(x => x.id === pedido.estruturaId);
   const pdfPath = path.join(__dirname, 'out', 'orcamento-exemplo.pdf');
   await gerarPDF({
-    cliente: { nome: 'Cliente Teste', cidade: 'Belo Horizonte - MG', telefone: '31999999999' },
+    cliente: { nome: 'Cliente Teste', cidade: 'Belo Horizonte - MG', endereco: 'Rua Exemplo, 100 - Centro', telefone: '31999999999' },
     pedido: { ...pedido, numero: 'TESTE-001', telhaNome: t.nome, forroNome: 'Isopor integrado', estruturaNome: e.nome },
     orcamento: orc,
     catalogo,

@@ -54,8 +54,8 @@ async function processar(chatId, textoRaw) {
   const acoes = [];
   const say = (t) => acoes.push({ type: 'text', text: t });
 
-  // comandos globais
-  if (/^(menu|recome[cç]ar|cancelar|0)$/i.test(texto)) {
+  // comandos globais ("0" NÃO pode resetar — é resposta válida de cumeeira/rufo/calha)
+  if (/^(menu|recome[cç]ar|cancelar)$/i.test(texto)) {
     ficha = state.resetar(chatId);
   }
   if (/^(atendente|vendedor|humano)$/i.test(texto)) {
@@ -97,19 +97,41 @@ async function processar(chatId, textoRaw) {
         `Sou o assistente de orçamentos. Em poucos passos você recebe seu orçamento em PDF aqui mesmo.\n\n` +
         `A qualquer momento digite *menu* pra recomeçar ou *atendente* pra falar com uma pessoa.`
       );
-      say(menu('🏠 Primeiro: qual *telha* você quer?', catalogo.telhas.map(t => `${t.nome} — R$ ${t.preco.toFixed(2).replace('.', ',')}/m²`)));
+      const familias = [...new Set(catalogo.telhas.map(t => t.familia))];
+      if (catalogo.telhas.length > 12) {
+        say(menu('🏠 Primeiro: qual *linha de telha* você procura?', familias));
+        ficha.etapa = 'FAMILIA';
+      } else {
+        say(menu('🏠 Primeiro: qual *telha* você quer?', catalogo.telhas.map(t => `${t.nome} — R$ ${t.preco.toFixed(2).replace('.', ',')}/m²`)));
+        ficha.etapa = 'TELHA';
+      }
+      break;
+    }
+
+    case 'FAMILIA': {
+      const familias = [...new Set(catalogo.telhas.map(t => t.familia))];
+      const idx = parseInt(String(texto).trim(), 10);
+      const fam = idx >= 1 && idx <= familias.length ? familias[idx - 1] : null;
+      if (!fam) { erro('Responda com o *número* da linha de telha desejada.'); break; }
+      ficha.pedido.familia = fam;
+      ficha.tentativasErro = 0;
+      const grupo = catalogo.telhas.filter(t => t.familia === fam);
+      say(menu(`📋 Opções da linha *${fam}*:`, grupo.map(t => `${t.nome} — R$ ${t.preco.toFixed(2).replace('.', ',')}/m²`)));
       ficha.etapa = 'TELHA';
       break;
     }
 
     case 'TELHA': {
-      const t = await escolhaInteligente(texto, catalogo.telhas, catalogo.telhas.map(x => x.nome), 'tipo de telha');
+      const lista = ficha.pedido.familia
+        ? catalogo.telhas.filter(t => t.familia === ficha.pedido.familia)
+        : catalogo.telhas;
+      const t = await escolhaInteligente(texto, lista, lista.map(x => x.nome), 'tipo de telha');
       if (!t) { erro('Não entendi 🤔 Responda só com o *número* da telha desejada.'); break; }
       ficha.pedido.telhaId = t.id;
       ficha.tentativasErro = 0;
       if (t.forro_integrado) {
         ficha.pedido.forroId = 'FR-NENHUM';
-        say(`Boa escolha! ✅ A *${t.nome}* já vem com o forro de isopor integrado.`);
+        say(`Boa escolha! ✅ A *${t.nome}* já vem com o forro/isolamento integrado — não precisa comprar forro à parte.`);
         say(menu('🔧 E a *estrutura* de sustentação?', catalogo.estruturas.map(e => e.nome)));
         ficha.etapa = 'ESTRUTURA';
       } else {
@@ -140,21 +162,72 @@ async function processar(chatId, textoRaw) {
     }
 
     case 'AREA': {
-      const a = await numInteligente(texto, 'área do telhado em metros quadrados');
-      if (!a || a <= 0) { erro('Preciso de um número em m². Ex: *100*'); break; }
-      ficha.pedido.areaM2 = a;
+      // aceita medidas "10x20" (ideal — dá área E comprimento da cumeeira) ou área direta "200"
+      const dims = String(texto).match(/(\d+[.,]?\d*)\s*(?:x|×|por)\s*(\d+[.,]?\d*)/i);
+      if (dims) {
+        const d1 = parseFloat(dims[1].replace(',', '.'));
+        const d2 = parseFloat(dims[2].replace(',', '.'));
+        if (d1 > 0 && d2 > 0) {
+          ficha.pedido.areaM2 = Math.round(d1 * d2 * 100) / 100;
+          ficha.pedido.comprimentoM = Math.max(d1, d2);
+          say(`Anotei: *${d1} x ${d2}* = *${ficha.pedido.areaM2} m²* ✅`);
+        }
+      } else {
+        const a = await numInteligente(texto, 'área do telhado em metros quadrados');
+        if (a > 0) ficha.pedido.areaM2 = a;
+      }
+      if (!ficha.pedido.areaM2) { erro('Me diga as *medidas* (ex: *10x20*) ou a área em m² (ex: *200*).'); break; }
       ficha.tentativasErro = 0;
-      say('📏 Quantos *metros de cumeeira* (parte de cima do telhado)?\nSe não precisa, responda *0*.');
-      ficha.etapa = 'CUMEEIRA';
+      say(
+        '🏠 Seu telhado vai ter *1 queda* ou *2 quedas*?\n\n' +
+        '_1 queda = caída única (água escorre pra um lado só)._\n' +
+        '_2 quedas = duas caídas com fechamento no topo (a cumeeira)._\n\n' +
+        '*1* — Uma queda\n*2* — Duas quedas'
+      );
+      ficha.etapa = 'QUEDAS';
+      break;
+    }
+
+    case 'QUEDAS': {
+      const q = texto === '1' ? 1 : texto === '2' ? 2
+        : await ai.escolherOpcao(texto, ['Uma queda (caída única)', 'Duas quedas (com cumeeira no topo)'], 'quantas quedas tem o telhado');
+      if (q !== 1 && q !== 2) { erro('Responda *1* (uma queda) ou *2* (duas quedas).'); break; }
+      ficha.tentativasErro = 0;
+      if (q === 1) {
+        ficha.pedido.cumeeiraM = 0; // sem topo de duas águas = sem cumeeira
+        say('Beleza, *1 queda* — sem cumeeira então. ✅');
+        say(
+          '📏 E o *rufo*?\n\n' +
+          '_É o acabamento que veda o encontro do telhado com paredes ou muros, evitando infiltração._\n\n' +
+          '👉 Informe quantos *metros* de telhado encostam em parede/muro, ou *0* se não encosta em nada.'
+        );
+        ficha.etapa = 'RUFO';
+      } else if (ficha.pedido.comprimentoM) {
+        ficha.pedido.cumeeiraM = ficha.pedido.comprimentoM; // deduzido das medidas
+        say(`Beleza, *2 quedas* — vou considerar *${ficha.pedido.comprimentoM}m de cumeeira* (o comprimento do telhado). ✅`);
+        say(
+          '📏 E o *rufo*?\n\n' +
+          '_É o acabamento que veda o encontro do telhado com paredes ou muros, evitando infiltração._\n\n' +
+          '👉 Informe quantos *metros* de telhado encostam em parede/muro, ou *0* se não encosta em nada.'
+        );
+        ficha.etapa = 'RUFO';
+      } else {
+        say('👍 *2 quedas!* Como você me passou só a área, me diz: qual o *comprimento* do telhado em metros? (é o tamanho da cumeeira)');
+        ficha.etapa = 'CUMEEIRA';
+      }
       break;
     }
 
     case 'CUMEEIRA': {
-      const v = await numInteligente(texto, 'metros de cumeeira (0 se não quer)');
+      const v = await numInteligente(texto, 'comprimento da cumeeira em metros');
       if (v === null || v < 0) { erro('Responda com o número de metros (ou *0*).'); break; }
       ficha.pedido.cumeeiraM = v;
       ficha.tentativasErro = 0;
-      say('📏 E *rufo* (acabamento lateral)? Metros, ou *0*.');
+      say(
+        '📏 E o *rufo*?\n\n' +
+        '_É o acabamento que veda o encontro do telhado com paredes ou muros, evitando infiltração._\n\n' +
+        '👉 Informe quantos *metros* de telhado encostam em parede/muro, ou *0* se não encosta em nada.'
+      );
       ficha.etapa = 'RUFO';
       break;
     }
@@ -164,7 +237,11 @@ async function processar(chatId, textoRaw) {
       if (v === null || v < 0) { erro('Responda com o número de metros (ou *0*).'); break; }
       ficha.pedido.rufoM = v;
       ficha.tentativasErro = 0;
-      say('📏 E *calha*? Metros, ou *0*.');
+      say(
+        '📏 Por último, a *calha*:\n\n' +
+        '_É o canal na beirada do telhado que coleta a água da chuva e leva pro cano._\n\n' +
+        '👉 Informe os *metros* de beirada onde quer calha, ou *0* se não precisa.'
+      );
       ficha.etapa = 'CALHA';
       break;
     }
@@ -192,6 +269,22 @@ async function processar(chatId, textoRaw) {
       if (texto.length < 2) { erro('Qual sua cidade?'); break; }
       ficha.cliente.cidade = texto;
       ficha.tentativasErro = 0;
+      say(
+        '📍 E o *endereço da obra/entrega*? (rua, número e bairro)\n\n' +
+        '_Precisamos do endereço pra calcular o frete — sem ele não conseguimos fechar o orçamento._'
+      );
+      ficha.etapa = 'ENDERECO';
+      break;
+    }
+
+    case 'ENDERECO': {
+      // OBRIGATÓRIO: sem endereço não existe orçamento (frete depende da localidade)
+      if (texto.length < 8 || !/\d/.test(texto)) {
+        erro('Preciso do endereço completo com *rua, número e bairro* (ex: Rua das Palmeiras, 120 - Centro).');
+        break;
+      }
+      ficha.cliente.endereco = texto;
+      ficha.tentativasErro = 0;
 
       // Monta o resumo pra confirmação — cliente valida ANTES de gerar o PDF
       const t = catalogo.telhas.find(x => x.id === ficha.pedido.telhaId);
@@ -200,10 +293,11 @@ async function processar(chatId, textoRaw) {
       say(
         `✅ *Confere pra mim, ${ficha.cliente.nome}?*\n\n` +
         `• Telha: ${t.nome}\n` +
-        `• Forro: ${t.forro_integrado ? 'Isopor integrado à telha' : f.nome}\n` +
+        `• Forro: ${t.forro_integrado ? 'Integrado à telha' : f.nome}\n` +
         `• Estrutura: ${e.nome}\n` +
         `• Área: ${ficha.pedido.areaM2} m²\n` +
-        `• Cumeeira: ${ficha.pedido.cumeeiraM} m · Rufo: ${ficha.pedido.rufoM} m · Calha: ${ficha.pedido.calhaM} m\n\n` +
+        `• Cumeeira: ${ficha.pedido.cumeeiraM} m · Rufo: ${ficha.pedido.rufoM} m · Calha: ${ficha.pedido.calhaM} m\n` +
+        `• Entrega: ${ficha.cliente.endereco} — ${ficha.cliente.cidade}\n\n` +
         `*1* — Sim, gerar orçamento 📄\n*2* — Não, recomeçar`
       );
       ficha.etapa = 'CONFIRMA';
@@ -226,7 +320,13 @@ async function processar(chatId, textoRaw) {
       const t = catalogo.telhas.find(x => x.id === ficha.pedido.telhaId);
       const f = catalogo.forros.find(x => x.id === ficha.pedido.forroId);
       const e = catalogo.estruturas.find(x => x.id === ficha.pedido.estruturaId);
-      const orcamento = calcularOrcamento(ficha.pedido, catalogo);
+      // trava de segurança: NUNCA gera orçamento sem endereço (frete depende da localidade)
+      if (!ficha.cliente.endereco || !ficha.cliente.cidade) {
+        say('📍 Antes de gerar, preciso do *endereço da obra* (rua, número e bairro) pro cálculo do frete. Pode me passar?');
+        ficha.etapa = 'ENDERECO';
+        break;
+      }
+      const orcamento = calcularOrcamento({ ...ficha.pedido, cidade: ficha.cliente.cidade }, catalogo);
 
       const numero = 'WA-' + Date.now().toString(36).toUpperCase();
       const pdfPath = path.join(__dirname, 'out', `orcamento-${numero}.pdf`);

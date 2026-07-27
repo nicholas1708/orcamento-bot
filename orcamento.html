@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monte seu Orçamento</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',system-ui,sans-serif; }
+  body { background:#f2f4f7; min-height:100vh; display:flex; justify-content:center; }
+  .app { width:100%; max-width:560px; padding:20px 16px 40px; }
+  /* progresso */
+  .topo { display:flex; align-items:center; gap:12px; margin-bottom:6px; }
+  .voltar { background:none; border:none; font-size:22px; cursor:pointer; color:#64748b; padding:4px 8px; visibility:hidden; }
+  .voltar.on { visibility:visible; }
+  .barra { flex:1; height:8px; background:#e2e8f0; border-radius:99px; overflow:hidden; }
+  .barra i { display:block; height:100%; background:#0ea5e9; border-radius:99px; transition:width .3s; }
+  .passo-label { font-size:12px; color:#94a3b8; margin-bottom:18px; text-align:right; }
+  h1 { font-size:22px; color:#0f172a; margin-bottom:6px; }
+  .sub { font-size:14px; color:#64748b; margin-bottom:20px; line-height:1.5; }
+  /* cards */
+  .cards { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .cards.uma { grid-template-columns:1fr; }
+  .card { background:#fff; border:2px solid #e2e8f0; border-radius:14px; padding:0; cursor:pointer; overflow:hidden; text-align:left; transition:all .15s; }
+  .card:hover { border-color:#7dd3fc; transform:translateY(-2px); }
+  .card.sel { border-color:#0ea5e9; box-shadow:0 0 0 3px #bae6fd; }
+  .card img { width:100%; height:110px; object-fit:cover; display:block; background:#f1f5f9; }
+  .card .ph { width:100%; height:110px; display:flex; align-items:center; justify-content:center; font-size:40px; background:#f1f5f9; }
+  .card .info { padding:10px 12px 12px; }
+  .card b { font-size:13.5px; color:#0f172a; display:block; line-height:1.3; }
+  .card small { color:#64748b; font-size:12px; }
+  .card .preco { color:#0284c7; font-weight:700; font-size:13px; margin-top:4px; display:block; }
+  /* inputs */
+  .campo { margin-bottom:14px; }
+  .campo label { display:block; font-size:13px; font-weight:600; color:#334155; margin-bottom:6px; }
+  .campo input { width:100%; padding:13px 14px; border:2px solid #e2e8f0; border-radius:10px; font-size:15px; outline:none; }
+  .campo input:focus { border-color:#0ea5e9; }
+  .dica { font-size:12px; color:#94a3b8; margin-top:4px; }
+  .linha2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  /* botões */
+  .avancar { width:100%; margin-top:20px; padding:15px; background:#0ea5e9; color:#fff; border:none; border-radius:12px; font-size:16px; font-weight:700; cursor:pointer; }
+  .avancar:hover { background:#0284c7; }
+  .avancar:disabled { background:#cbd5e1; cursor:not-allowed; }
+  .erro { background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; border-radius:10px; padding:10px 14px; font-size:13.5px; margin-top:12px; display:none; }
+  /* resumo */
+  .resumo { background:#fff; border-radius:14px; padding:18px; margin-bottom:8px; }
+  .resumo .item { display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px dashed #e2e8f0; font-size:14px; }
+  .resumo .item span:first-child { color:#64748b; }
+  .resumo .item span:last-child { font-weight:600; color:#0f172a; text-align:right; max-width:60%; }
+  /* final */
+  .final { text-align:center; padding:30px 10px; }
+  .final .ok { font-size:56px; }
+  .final h2 { color:#0f172a; margin:10px 0 4px; }
+  .final .total { font-size:30px; font-weight:800; color:#0284c7; margin:12px 0; }
+  .final .aviso { background:#fffbeb; border:1px solid #fde68a; color:#92400e; padding:10px 14px; border-radius:10px; font-size:13px; margin:12px 0; text-align:left; }
+  .final a.pdf { display:block; margin-top:14px; padding:15px; background:#0ea5e9; color:#fff; border-radius:12px; font-weight:700; text-decoration:none; }
+  .final button { margin-top:10px; background:none; border:none; color:#64748b; cursor:pointer; font-size:13px; text-decoration:underline; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topo">
+    <button class="voltar" id="btnVoltar" onclick="voltar()">←</button>
+    <div class="barra"><i id="prog" style="width:12%"></i></div>
+  </div>
+  <div class="passo-label" id="passoLabel">Passo 1</div>
+  <div id="tela"></div>
+  <div class="erro" id="erro"></div>
+</div>
+
+<script>
+let cat = null;
+const pedido = { familia:null, telhaId:null, estruturaId:null, areaM2:null, comprimentoM:null, quedas:null, cumeeiraM:0, rufoM:0, calhaM:0 };
+const cliente = { nome:'', telefone:'', cidade:'', endereco:'' };
+let passo = 0;
+const historico = [];
+
+const TELAS = ['familia','telha','estrutura','medidas','quedas','acabamentos','dados','resumo','final'];
+const tela = document.getElementById('tela');
+const el = (h) => { tela.innerHTML = h; window.scrollTo(0,0); };
+const err = (m) => { const e = document.getElementById('erro'); e.textContent = m; e.style.display = m ? 'block' : 'none'; };
+
+function atualizarProgresso() {
+  document.getElementById('prog').style.width = ((passo+1)/TELAS.length*100) + '%';
+  document.getElementById('passoLabel').textContent = passo < 8 ? `Passo ${passo+1} de 8` : '';
+  document.getElementById('btnVoltar').className = 'voltar' + (passo>0 && passo<8 ? ' on' : '');
+}
+function ir(n) { historico.push(passo); passo = n; err(''); render(); }
+function voltar() { if (historico.length) { passo = historico.pop(); err(''); render(); } }
+
+function cardTelha(t, sel, onclick) {
+  const img = t.imagem ? `<img src="${t.imagem}" loading="lazy">` : `<div class="ph">🏠</div>`;
+  return `<button class="card ${sel?'sel':''}" onclick="${onclick}">${img}
+    <div class="info"><b>${t.nome}</b>${t.preco?`<span class="preco">R$ ${t.preco.toFixed(2).replace('.',',')}/m²</span>`:''}</div></button>`;
+}
+
+function render() {
+  atualizarProgresso();
+  const t = TELAS[passo];
+
+  if (t === 'familia') {
+    const fams = [...new Set(cat.telhas.map(x=>x.familia))];
+    el(`<h1>Qual linha de telha você procura?</h1>
+      <p class="sub">Toque na opção desejada. Nos próximos passos você escolhe o modelo exato.</p>
+      <div class="cards">${fams.map(f => {
+        const grupo = cat.telhas.filter(x=>x.familia===f);
+        const comFoto = grupo.find(x=>x.imagem);
+        const min = Math.min(...grupo.map(x=>x.preco));
+        const img = comFoto ? `<img src="${comFoto.imagem}" loading="lazy">` : `<div class="ph">🏠</div>`;
+        return `<button class="card ${pedido.familia===f?'sel':''}" onclick="selFamilia('${f.replace(/'/g,"\\'")}')">${img}
+          <div class="info"><b>${f}</b><small>${grupo.length} opç${grupo.length>1?'ões':'ão'}</small>
+          <span class="preco">a partir de R$ ${min.toFixed(2).replace('.',',')}/m²</span></div></button>`;
+      }).join('')}</div>`);
+  }
+
+  if (t === 'telha') {
+    const grupo = cat.telhas.filter(x=>x.familia===pedido.familia);
+    el(`<h1>Escolha o modelo</h1>
+      <p class="sub">Linha <b>${pedido.familia}</b></p>
+      <div class="cards">${grupo.map(x => cardTelha(x, pedido.telhaId===x.id, `selTelha('${x.id}')`)).join('')}</div>`);
+  }
+
+  if (t === 'estrutura') {
+    el(`<h1>E a estrutura de sustentação?</h1>
+      <p class="sub">A base metálica ou de madeira que segura o telhado.</p>
+      <div class="cards uma">${cat.estruturas.map(e => `
+        <button class="card ${pedido.estruturaId===e.id?'sel':''}" onclick="selEstrutura('${e.id}')">
+          <div class="info"><b>${e.nome}</b><small>${e.descricao||''}</small>
+          ${e.preco_por_m2?`<span class="preco">R$ ${e.preco_por_m2.toFixed(2).replace('.',',')}/m² coberto</span>`:''}</div></button>`).join('')}</div>`);
+  }
+
+  if (t === 'medidas') {
+    el(`<h1>Quais as medidas da área?</h1>
+      <p class="sub">Informe o comprimento e a largura do telhado, em metros.</p>
+      <div class="linha2">
+        <div class="campo"><label>Comprimento (m)</label><input id="mC" type="number" inputmode="decimal" placeholder="ex: 20" value="${pedido.comprimentoM||''}"></div>
+        <div class="campo"><label>Largura (m)</label><input id="mL" type="number" inputmode="decimal" placeholder="ex: 10" value="${pedido._larguraM||''}"></div>
+      </div>
+      <p class="dica">Não sabe exato? Uma estimativa serve — o vendedor confirma na sequência.</p>
+      <button class="avancar" onclick="selMedidas()">Continuar →</button>`);
+  }
+
+  if (t === 'quedas') {
+    el(`<h1>Seu telhado terá quantas quedas?</h1>
+      <p class="sub">"Queda" é o lado pra onde a água da chuva escorre.</p>
+      <div class="cards">
+        <button class="card ${pedido.quedas===1?'sel':''}" onclick="selQuedas(1)"><div class="ph">📐</div>
+          <div class="info"><b>1 queda</b><small>Caída única — água escorre pra um lado só</small></div></button>
+        <button class="card ${pedido.quedas===2?'sel':''}" onclick="selQuedas(2)"><div class="ph">⛰️</div>
+          <div class="info"><b>2 quedas</b><small>Duas caídas com fechamento no topo (cumeeira)</small></div></button>
+      </div>`);
+  }
+
+  if (t === 'acabamentos') {
+    el(`<h1>Acabamentos</h1>
+      <p class="sub">${pedido.quedas===2?`✅ Cumeeira já incluída: <b>${pedido.cumeeiraM}m</b> (fechamento do topo, calculado pelas medidas).<br>`:''}Preencha só o que precisar — pode deixar 0.</p>
+      <div class="campo"><label>Rufo (m) — veda o encontro do telhado com paredes/muros</label>
+        <input id="aR" type="number" inputmode="decimal" value="${pedido.rufoM}" min="0"></div>
+      <div class="campo"><label>Calha (m) — canal da beirada que coleta a chuva</label>
+        <input id="aC" type="number" inputmode="decimal" value="${pedido.calhaM}" min="0"></div>
+      <button class="avancar" onclick="selAcabamentos()">Continuar →</button>`);
+  }
+
+  if (t === 'dados') {
+    el(`<h1>Quase lá! Seus dados</h1>
+      <p class="sub">📍 O <b>endereço é obrigatório</b> — o frete é calculado pela localidade.</p>
+      <div class="campo"><label>Nome</label><input id="dN" value="${cliente.nome}" placeholder="Seu nome"></div>
+      <div class="campo"><label>WhatsApp</label><input id="dT" inputmode="tel" value="${cliente.telefone}" placeholder="(31) 99999-9999"></div>
+      <div class="campo"><label>Cidade</label><input id="dC" value="${cliente.cidade}" placeholder="ex: Contagem - MG"></div>
+      <div class="campo"><label>Endereço da obra (rua, número e bairro)</label><input id="dE" value="${cliente.endereco}" placeholder="Rua das Palmeiras, 120 - Centro"></div>
+      <button class="avancar" onclick="selDados()">Ver resumo →</button>`);
+  }
+
+  if (t === 'resumo') {
+    const tl = cat.telhas.find(x=>x.id===pedido.telhaId);
+    const es = cat.estruturas.find(x=>x.id===pedido.estruturaId);
+    el(`<h1>Confere tudo?</h1>
+      <p class="sub">Revise antes de gerar seu orçamento em PDF.</p>
+      <div class="resumo">
+        <div class="item"><span>Telha</span><span>${tl.nome}</span></div>
+        <div class="item"><span>Estrutura</span><span>${es.nome}</span></div>
+        <div class="item"><span>Área</span><span>${pedido.areaM2} m² (${pedido.comprimentoM} x ${pedido._larguraM})</span></div>
+        <div class="item"><span>Quedas</span><span>${pedido.quedas} ${pedido.quedas===2?`(cumeeira ${pedido.cumeeiraM}m)`:''}</span></div>
+        <div class="item"><span>Rufo / Calha</span><span>${pedido.rufoM}m / ${pedido.calhaM}m</span></div>
+        <div class="item"><span>Cliente</span><span>${cliente.nome} — ${cliente.telefone}</span></div>
+        <div class="item"><span>Entrega</span><span>${cliente.endereco}, ${cliente.cidade}</span></div>
+      </div>
+      <button class="avancar" id="btnGerar" onclick="gerar()">Gerar meu orçamento 📄</button>`);
+  }
+
+  if (t === 'final') {
+    const r = window._resultado;
+    el(`<div class="final">
+      <div class="ok">🎉</div>
+      <h2>Orçamento ${r.numero} pronto!</h2>
+      <div class="total">R$ ${r.total.toFixed(2).replace('.',',')}</div>
+      ${r.avisos?.length ? `<div class="aviso">⚠️ ${r.avisos.join('<br>')}</div>` : ''}
+      <a class="pdf" href="${r.pdf}" target="_blank">📄 Baixar PDF do orçamento</a>
+      <button onclick="location.reload()">Fazer novo orçamento</button>
+    </div>`);
+  }
+}
+
+// seleções
+function selFamilia(f){ pedido.familia=f; pedido.telhaId=null; ir(1); }
+function selTelha(id){ pedido.telhaId=id; ir(2); }
+function selEstrutura(id){ pedido.estruturaId=id; ir(3); }
+function selMedidas(){
+  const c=parseFloat(document.getElementById('mC').value.replace(',','.'));
+  const l=parseFloat(document.getElementById('mL').value.replace(',','.'));
+  if(!c||!l||c<=0||l<=0) return err('Preencha comprimento e largura em metros.');
+  pedido.comprimentoM=Math.max(c,l); pedido._larguraM=Math.min(c,l);
+  pedido.areaM2=Math.round(c*l*100)/100;
+  if(pedido.areaM2 < cat.regras.area_minima_m2) return err(`Área mínima: ${cat.regras.area_minima_m2} m².`);
+  ir(4);
+}
+function selQuedas(q){ pedido.quedas=q; pedido.cumeeiraM = q===2 ? pedido.comprimentoM : 0; ir(5); }
+function selAcabamentos(){
+  pedido.rufoM=Math.max(0,parseFloat(document.getElementById('aR').value.replace(',','.'))||0);
+  pedido.calhaM=Math.max(0,parseFloat(document.getElementById('aC').value.replace(',','.'))||0);
+  ir(6);
+}
+function selDados(){
+  cliente.nome=document.getElementById('dN').value.trim();
+  cliente.telefone=document.getElementById('dT').value.trim();
+  cliente.cidade=document.getElementById('dC').value.trim();
+  cliente.endereco=document.getElementById('dE').value.trim();
+  if(cliente.nome.length<2) return err('Informe seu nome.');
+  if(cliente.telefone.replace(/\D/g,'').length<10) return err('Informe um WhatsApp válido com DDD.');
+  if(cliente.cidade.length<2) return err('Informe a cidade.');
+  if(cliente.endereco.length<8 || !/\d/.test(cliente.endereco)) return err('Endereço completo com rua, número e bairro — é obrigatório pro frete.');
+  ir(7);
+}
+async function gerar(){
+  const btn=document.getElementById('btnGerar'); btn.disabled=true; btn.textContent='Gerando...';
+  try{
+    const r=await fetch('/api/orcamento',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({pedido:{telhaId:pedido.telhaId,estruturaId:pedido.estruturaId,areaM2:pedido.areaM2,cumeeiraM:pedido.cumeeiraM,rufoM:pedido.rufoM,calhaM:pedido.calhaM,forroId:'FR-NENHUM'},cliente})});
+    const d=await r.json();
+    if(d.error){ err(d.error); btn.disabled=false; btn.textContent='Gerar meu orçamento 📄'; return; }
+    window._resultado=d; ir(8);
+  }catch(e){ err('Falha ao gerar — tente de novo.'); btn.disabled=false; btn.textContent='Gerar meu orçamento 📄'; }
+}
+
+// boot
+fetch('/api/catalogo').then(r=>r.json()).then(c=>{ cat=c; render(); })
+  .catch(()=>{ tela.innerHTML='<h1>Ops!</h1><p class="sub">Não consegui carregar o catálogo. O servidor está rodando?</p>'; });
+</script>
+</body>
+</html>
