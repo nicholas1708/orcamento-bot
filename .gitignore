@@ -1,4 +1,6 @@
 node_modules/
 sessions/
 out/
+img-cache/
+clientes/
 .env

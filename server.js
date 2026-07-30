@@ -24,7 +24,7 @@ app.get('/simulador', (_req, res) => res.sendFile(path.join(__dirname, 'simulado
 // Mesmo catálogo + mesmo motor determinístico do WhatsApp, em formato de "slides".
 const { getCatalogo } = require('./pricing');
 const { calcularOrcamento } = require('./engine');
-const { calcularRomaneio } = require('./romaneio');
+const { calcularRomaneio, opcoesDeCorte } = require('./romaneio');
 const { gerarPDF } = require('./pdf');
 
 app.get('/orcamento', (_req, res) => res.sendFile(path.join(__dirname, 'orcamento.html')));
@@ -52,14 +52,27 @@ app.get('/api/catalogo', async (_req, res) => {
 /** Prévia do romaneio: ambiente → lista de cortes (sem gerar PDF) */
 app.post('/api/romaneio', async (req, res) => {
   try {
-    const { telhaId, comprimentoGalpaoM, larguraGalpaoM, quedas, comEstrutura } = req.body || {};
+    const { telhaId, comprimentoGalpaoM, larguraGalpaoM, quedas, comEstrutura, opcaoCorte } = req.body || {};
     const catalogo = await getCatalogo();
     const telha = catalogo.telhas.find((t) => t.id === telhaId);
     if (!telha) return res.status(400).json({ error: 'Telha inválida.' });
     const rom = calcularRomaneio(
-      { comprimentoGalpaoM, larguraGalpaoM, quedas, comEstrutura }, telha, catalogo
+      { comprimentoGalpaoM, larguraGalpaoM, quedas, comEstrutura, opcaoCorte }, telha, catalogo
     );
     res.json(rom);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+/** Opções de divisão para um comprimento maior que o máximo de fábrica */
+app.post('/api/opcoes-corte', async (req, res) => {
+  try {
+    const { telhaId, comprimentoM } = req.body || {};
+    const catalogo = await getCatalogo();
+    const telha = catalogo.telhas.find((t) => t.id === telhaId);
+    if (!telha) return res.status(400).json({ error: 'Telha inválida.' });
+    const comp = Number(comprimentoM);
+    if (!Number.isFinite(comp) || comp <= 0) return res.status(400).json({ error: 'Comprimento inválido.' });
+    res.json({ opcoes: opcoesDeCorte(comp, telha, catalogo) });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
@@ -90,6 +103,9 @@ app.post('/api/orcamento', async (req, res) => {
       pedido: { numero, vendedor: catalogo.empresa.vendedor_padrao },
       orcamento, catalogo,
     }, pdfPath);
+
+    // grava o cadastro (mesma base do WhatsApp — chave é o telefone)
+    require('./clientes').salvar(cliente);
 
     console.log(`[WEB] Orçamento ${numero} — ${cliente.nome} (${cliente.telefone}) — ${orcamento.metragemTotal}mts — R$ ${orcamento.totalAvista}`);
     res.json({
@@ -154,6 +170,7 @@ app.post('/webhook', async (req, res) => {
       if (acao.type === 'pdf') await waha.sendPdf(chatId, acao.filePath, acao.caption);
       if (acao.type === 'handoff') {
         console.log(`[HANDOFF] ${chatId}: ${acao.motivo}`);
+        // TODO: notificar o vendedor (ex: mandar msg pro número interno da equipe)
         // TODO: notificar o vendedor (ex: mandar msg pro número interno da equipe)
       }
     }

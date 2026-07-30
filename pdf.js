@@ -8,6 +8,7 @@
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
+const { preCarregar } = require('./imagens');
 
 const BRL = (v) => Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const NUM = (v, c = 3) => Number(v).toLocaleString('pt-BR', { minimumFractionDigits: c, maximumFractionDigits: c });
@@ -16,8 +17,12 @@ const dataBR = (d) => new Date(d).toLocaleDateString('pt-BR');
 const M = 40;            // margem
 const W = 595.28 - M * 2; // largura útil A4
 
-function gerarPDF({ cliente, pedido, orcamento, catalogo }, destino) {
+async function gerarPDF({ cliente, pedido, orcamento, catalogo }, destino) {
   fs.mkdirSync(path.dirname(destino), { recursive: true });
+
+  // baixa (com cache) as fotos dos produtos antes de montar o documento
+  const fotos = await preCarregar(orcamento.itens.map((i) => i.imagem));
+
   const doc = new PDFDocument({ size: 'A4', margin: M });
   const stream = doc.pipe(fs.createWriteStream(destino));
 
@@ -110,38 +115,59 @@ function gerarPDF({ cliente, pedido, orcamento, catalogo }, destino) {
 
   // ── PRODUTOS ──────────────────────────────────────────────────────
   faixa('PRODUTOS');
-  const col = { item: M + 4, cod: M + 34, nome: M + 76, und: M + 330, qtd: M + 375, vr: M + 425, sub: M + 480 };
+  // colunas (com IMAGEM, como no orçamento original da 4A)
+  const col = {
+    item: M + 3, cod: M + 24, nome: M + 60, nomeW: 148,
+    img: M + 212, imgW: 58, imgH: 42,
+    und: M + 280, qtd: M + 305, qtdW: 38,
+    vr: M + 355, vrW: 52, sub: M + 420, subW: 92,
+  };
   const cabecalhoTabela = () => {
     const y = doc.y;
     doc.rect(M, y, W, 14).fill('#f5f5f5');
-    doc.fillColor('#000').font('Helvetica-Bold').fontSize(7);
+    doc.fillColor('#000').font('Helvetica-Bold').fontSize(6.5);
     doc.text('ITEM', col.item, y + 4);
     doc.text('CÓDIGO', col.cod, y + 4);
     doc.text('NOME', col.nome, y + 4);
+    doc.text('IMAGEM', col.img, y + 4);
     doc.text('UND.', col.und, y + 4);
-    doc.text('QTD.', col.qtd, y + 4, { width: 40, align: 'right' });
-    doc.text('VR. UNIT.', col.vr, y + 4, { width: 48, align: 'right' });
-    doc.text('SUBTOTAL', col.sub, y + 4, { width: 71, align: 'right' });
-    doc.y = y + 16;
+    doc.text('QTD.', col.qtd, y + 4, { width: col.qtdW, align: 'right' });
+    doc.text('VR. UNIT.', col.vr, y + 4, { width: col.vrW, align: 'right' });
+    doc.text('SUBTOTAL', col.sub, y + 4, { width: col.subW, align: 'right' });
+    doc.y = y + 15;
   };
   cabecalhoTabela();
 
-  doc.font('Helvetica').fontSize(7);
+  doc.font('Helvetica').fontSize(6.5);
   orcamento.itens.forEach((it, i) => {
-    const alturaNome = doc.heightOfString(it.nome, { width: 245 });
-    const h = Math.max(alturaNome + 8, 22);
-    if (doc.y + h > 760) { doc.addPage(); cabecalhoTabela(); doc.font('Helvetica').fontSize(7); }
+    const foto = fotos.get(it.imagem);
+    const alturaNome = doc.heightOfString(it.nome, { width: col.nomeW });
+    const h = Math.max(alturaNome + 8, foto ? col.imgH + 8 : 20);
+    if (doc.y + h > 755) { doc.addPage(); cabecalhoTabela(); doc.font('Helvetica').fontSize(6.5); }
 
     const y = doc.y;
     doc.rect(M, y, W, h).strokeColor('#ddd').lineWidth(0.5).stroke();
     doc.fillColor('#000');
-    doc.text(String(i + 1), col.item, y + 4);
-    doc.text(String(it.codigo || ''), col.cod, y + 4, { width: 38 });
-    doc.text(it.nome, col.nome, y + 4, { width: 245 });
-    doc.text(it.unidade, col.und, y + 4);
-    doc.text(NUM(it.qtd), col.qtd, y + 4, { width: 40, align: 'right' });
-    doc.text(NUM(it.precoUnit), col.vr, y + 4, { width: 48, align: 'right' });
-    doc.text(BRL(it.subtotal), col.sub, y + 4, { width: 71, align: 'right' });
+    const yTexto = y + Math.max(4, (h - alturaNome) / 2);
+    doc.text(String(i + 1), col.item, yTexto);
+    doc.text(String(it.codigo || ''), col.cod, yTexto, { width: 34 });
+    doc.text(it.nome, col.nome, yTexto, { width: col.nomeW });
+
+    // foto do produto (silenciosamente omitida se o download tiver falhado)
+    if (foto) {
+      try {
+        doc.image(foto, col.img, y + (h - col.imgH) / 2, {
+          fit: [col.imgW, col.imgH], align: 'center', valign: 'center',
+        });
+      } catch (e) { /* imagem corrompida — segue sem ela */ }
+    }
+
+    const yLin = y + h / 2 - 3;
+    doc.text(it.unidade, col.und, yLin);
+    doc.text(NUM(it.qtd), col.qtd, yLin, { width: col.qtdW, align: 'right' });
+    doc.text(NUM(it.precoUnit), col.vr, yLin, { width: col.vrW, align: 'right' });
+    doc.font('Helvetica-Bold').text(BRL(it.subtotal), col.sub, yLin, { width: col.subW, align: 'right' });
+    doc.font('Helvetica');
     doc.y = y + h;
   });
 
@@ -150,8 +176,8 @@ function gerarPDF({ cliente, pedido, orcamento, catalogo }, destino) {
   doc.rect(M, yTot, W, 16).fill('#f0f0f0');
   doc.fillColor('#000').font('Helvetica-Bold').fontSize(8);
   doc.text('TOTAL', col.item, yTot + 4);
-  doc.text(NUM(orcamento.totalPecas), col.qtd, yTot + 4, { width: 40, align: 'right' });
-  doc.text(BRL(orcamento.totalAvista), col.sub, yTot + 4, { width: 71, align: 'right' });
+  doc.text(NUM(orcamento.totalPecas), col.qtd, yTot + 4, { width: col.qtdW, align: 'right' });
+  doc.text(BRL(orcamento.totalAvista), col.sub, yTot + 4, { width: col.subW, align: 'right' });
   doc.y = yTot + 20;
 
   doc.font('Helvetica-Bold').fontSize(8.5)

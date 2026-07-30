@@ -70,6 +70,21 @@ const check = (label, obtido, esperado, tol = 0.02) => {
   const orc2 = calcularOrcamento({ telhaId: telha.id, cortes: rom.cortes, perfis: rom.perfis }, catalogo);
   console.log(`  → ${orc2.totalPecas} peças · ${orc2.metragemTotal} mts · R$ ${BRL(orc2.totalAvista)}`);
 
+  // ══ TESTE 2c: água maior que o comprimento de fábrica (emenda) ═════
+  console.log('\n═══ TESTE 2c — Galpão 20x25m, 1 queda (água de 25m > máx 12m) ═══\n');
+  const romLongo = calcularRomaneio(
+    { comprimentoGalpaoM: 20, larguraGalpaoM: 25, quedas: 1 }, telha, catalogo
+  );
+  console.log(`  Água necessária: ${romLongo.compTelha}m · máximo de fábrica: ${telha.comprimento_maximo_m}m`);
+  console.log('  Opções de divisão oferecidas:');
+  romLongo.opcoes.forEach((o, i) =>
+    console.log(`   ${i + 1}. ${o.titulo.padEnd(42)} ${o.emendas} emenda(s) · ${o.materialM}m de material`));
+  console.log('  Cortes (opção padrão):', JSON.stringify(romLongo.cortes));
+  check('Gerou opções de emenda', romLongo.opcoes.length >= 2 ? 1 : 0, 1, 0);
+  check('NÃO recusou o orçamento', romLongo.cortes.length > 0 ? 1 : 0, 1, 0);
+  const maiorPano = Math.max(...romLongo.cortes.map((c) => c.comprimentoM));
+  check('Maior peça dentro do máximo', maiorPano <= telha.comprimento_maximo_m ? 1 : 0, 1, 0);
+
   // ══ TESTE 2b: vários produtos no mesmo orçamento ═══════════════════
   console.log('\n═══ TESTE 2b — Orçamento com 3 produtos (fábrica) ═══\n');
   const multi = calcularOrcamento({

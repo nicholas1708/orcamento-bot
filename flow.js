@@ -14,10 +14,12 @@
 const state = require('./state');
 const { getCatalogo } = require('./pricing');
 const { calcularOrcamento } = require('./engine');
-const { calcularRomaneio, parseCortes } = require('./romaneio');
+const { calcularRomaneio } = require('./romaneio');
 const { gerarPDF } = require('./pdf');
 const ai = require('./ai');
 const conversa = require('./conversa');
+const clientes = require('./clientes');
+const R = require('./roteiro');
 const path = require('path');
 
 const MAX_ERROS = 3;
@@ -28,16 +30,14 @@ const num = (t) => {
 };
 const menu = (titulo, opcoes) =>
   titulo + '\n\n' + opcoes.map((o, i) => `*${i + 1}* — ${o}`).join('\n') +
-  '\n\n_Responda com o número da opção._';
-const escolha = (txt, lista) => {
-  const i = parseInt(String(txt).trim(), 10);
-  return i >= 1 && i <= lista.length ? lista[i - 1] : null;
-};
+  '\n\n_Responda com o número ou escreva o nome._';
+
+/** Escolha tolerante: número, nome escrito ou (se houver chave) interpretação por IA. */
 async function escolhaInteligente(txt, lista, nomes, contexto) {
-  return escolha(txt, lista) || (async () => {
-    const n = await ai.escolherOpcao(txt, nomes, contexto);
-    return n ? lista[n - 1] : null;
-  })();
+  const i = R.interpretarEscolha(txt, nomes);
+  if (i >= 0) return lista[i];
+  const n = await ai.escolherOpcao(txt, nomes, contexto);
+  return n ? lista[n - 1] : null;
 }
 const BRL = (v) => Number(v).toFixed(2).replace('.', ',');
 const metrosDe = (cortes) => cortes.reduce((s, c) => s + c.quantidade * c.comprimentoM, 0);
@@ -61,7 +61,7 @@ async function processar(chatId, textoRaw) {
   if (/^(menu|recome[cç]ar|cancelar)$/i.test(texto)) ficha = state.resetar(chatId);
   if (/^(atendente|vendedor|humano)$/i.test(texto)) {
     acoes.push({ type: 'handoff', motivo: 'Cliente pediu atendente' });
-    say('Sem problemas! Um dos nossos vendedores vai te atender por aqui em instantes. 👍');
+    say(R.T.handoffPedido);
     ficha.etapa = 'HUMANO';
     state.salvar(ficha);
     return acoes;
@@ -83,18 +83,46 @@ async function processar(chatId, textoRaw) {
     ficha.tentativasErro++;
     if (ficha.tentativasErro >= MAX_ERROS) {
       acoes.push({ type: 'handoff', motivo: 'Cliente não conseguiu avançar no fluxo' });
-      say('Vou te passar pra um dos nossos vendedores pra te ajudar melhor. Já já alguém te chama por aqui 😉');
+      say(R.T.handoffErro);
       ficha.etapa = 'HUMANO';
     } else say(msg);
   };
 
   const perguntarFamilia = () => {
     const familias = [...new Set(catalogo.telhas.map((t) => t.familia))];
-    say(menu(
-      P.grupos.length ? '🏠 Qual a *linha* da próxima telha?' : '🏠 Qual *linha de telha* você procura?',
-      familias
-    ));
+    say(menu(R.T.perguntaFamilia(P.grupos.length > 0), familias));
     ficha.etapa = 'FAMILIA';
+  };
+
+  /** Reprocessa a MESMA mensagem já na etapa seguinte (atalhos do usuário). */
+  const processarDireto = async () => {
+    state.salvar(ficha);
+    return processar(chatId, texto);
+  };
+
+  /** Resumo final antes de gerar o PDF. */
+  const mostrarResumoFinal = () => {
+    const met = P.grupos.reduce((s, g) => s + metrosDe(g.cortes), 0);
+    say(
+      `✅ *Confere pra mim, ${ficha.cliente.nome}?*\n\n` +
+      resumoGrupos(P.grupos) +
+      `\n\n*Metragem total:* ${met.toFixed(3)} mts` +
+      `\n*Estrutura:* ${P.comEstrutura ? 'sim' : 'não'}` +
+      `\n*Entrega:* ${ficha.cliente.endereco} — ${ficha.cliente.cidade}\n\n` +
+      `*1* — Sim, gerar orçamento 📄\n*2* — Não, recomeçar`
+    );
+    ficha.etapa = 'CONFIRMA';
+  };
+
+  /** Cliente já cadastrado? Confirma os dados em vez de perguntar tudo de novo. */
+  const pedirDados = () => {
+    if (clientes.completo(ficha.cliente)) {
+      say(R.T.confirmaDados(ficha.cliente));
+      ficha.etapa = 'CONFIRMA_DADOS';
+    } else {
+      say(R.T.pedeNome);
+      ficha.etapa = 'NOME';
+    }
   };
 
   /** Fecha o produto atual e pergunta se quer adicionar outro. */
@@ -103,34 +131,36 @@ async function processar(chatId, textoRaw) {
     P.grupos.push({ telhaId: t.id, nome: t.nome, cortes, ambiente: ambiente || null });
     P.atual = { familia: null, telhaId: null, cortes: null, comprimentoGalpaoM: null, larguraGalpaoM: null, quedas: null };
     const met = P.grupos.reduce((s, g) => s + metrosDe(g.cortes), 0);
-    say(
-      `✅ *${t.nome}* adicionado!\n\n` +
-      `📦 Orçamento até agora: *${P.grupos.length} produto(s)* · *${met.toFixed(3)} mts*\n\n` +
-      `Quer adicionar *outro tipo de telha*?\n\n*1* — Sim, adicionar outra\n*2* — Não, seguir para o orçamento`
-    );
+    say(`✅ *${t.nome}* adicionado!`);
+    say(R.T.pedeMaisTelhas(P.grupos.length, met.toFixed(3)));
     ficha.etapa = 'MAIS_TELHAS';
   };
 
   switch (ficha.etapa) {
     case 'INICIO': {
-      say(
-        `Olá! 👋 Bem-vindo(a) à *${catalogo.empresa.razao_social}*!\n` +
-        `Sou o assistente de orçamentos — nossas telhas são cortadas *sob medida*.\n\n` +
-        `_Digite *menu* pra recomeçar ou *atendente* pra falar com uma pessoa._`
-      );
+      say(ficha.clienteConhecido
+        ? R.T.saudacaoRecorrente(ficha.cliente.nome)
+        : R.T.saudacao(catalogo.empresa.razao_social));
       perguntarFamilia();
       break;
     }
 
     case 'FAMILIA': {
       const familias = [...new Set(catalogo.telhas.map((t) => t.familia))];
-      const i = parseInt(texto, 10);
-      const fam = i >= 1 && i <= familias.length ? familias[i - 1] : null;
-      if (!fam) { erro('Responda com o *número* da linha desejada.'); break; }
+      const idx = R.interpretarEscolha(texto, familias);
+      if (idx < 0) { erro(R.T.erroOpcao); break; }
+      const fam = familias[idx];
       P.atual.familia = fam;
       ficha.tentativasErro = 0;
       const grupo = catalogo.telhas.filter((t) => t.familia === fam);
-      say(menu(`📋 Modelos da linha *${fam}*:`, grupo.map((t) => `${t.nome} — R$ ${BRL(t.preco)}/m`)));
+      // linha com um modelo só: já avança, sem pergunta desnecessária
+      if (grupo.length === 1) {
+        P.atual.telhaId = grupo[0].id;
+        say(R.T.perguntaModo(grupo[0].nome, BRL(grupo[0].preco), grupo[0].largura_util_m));
+        ficha.etapa = 'MODO';
+        break;
+      }
+      say(menu(R.T.perguntaModelo(fam), grupo.map((t) => `${t.nome} — R$ ${BRL(t.preco)}/m`)));
       ficha.etapa = 'TELHA';
       break;
     }
@@ -140,45 +170,32 @@ async function processar(chatId, textoRaw) {
         ? catalogo.telhas.filter((t) => t.familia === P.atual.familia)
         : catalogo.telhas;
       const t = await escolhaInteligente(texto, lista, lista.map((x) => x.nome), 'modelo de telha');
-      if (!t) { erro('Responda com o *número* do modelo.'); break; }
+      if (!t) { erro(R.T.erroOpcao); break; }
       P.atual.telhaId = t.id;
       ficha.tentativasErro = 0;
-      say(
-        `✅ *${t.nome}* — R$ ${BRL(t.preco)}/metro (largura útil ${t.largura_util_m}m)\n\n` +
-        `Como quer informar as medidas *desta telha*?\n\n` +
-        `*1* — Já sei os tamanhos e quantidades\n` +
-        `*2* — Não sei; informo as medidas do local e vocês calculam`
-      );
+      say(R.T.perguntaModo(t.nome, BRL(t.preco), t.largura_util_m));
       ficha.etapa = 'MODO';
       break;
     }
 
     case 'MODO': {
-      if (texto === '1') {
-        say(
-          '📏 Me passe a *lista de cortes* — quantas peças de cada comprimento.\n\n' +
-          '_Exemplo:_ `3 de 4m, 9 de 4,75 e 5 de 6,20`\n\n' +
-          '_Pode mandar todos os comprimentos desta telha de uma vez._'
-        );
-        ficha.etapa = 'CORTES';
-      } else if (texto === '2') {
-        say(
-          '📐 Quais as *medidas do local*, em metros?\n\n' +
-          'Formato `comprimento x largura` — ex: `20x10`\n\n' +
-          '_Comprimento = lado da cumeeira · largura = lado onde a água escorre._'
-        );
-        ficha.etapa = 'AMBIENTE';
-      } else erro('Responda *1* (já sei os tamanhos) ou *2* (informar o local).');
+      // atalho: se a pessoa já mandou as medidas ou a lista, pula a pergunta
+      const dimJa = R.interpretarDimensoes(texto);
+      const cortesJa = R.interpretarCortes(texto);
+      const sabe = R.interpretarSimNao(texto);
+
+      if (dimJa) { ficha.etapa = 'AMBIENTE'; return processarDireto(); }
+      if (sabe === true || texto === '1') { say(R.T.pedeCortes); ficha.etapa = 'CORTES'; break; }
+      if (sabe === false || texto === '2') { say(R.T.pedeAmbiente); ficha.etapa = 'AMBIENTE'; break; }
+      if (cortesJa.length) { ficha.etapa = 'CORTES'; return processarDireto(); }
+      erro('Responda *1* (já sei os tamanhos) ou *2* (informo o local).');
       break;
     }
 
     // ── CAMINHO A: lista de cortes ────────────────────────────────────
     case 'CORTES': {
-      const cortes = parseCortes(texto);
-      if (!cortes.length) {
-        erro('Não consegui entender 🤔 Use `quantidade de comprimento`, ex: `3 de 4m, 9 de 4,75`.');
-        break;
-      }
+      const cortes = R.interpretarCortes(texto);
+      if (!cortes.length) { erro(R.T.erroCortes); break; }
       ficha.tentativasErro = 0;
       const resumo = cortes.map((c) => `• ${c.quantidade} peças de ${c.comprimentoM}m`).join('\n');
       say(`Anotei ✅\n\n${resumo}\n\n*${metrosDe(cortes).toFixed(3)} mts*`);
@@ -188,23 +205,24 @@ async function processar(chatId, textoRaw) {
 
     // ── CAMINHO B: ambiente → romaneio calculado ──────────────────────
     case 'AMBIENTE': {
-      const dims = String(texto).match(/(\d+[.,]?\d*)\s*(?:x|×|por)\s*(\d+[.,]?\d*)/i);
-      if (!dims) { erro('Me diga no formato `comprimento x largura`, ex: `20x10`.'); break; }
-      P.atual.comprimentoGalpaoM = parseFloat(dims[1].replace(',', '.'));
-      P.atual.larguraGalpaoM = parseFloat(dims[2].replace(',', '.'));
+      const dims = R.interpretarDimensoes(texto);
+      if (!dims) { erro(R.T.erroDimensoes); break; }
+      P.atual.comprimentoGalpaoM = dims.comprimentoM;
+      P.atual.larguraGalpaoM = dims.larguraM;
       ficha.tentativasErro = 0;
-      say(
-        `Anotei: *${P.atual.comprimentoGalpaoM} x ${P.atual.larguraGalpaoM}m* ✅\n\n` +
-        '🏠 Esta área terá *1 queda* ou *2 quedas*?\n\n' +
-        '_1 queda = caída única · 2 quedas = duas caídas com cumeeira._\n\n' +
-        '*1* — Uma queda\n*2* — Duas quedas'
-      );
+      say(`Anotei: *${dims.comprimentoM} x ${dims.larguraM}m* ✅`);
+
+      // se já disse as águas na mesma mensagem ("20x10 duas águas"), não repergunta
+      const qJunto = R.interpretarQuedas(texto.replace(/\d+(?:[.,]\d+)?\s*(?:x|×|por)\s*\d+(?:[.,]\d+)?/i, ''));
+      if (qJunto) { ficha.etapa = 'QUEDAS'; state.salvar(ficha); return acoes.concat(await processar(chatId, String(qJunto))); }
+
+      say(R.T.pedeQuedas);
       ficha.etapa = 'QUEDAS';
       break;
     }
 
     case 'QUEDAS': {
-      const q = texto === '1' ? 1 : texto === '2' ? 2 : null;
+      const q = R.interpretarQuedas(texto);
       if (!q) { erro('Responda *1* (uma queda) ou *2* (duas quedas).'); break; }
       P.atual.quedas = q;
       ficha.tentativasErro = 0;
@@ -216,6 +234,20 @@ async function processar(chatId, textoRaw) {
           larguraGalpaoM: P.atual.larguraGalpaoM,
           quedas: q, comEstrutura: false,
         }, telha, catalogo);
+
+        // água maior que o comprimento de fábrica → cliente escolhe a emenda
+        if (rom.precisaEscolher) {
+          P.opcoesCorte = rom.opcoes;
+          say(
+            `📐 Sua água ficou com *${rom.compTelha}m*, e esta telha vai até *${telha.comprimento_maximo_m}m* de fábrica.\n` +
+            `Sem problema — dá pra emendar com transpasse. Como você prefere?\n\n` +
+            rom.opcoes.map((o, i) =>
+              `*${i + 1}* — ${o.titulo}\n     _${o.detalhe}_`).join('\n')
+          );
+          ficha.etapa = 'OPCAO_CORTE';
+          break;
+        }
+
         const resumo = rom.cortes.map((c) => `• ${c.quantidade} peças de ${c.comprimentoM}m`).join('\n');
         say(`📐 *Calculei:*\n\n${resumo}`);
         if (rom.avisos.length) say('⚠️ ' + rom.avisos.join('\n⚠️ '));
@@ -233,12 +265,36 @@ async function processar(chatId, textoRaw) {
       break;
     }
 
+    case 'OPCAO_CORTE': {
+      const i = parseInt(texto, 10);
+      const op = i >= 1 && i <= (P.opcoesCorte || []).length ? P.opcoesCorte[i - 1] : null;
+      if (!op) { erro('Responda com o *número* da opção de emenda.'); break; }
+      ficha.tentativasErro = 0;
+      const telha = catalogo.telhas.find((t) => t.id === P.atual.telhaId);
+      const rom = calcularRomaneio({
+        comprimentoGalpaoM: P.atual.comprimentoGalpaoM,
+        larguraGalpaoM: P.atual.larguraGalpaoM,
+        quedas: P.atual.quedas, comEstrutura: false, opcaoCorte: op.id,
+      }, telha, catalogo);
+      const resumo = rom.cortes.map((c) => `• ${c.quantidade} peças de ${c.comprimentoM}m`).join('\n');
+      say(`✅ *${op.titulo}*\n\n${resumo}`);
+      P.memoriaCalculo = (P.memoriaCalculo || []).concat(rom.memoria);
+      P.opcoesCorte = null;
+      fecharProduto(rom.cortes, {
+        comprimentoGalpaoM: P.atual.comprimentoGalpaoM,
+        larguraGalpaoM: P.atual.larguraGalpaoM,
+        quedas: P.atual.quedas, opcaoCorte: op.id,
+      });
+      break;
+    }
+
     // ── Vários produtos no mesmo orçamento ────────────────────────────
     case 'MAIS_TELHAS': {
-      if (texto === '1') { ficha.tentativasErro = 0; perguntarFamilia(); break; }
-      if (texto === '2') {
+      const mais = R.interpretarSimNao(texto);
+      if (mais === true) { ficha.tentativasErro = 0; perguntarFamilia(); break; }
+      if (mais === false) {
         ficha.tentativasErro = 0;
-        say('🔧 Quer *estrutura* (vigas/terças galvanizadas) junto?\n\n*1* — Só as telhas\n*2* — Telhas + estrutura');
+        say(R.T.pedeEstrutura);
         ficha.etapa = 'ESTRUTURA';
         break;
       }
@@ -247,7 +303,8 @@ async function processar(chatId, textoRaw) {
     }
 
     case 'ESTRUTURA': {
-      const e = texto === '1' ? false : texto === '2' ? true : null;
+      // aqui "1" = só telhas (não) e "2" = com estrutura (sim)
+      const e = R.interpretarSimNao(texto, { umEhSim: false });
       if (e === null) { erro('Responda *1* (só telhas) ou *2* (telhas + estrutura).'); break; }
       P.comEstrutura = e;
       ficha.tentativasErro = 0;
@@ -263,8 +320,7 @@ async function processar(chatId, textoRaw) {
           break;
         }
       }
-      say('🙂 Quase lá! Qual o seu *nome* (ou da empresa)?');
-      ficha.etapa = 'NOME';
+      pedirDados();
       break;
     }
 
@@ -273,17 +329,30 @@ async function processar(chatId, textoRaw) {
       if (!L || L <= 0) { erro('Informe o comprimento em metros, ex: *20*.'); break; }
       ficha.tentativasErro = 0;
       calcularEstrutura(P, catalogo, L, say);
-      say('🙂 Quase lá! Qual o seu *nome* (ou da empresa)?');
-      ficha.etapa = 'NOME';
+      pedirDados();
       break;
     }
 
     // ── Dados do cliente ──────────────────────────────────────────────
+    case 'CONFIRMA_DADOS': {
+      const ok = R.interpretarSimNao(texto);
+      if (ok === false) {
+        ficha.tentativasErro = 0;
+        say('Sem problema! Qual o *nome* para este orçamento?');
+        ficha.etapa = 'NOME';
+        break;
+      }
+      if (ok !== true) { erro('Responda *1* pra confirmar ou *2* pra usar outro endereço.'); break; }
+      ficha.tentativasErro = 0;
+      mostrarResumoFinal();
+      break;
+    }
+
     case 'NOME': {
       if (texto.length < 2) { erro('Pode me dizer seu nome?'); break; }
       ficha.cliente.nome = texto;
       ficha.tentativasErro = 0;
-      say('🏙️ Qual a *cidade* de entrega? (ex: São José do Rio Preto - SP)');
+      say(R.T.pedeCidade);
       ficha.etapa = 'CIDADE';
       break;
     }
@@ -292,38 +361,23 @@ async function processar(chatId, textoRaw) {
       if (texto.length < 2) { erro('Qual a cidade de entrega?'); break; }
       ficha.cliente.cidade = texto;
       ficha.tentativasErro = 0;
-      say('📍 E o *endereço da obra* (rua, número e bairro)?\n\n_Necessário para a entrega._');
+      say(R.T.pedeEndereco);
       ficha.etapa = 'ENDERECO';
       break;
     }
 
     case 'ENDERECO': {
-      if (texto.length < 8 || !/\d/.test(texto)) {
-        erro('Preciso do endereço completo com *rua, número e bairro*.');
-        break;
-      }
+      if (texto.length < 8 || !/\d/.test(texto)) { erro(R.T.erroEndereco); break; }
       ficha.cliente.endereco = texto;
       ficha.tentativasErro = 0;
-      const met = P.grupos.reduce((s, g) => s + metrosDe(g.cortes), 0);
-      say(
-        `✅ *Confere pra mim, ${ficha.cliente.nome}?*\n\n` +
-        resumoGrupos(P.grupos) +
-        `\n\n*Metragem total:* ${met.toFixed(3)} mts` +
-        `\n*Estrutura:* ${P.comEstrutura ? 'sim' : 'não'}` +
-        `\n*Entrega:* ${ficha.cliente.endereco} — ${ficha.cliente.cidade}\n\n` +
-        `*1* — Sim, gerar orçamento 📄\n*2* — Não, recomeçar`
-      );
-      ficha.etapa = 'CONFIRMA';
+      mostrarResumoFinal();
       break;
     }
 
     case 'CONFIRMA': {
-      let opc = texto === '1' ? 1 : texto === '2' ? 2 : null;
-      if (!opc && /^(sim|pode|ok|isso|confirmo|gerar?|s)$/i.test(texto)) opc = 1;
-      if (!opc && /^(n[aã]o|errado|mudar|n)$/i.test(texto)) opc = 2;
-      if (!opc) opc = await ai.escolherOpcao(texto, ['Sim, gerar o orçamento', 'Não, recomeçar'], 'confirmação');
-      if (opc === 2) { ficha = state.resetar(chatId); say('Sem problemas! Digite qualquer coisa pra recomeçar 🙂'); break; }
-      if (opc !== 1) { erro('Responda *1* pra gerar ou *2* pra recomeçar.'); break; }
+      const ok = R.interpretarSimNao(texto);
+      if (ok === false) { ficha = state.resetar(chatId); say('Sem problemas! Digite qualquer coisa pra recomeçar 🙂'); break; }
+      if (ok !== true) { erro('Responda *1* pra gerar ou *2* pra recomeçar.'); break; }
 
       if (!ficha.cliente.endereco || !ficha.cliente.cidade) {
         say('📍 Antes de gerar, preciso do *endereço da obra*. Pode me passar?');
@@ -344,15 +398,14 @@ async function processar(chatId, textoRaw) {
         orcamento, catalogo,
       }, pdfPath);
 
+      // grava o cadastro — no próximo orçamento não perguntamos de novo
+      clientes.salvar(ficha.cliente);
+
       acoes.push({
         type: 'pdf', filePath: pdfPath,
         caption: `📄 Orçamento ${numero} — ${orcamento.totalPecas} peças · ${orcamento.metragemTotal} mts · *R$ ${BRL(orcamento.totalAvista)}* à vista`,
       });
-      say(
-        `Prontinho! 🎉 O PDF traz também as opções parceladas.\n` +
-        `Validade: *${catalogo.validade_orcamento_dias} dia*.\n\n` +
-        `Quer fechar? Digite *atendente*. Novo orçamento: *menu*.`
-      );
+      say(R.T.fechamento(catalogo.validade_orcamento_dias));
       if (orcamento.escalarParaVendedor) {
         acoes.push({ type: 'handoff', motivo: 'Orçamento fora dos limites de autoatendimento' });
       }

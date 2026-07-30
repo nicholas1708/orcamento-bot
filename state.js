@@ -6,6 +6,7 @@
  */
 const fs = require('fs');
 const path = require('path');
+const clientes = require('./clientes');
 
 const DIR = path.join(__dirname, 'sessions');
 fs.mkdirSync(DIR, { recursive: true });
@@ -13,14 +14,22 @@ fs.mkdirSync(DIR, { recursive: true });
 const fileFor = (chatId) => path.join(DIR, chatId.replace(/[^a-zA-Z0-9]/g, '_') + '.json');
 
 function novaFicha(chatId) {
+  const telefone = chatId.replace(/@.*$/, '');
+  // cliente recorrente: reaproveita nome/cidade/endereço do cadastro
+  const conhecido = clientes.carregar(telefone);
   return {
     chatId,
     etapa: 'INICIO',
     tentativasErro: 0,
+    clienteConhecido: !!clientes.completo(conhecido),
     cliente: {
-      nome: null, cidade: null, endereco: null, documento: null,
-      cep: null, estado: null, email: null,
-      telefone: chatId.replace(/@.*$/, ''),
+      nome: conhecido?.nome || null,
+      cidade: conhecido?.cidade || null,
+      endereco: conhecido?.endereco || null,
+      documento: conhecido?.documento || null,
+      cep: null, estado: null,
+      email: conhecido?.email || null,
+      telefone,
     },
     pedido: {
       // VÁRIOS produtos por orçamento (ex: fábrica com TP40 + translúcida)

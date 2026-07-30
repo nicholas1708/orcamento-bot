@@ -85,6 +85,7 @@ FOTOS: pode pedir o envio de imagens com "fotos": ["id1","id2"] (ids do catálog
 
 PRODUTOS JÁ NA FICHA: ${jaTem.length ? jaTem.join(' | ') : 'nenhum ainda'}
 CLIENTE: ${JSON.stringify({ nome: ficha.cliente.nome, cidade: ficha.cliente.cidade, endereco: ficha.cliente.endereco })}
+${ficha.clienteConhecido ? '⚠️ CLIENTE JÁ CADASTRADO: cumprimente pelo nome, NÃO peça nome/cidade/endereço de novo. Apenas confirme a entrega no mesmo endereço; só atualize se ele pedir para mudar.' : ''}
 comEstrutura: ${ficha.pedido.comEstrutura} · maisProdutos: ${ficha.pedido.maisProdutos}
 
 AINDA FALTA: ${falta.length ? falta.join(', ') : 'nada — ficha completa'}

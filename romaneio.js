@@ -19,6 +19,67 @@ const round = (v, casas = 2) => {
 };
 
 /**
+ * OPÇÕES DE DIVISÃO (emenda por transpasse).
+ * Quando a água é mais longa que o comprimento máximo de fabricação, a telha
+ * NÃO é recusada: ela é dividida em panos que se sobrepõem (transpasse
+ * longitudinal). Cada emenda consome transpasse extra de material.
+ *
+ * Com N panos:  soma dos panos = comprimento da água + (N-1) x transpasse
+ * Menor N possível:  N >= (comp - transpasse) / (máximo - transpasse)
+ *
+ * Devolve até 3 planos para o cliente escolher.
+ */
+function opcoesDeCorte(comprimentoAgua, telha, catalogo) {
+  const eng = catalogo.engenharia;
+  const max = telha.comprimento_maximo_m || eng.comprimento_maximo_fabricacao_m;
+  const tr = eng.transpasse_longitudinal_m;
+  const comp = round(comprimentoAgua, 2);
+
+  // cabe em uma peça só
+  if (comp <= max) {
+    return [{
+      id: 'unica', panos: [comp], emendas: 0, materialM: comp,
+      titulo: `Peça única de ${comp.toFixed(2)}m`,
+      detalhe: 'Sem emendas — melhor vedação.',
+    }];
+  }
+
+  const nMin = Math.max(2, Math.ceil((comp - tr) / (max - tr)));
+  const opcoes = [];
+  const addOpcao = (id, panos, titulo, detalhe) => {
+    const materialM = round(panos.reduce((s, p) => s + p, 0), 2);
+    if (panos.some((p) => p > max + 0.001 || p < eng.comprimento_minimo_fabricacao_m)) return;
+    if (opcoes.some((o) => o.materialM === materialM && o.panos.length === panos.length)) return;
+    opcoes.push({ id, panos, emendas: panos.length - 1, materialM, titulo, detalhe });
+  };
+
+  // 1) panos iguais no menor número de emendas
+  const iguais = round((comp + (nMin - 1) * tr) / nMin, 2);
+  addOpcao('iguais', Array(nMin).fill(iguais),
+    `${nMin} peças iguais de ${iguais.toFixed(2)}m`,
+    `${nMin - 1} emenda(s) · peças do mesmo tamanho, montagem mais simples.`);
+
+  // 2) peças no comprimento máximo + complemento (menos recortes de bobina)
+  const totalMaterial = round(comp + (nMin - 1) * tr, 2);
+  const cheias = nMin - 1;
+  const resto = round(totalMaterial - cheias * max, 2);
+  if (cheias >= 1 && resto >= eng.comprimento_minimo_fabricacao_m && resto <= max) {
+    addOpcao('maximo', [...Array(cheias).fill(max), resto],
+      `${cheias} peça(s) de ${max.toFixed(2)}m + 1 de ${resto.toFixed(2)}m`,
+      `${nMin - 1} emenda(s) · aproveita o comprimento máximo de fábrica.`);
+  }
+
+  // 3) mais panos, peças menores (transporte e manuseio mais fáceis)
+  const n2 = nMin + 1;
+  const iguais2 = round((comp + (n2 - 1) * tr) / n2, 2);
+  addOpcao('menores', Array(n2).fill(iguais2),
+    `${n2} peças de ${iguais2.toFixed(2)}m`,
+    `${n2 - 1} emendas · peças curtas, mais fáceis de transportar e içar.`);
+
+  return opcoes;
+}
+
+/**
  * @param {object} ambiente
  *   { comprimentoGalpaoM, larguraGalpaoM, quedas: 1|2, inclinacaoPct?, comEstrutura?: bool }
  * @param {object} telha  item do catálogo
@@ -77,19 +138,25 @@ function calcularRomaneio(ambiente, telha, catalogo) {
 
   const totalPecas = pecasPorAgua * quedas;
 
-  if (compTelha > compMax) {
-    // Precisa emendar: divide em dois panos com transpasse longitudinal
-    const panos = Math.ceil(compTelha / compMax);
-    const compCada = round((compTelha + (panos - 1) * eng.transpasse_longitudinal_m) / panos, 2);
-    if (compCada > compMax) {
-      avisos.push(`Não foi possível resolver o comprimento de ${compTelha}m dentro do limite de ${compMax}m — orçamento com o vendedor.`);
-      escalarParaVendedor = true;
+  // ── Divisão em panos quando a água passa do comprimento de fábrica ──
+  const opcoes = opcoesDeCorte(compTelha, telha, catalogo);
+  if (!opcoes.length) {
+    avisos.push(`Não foi possível resolver o comprimento de ${compTelha}m dentro do limite de ${compMax}m — orçamento com o vendedor.`);
+    escalarParaVendedor = true;
+  }
+  // aplica a opção escolhida (ou a primeira, que é a de menos emendas)
+  const escolhida = opcoes.find((o) => o.id === ambiente.opcaoCorte) || opcoes[0];
+  if (escolhida) {
+    // agrupa panos de mesmo comprimento numa única linha do romaneio
+    const contagem = new Map();
+    for (const p of escolhida.panos) contagem.set(p, (contagem.get(p) || 0) + 1);
+    for (const [comprimentoM, vezes] of contagem) {
+      cortes.push({ comprimentoM, quantidade: totalPecas * vezes });
     }
-    avisos.push(`Água de ${compTelha}m excede o máximo de ${compMax}m: dividida em ${panos} panos de ${compCada}m com transpasse de ${eng.transpasse_longitudinal_m}m.`);
-    memoria.push(`Emenda: ${panos} panos de ${compCada}m por água`);
-    cortes.push({ comprimentoM: compCada, quantidade: totalPecas * panos });
-  } else {
-    cortes.push({ comprimentoM: compTelha, quantidade: totalPecas });
+    if (escolhida.emendas > 0) {
+      memoria.push(`Água de ${compTelha}m > máx ${compMax}m → ${escolhida.titulo} (transpasse ${eng.transpasse_longitudinal_m}m, ${escolhida.emendas} emenda(s), ${escolhida.materialM}m de material por peça)`);
+      avisos.push(`Telhado com ${compTelha}m de água: será emendado — ${escolhida.titulo.toLowerCase()}, com transpasse de ${eng.transpasse_longitudinal_m}m.`);
+    }
   }
 
   // ── Estrutura (OPCIONAL — cliente pode querer só a telha) ─────────
@@ -116,7 +183,13 @@ function calcularRomaneio(ambiente, telha, catalogo) {
     }
   }
 
-  return { cortes, perfis, memoria, avisos, escalarParaVendedor, compTelha, totalPecas };
+  return {
+    cortes, perfis, memoria, avisos, escalarParaVendedor,
+    compTelha, totalPecas,
+    opcoes,                                   // planos de divisão disponíveis
+    opcaoAplicada: escolhida ? escolhida.id : null,
+    precisaEscolher: opcoes.length > 1,       // front pode oferecer a escolha
+  };
 }
 
 /**
@@ -137,4 +210,4 @@ function parseCortes(texto) {
   return out;
 }
 
-module.exports = { calcularRomaneio, parseCortes };
+module.exports = { calcularRomaneio, parseCortes, opcoesDeCorte };

@@ -8,8 +8,8 @@ RUN npm install --omit=dev
 
 COPY . .
 
-# fichas de conversa e PDFs gerados (montados como volume no stack)
-RUN mkdir -p sessions out
+# fichas de conversa, PDFs gerados e cache de imagens (volumes no stack)
+RUN mkdir -p sessions out img-cache clientes
 
 EXPOSE 3000
 CMD ["node", "server.js"]

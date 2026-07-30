@@ -5,326 +5,354 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Monte seu Orçamento</title>
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',system-ui,sans-serif; }
-  body { background:#f2f4f7; min-height:100vh; display:flex; justify-content:center; }
-  .app { width:100%; max-width:560px; padding:18px 16px 40px; }
-  .topo { display:flex; align-items:center; gap:12px; margin-bottom:6px; }
-  .voltar { background:none; border:none; font-size:22px; cursor:pointer; color:#64748b; padding:4px 8px; visibility:hidden; }
-  .voltar.on { visibility:visible; }
-  .barra { flex:1; height:8px; background:#e2e8f0; border-radius:99px; overflow:hidden; }
-  .barra i { display:block; height:100%; background:#0ea5e9; transition:width .3s; }
-  .passo-label { font-size:12px; color:#94a3b8; margin-bottom:14px; text-align:right; }
-  h1 { font-size:21px; color:#0f172a; margin-bottom:6px; }
-  .sub { font-size:14px; color:#64748b; margin-bottom:16px; line-height:1.5; }
+  *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif}
+  body{background:#f2f4f7;min-height:100vh;display:flex;justify-content:center;color:#0f172a}
+  .app{width:100%;max-width:580px;padding:16px 16px 48px}
+  .topo{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+  .voltar{background:none;border:none;font-size:22px;cursor:pointer;color:#64748b;padding:2px 6px;visibility:hidden}
+  .voltar.on{visibility:visible}
+  .barra{flex:1;height:6px;background:#e2e8f0;border-radius:99px;overflow:hidden}
+  .barra i{display:block;height:100%;background:#0ea5e9;transition:width .35s}
+  .passo{font-size:12px;color:#94a3b8;white-space:nowrap}
+  h1{font-size:21px;margin-bottom:6px}
+  .sub{font-size:14px;color:#64748b;margin-bottom:16px;line-height:1.5}
   /* carrinho */
-  .carrinho { background:#ecfdf5; border:1px solid #a7f3d0; border-radius:12px; padding:10px 12px; margin-bottom:14px; font-size:13px; }
-  .carrinho b { color:#065f46; display:block; margin-bottom:4px; }
-  .carrinho .l { display:flex; justify-content:space-between; color:#047857; padding:2px 0; }
-  .carrinho .l button { background:none; border:none; color:#dc2626; cursor:pointer; font-size:13px; }
-  .cards { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-  .cards.uma { grid-template-columns:1fr; }
-  .card { background:#fff; border:2px solid #e2e8f0; border-radius:14px; cursor:pointer; overflow:hidden; text-align:left; transition:all .15s; padding:0; }
-  .card:hover { border-color:#7dd3fc; transform:translateY(-2px); }
-  .card img { width:100%; height:105px; object-fit:cover; display:block; background:#f1f5f9; }
-  .card .ph { width:100%; height:105px; display:flex; align-items:center; justify-content:center; font-size:38px; background:#f1f5f9; }
-  .card .info { padding:10px 12px 12px; }
-  .card b { font-size:13.5px; color:#0f172a; display:block; line-height:1.3; }
-  .card small { color:#64748b; font-size:12px; }
-  .card .preco { color:#0284c7; font-weight:700; font-size:13px; margin-top:4px; display:block; }
-  .campo { margin-bottom:14px; }
-  .campo label { display:block; font-size:13px; font-weight:600; color:#334155; margin-bottom:6px; }
-  .campo input { width:100%; padding:13px 14px; border:2px solid #e2e8f0; border-radius:10px; font-size:15px; outline:none; }
-  .campo input:focus { border-color:#0ea5e9; }
-  .dica { font-size:12px; color:#94a3b8; margin-top:4px; }
-  .linha2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-  .corte { display:grid; grid-template-columns:1fr 1fr auto; gap:8px; align-items:center; margin-bottom:8px; }
-  .corte input { padding:11px; border:2px solid #e2e8f0; border-radius:9px; font-size:14px; outline:none; width:100%; }
-  .corte button { background:#fee2e2; color:#b91c1c; border:none; width:38px; height:38px; border-radius:9px; cursor:pointer; }
-  .addlinha { background:#e0f2fe; color:#0369a1; border:none; padding:11px; border-radius:10px; width:100%; cursor:pointer; font-weight:600; font-size:14px; margin-top:4px; }
-  .totalbox { background:#fff; border-radius:10px; padding:12px 14px; margin-top:12px; font-size:14px; color:#334155; }
-  .totalbox b { color:#0284c7; }
-  .avancar { width:100%; margin-top:16px; padding:15px; background:#0ea5e9; color:#fff; border:none; border-radius:12px; font-size:16px; font-weight:700; cursor:pointer; }
-  .avancar:hover { background:#0284c7; }
-  .avancar.sec { background:#fff; color:#0369a1; border:2px solid #bae6fd; margin-top:10px; }
-  .avancar:disabled { background:#cbd5e1; cursor:not-allowed; }
-  .erro { background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; border-radius:10px; padding:10px 14px; font-size:13.5px; margin-top:12px; display:none; }
-  .resumo { background:#fff; border-radius:14px; padding:16px; }
-  .resumo h3 { font-size:14px; color:#0f172a; margin:10px 0 4px; }
-  .resumo h3:first-child { margin-top:0; }
-  .resumo .cut { font-size:13px; color:#475569; padding-left:8px; }
-  .resumo .item { display:flex; justify-content:space-between; padding:7px 0; border-top:1px dashed #e2e8f0; font-size:14px; margin-top:8px; }
-  .resumo .item span:first-child { color:#64748b; }
-  .resumo .item span:last-child { font-weight:600; color:#0f172a; text-align:right; max-width:60%; }
-  .aviso { background:#fffbeb; border:1px solid #fde68a; color:#92400e; padding:10px 14px; border-radius:10px; font-size:13px; margin:12px 0; }
-  .final { text-align:center; padding:24px 10px; }
-  .final .ok { font-size:52px; }
-  .final h2 { color:#0f172a; margin:10px 0 4px; }
-  .final .total { font-size:30px; font-weight:800; color:#0284c7; margin:8px 0 2px; }
-  .final .met { font-size:13px; color:#64748b; margin-bottom:12px; }
-  .parcelas { background:#fff; border-radius:12px; padding:12px 14px; text-align:left; font-size:13px; color:#334155; }
-  .parcelas div { display:flex; justify-content:space-between; padding:4px 0; }
-  .final a.pdf { display:block; margin-top:14px; padding:15px; background:#0ea5e9; color:#fff; border-radius:12px; font-weight:700; text-decoration:none; }
-  .final button { margin-top:10px; background:none; border:none; color:#64748b; cursor:pointer; font-size:13px; text-decoration:underline; }
+  .cart{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:14px}
+  .cart b{font-size:13px;color:#0f172a;display:block;margin-bottom:6px}
+  .cart .l{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:#475569;padding:3px 0}
+  .cart .l button{background:none;border:none;color:#dc2626;cursor:pointer;font-size:12px}
+  .cart .tot{border-top:1px dashed #e2e8f0;margin-top:6px;padding-top:6px;font-size:13px;color:#0284c7;font-weight:700;display:flex;justify-content:space-between}
+  /* busca */
+  .busca{width:100%;padding:12px 14px;border:2px solid #e2e8f0;border-radius:10px;font-size:14px;outline:none;margin-bottom:12px}
+  .busca:focus{border-color:#0ea5e9}
+  /* accordion de famílias */
+  .fam{background:#fff;border:2px solid #e2e8f0;border-radius:12px;margin-bottom:10px;overflow:hidden}
+  .fam.aberta{border-color:#0ea5e9}
+  .fam>.cab{display:flex;align-items:center;gap:12px;padding:10px 12px;cursor:pointer;width:100%;background:none;border:none;text-align:left}
+  .fam>.cab img{width:52px;height:40px;object-fit:cover;border-radius:7px;background:#f1f5f9;flex-shrink:0}
+  .fam>.cab .txt{flex:1}
+  .fam>.cab b{font-size:14px;display:block}
+  .fam>.cab small{font-size:12px;color:#64748b}
+  .fam>.cab .seta{color:#94a3b8;font-size:13px}
+  .mods{display:none;padding:0 10px 10px;grid-template-columns:1fr 1fr;gap:8px}
+  .fam.aberta .mods{display:grid}
+  .mod{background:#f8fafc;border:2px solid #e2e8f0;border-radius:10px;cursor:pointer;overflow:hidden;text-align:left;padding:0}
+  .mod:hover{border-color:#7dd3fc}
+  .mod img{width:100%;height:78px;object-fit:cover;display:block;background:#eef2f7}
+  .mod .ph{height:78px;display:flex;align-items:center;justify-content:center;font-size:28px;background:#eef2f7}
+  .mod .i{padding:7px 9px 9px}
+  .mod b{font-size:12.5px;line-height:1.3;display:block}
+  .mod .p{color:#0284c7;font-weight:700;font-size:12.5px;margin-top:3px;display:block}
+  /* abas */
+  .abas{display:flex;gap:8px;margin-bottom:14px}
+  .aba{flex:1;padding:11px;border:2px solid #e2e8f0;background:#fff;border-radius:10px;cursor:pointer;font-size:13.5px;font-weight:600;color:#64748b}
+  .aba.on{border-color:#0ea5e9;background:#f0f9ff;color:#0369a1}
+  /* campos */
+  .campo{margin-bottom:12px}
+  .campo label{display:block;font-size:13px;font-weight:600;color:#334155;margin-bottom:5px}
+  .campo input{width:100%;padding:12px 14px;border:2px solid #e2e8f0;border-radius:10px;font-size:15px;outline:none}
+  .campo input:focus{border-color:#0ea5e9}
+  .l2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .dica{font-size:12px;color:#94a3b8;margin-top:4px}
+  .corte{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;margin-bottom:8px}
+  .corte input{padding:11px;border:2px solid #e2e8f0;border-radius:9px;font-size:14px;outline:none;width:100%}
+  .corte button{background:#fee2e2;color:#b91c1c;border:none;width:38px;height:38px;border-radius:9px;cursor:pointer}
+  .add{background:#e0f2fe;color:#0369a1;border:none;padding:11px;border-radius:10px;width:100%;cursor:pointer;font-weight:600;font-size:14px}
+  /* opções (radio cards) */
+  .opt{display:flex;gap:10px;align-items:flex-start;background:#fff;border:2px solid #e2e8f0;border-radius:11px;padding:12px;cursor:pointer;margin-bottom:9px;width:100%;text-align:left}
+  .opt.on{border-color:#0ea5e9;background:#f0f9ff}
+  .opt .r{width:18px;height:18px;border:2px solid #cbd5e1;border-radius:50%;flex-shrink:0;margin-top:2px}
+  .opt.on .r{border-color:#0ea5e9;border-width:5px}
+  .opt b{font-size:13.5px;display:block}
+  .opt small{font-size:12px;color:#64748b;display:block;margin-top:2px}
+  .opt .m{font-size:12px;color:#0284c7;font-weight:600;margin-top:3px;display:block}
+  .avancado{background:none;border:none;color:#0369a1;font-size:13px;text-decoration:underline;cursor:pointer;padding:4px 0}
+  .caixa{background:#fff;border-radius:11px;padding:13px 15px;margin-bottom:12px;font-size:13.5px;color:#334155}
+  .caixa b{color:#0284c7}
+  .btn{width:100%;margin-top:14px;padding:15px;background:#0ea5e9;color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer}
+  .btn:hover{background:#0284c7}
+  .btn.sec{background:#fff;color:#0369a1;border:2px solid #bae6fd;margin-top:9px}
+  .btn:disabled{background:#cbd5e1;cursor:not-allowed}
+  .erro{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;border-radius:10px;padding:10px 14px;font-size:13.5px;margin-top:12px;display:none}
+  .aviso{background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:10px 14px;border-radius:10px;font-size:13px;margin:12px 0}
+  .res{background:#fff;border-radius:14px;padding:16px}
+  .res h3{font-size:14px;margin:12px 0 3px}.res h3:first-child{margin-top:0}
+  .res .cut{font-size:13px;color:#475569;padding-left:6px}
+  .res .li{display:flex;justify-content:space-between;padding:7px 0;border-top:1px dashed #e2e8f0;font-size:13.5px;margin-top:8px}
+  .res .li span:first-child{color:#64748b}
+  .res .li span:last-child{font-weight:600;text-align:right;max-width:62%}
+  .fim{text-align:center;padding:22px 8px}
+  .fim .ok{font-size:50px}.fim h2{margin:8px 0 2px}
+  .fim .tt{font-size:31px;font-weight:800;color:#0284c7;margin:6px 0 2px}
+  .fim .met{font-size:13px;color:#64748b;margin-bottom:12px}
+  .parc{background:#fff;border-radius:12px;padding:12px 14px;text-align:left;font-size:13px}
+  .parc div{display:flex;justify-content:space-between;padding:4px 0}
+  .fim a.pdf{display:block;margin-top:14px;padding:15px;background:#0ea5e9;color:#fff;border-radius:12px;font-weight:700;text-decoration:none}
+  .fim button{margin-top:10px;background:none;border:none;color:#64748b;cursor:pointer;font-size:13px;text-decoration:underline}
 </style>
 </head>
 <body>
 <div class="app">
   <div class="topo">
-    <button class="voltar" id="btnVoltar" onclick="voltar()">←</button>
-    <div class="barra"><i id="prog" style="width:12%"></i></div>
+    <button class="voltar" id="bv" onclick="voltar()">←</button>
+    <div class="barra"><i id="pg"></i></div>
+    <span class="passo" id="pl"></span>
   </div>
-  <div class="passo-label" id="passoLabel"></div>
-  <div id="tela"></div>
-  <div class="erro" id="erro"></div>
+  <div id="t"></div>
+  <div class="erro" id="e"></div>
 </div>
 
 <script>
 let cat=null;
-const grupos=[];                       // [{telhaId,nome,cortes:[{quantidade,comprimentoM}],ambiente}]
-let atual={familia:null,telhaId:null,modo:null,cortes:[{q:'',c:''}],cg:null,lg:null,quedas:null};
-const pedido={comEstrutura:null,perfis:[]};
+const grupos=[];
+let atual={telhaId:null,modo:'cortes',cortes:[{q:'',c:''}],cg:'',lg:'',quedas:2,famAberta:null,busca:''};
+const pedido={comEstrutura:false,perfis:[]};
 const cliente={nome:'',telefone:'',cidade:'',endereco:''};
-const historico=[];
-let passo=0;
+let split=null, passo=0;
+const hist=[];
+const PASSOS=['Produto','Medidas','Complementos','Seus dados','Resumo'];
 
-const tela=document.getElementById('tela');
-const el=h=>{tela.innerHTML=h;window.scrollTo(0,0);};
-const err=m=>{const e=document.getElementById('erro');e.textContent=m;e.style.display=m?'block':'none';};
+const T=document.getElementById('t');
+const el=h=>{T.innerHTML=h;window.scrollTo(0,0);};
+const err=m=>{const x=document.getElementById('e');x.textContent=m||'';x.style.display=m?'block':'none';};
 const BRL=v=>Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-const metrosDe=cs=>cs.reduce((s,c)=>s+(+c.quantidade||+c.q||0)*(+c.comprimentoM||+c.c||0),0);
-const metTotal=()=>grupos.reduce((s,g)=>s+metrosDe(g.cortes),0);
+const metG=g=>g.cortes.reduce((s,c)=>s+c.quantidade*c.comprimentoM,0);
+const metTot=()=>grupos.reduce((s,g)=>s+metG(g),0);
+const telha=()=>cat.telhas.find(x=>x.id===atual.telhaId);
 
-function prog(){
-  document.getElementById('prog').style.width=((passo+1)/10*100)+'%';
-  document.getElementById('passoLabel').textContent=passo<9?'Passo '+(passo+1):'';
-  document.getElementById('btnVoltar').className='voltar'+(passo>0&&passo<9?' on':'');
-}
-function ir(n){historico.push(passo);passo=n;err('');render();}
-function voltar(){if(historico.length){passo=historico.pop();err('');render();}}
+function ir(n){hist.push(passo);passo=n;err('');render();}
+function voltar(){if(hist.length){passo=hist.pop();err('');render();}}
 
-function boxCarrinho(){
-  if(!grupos.length)return '';
-  return `<div class="carrinho"><b>📦 No orçamento (${grupos.length} produto${grupos.length>1?'s':''} · ${metTotal().toFixed(3)} mts)</b>
-    ${grupos.map((g,i)=>`<div class="l"><span>${g.nome} — ${g.cortes.map(c=>c.quantidade+'x'+c.comprimentoM+'m').join(', ')}</span>
-    <button onclick="rmGrupo(${i})">remover</button></div>`).join('')}</div>`;
+function barra(){
+  document.getElementById('pg').style.width=((passo+1)/6*100)+'%';
+  document.getElementById('pl').textContent=passo<5?PASSOS[passo]:'';
+  document.getElementById('bv').className='voltar'+(passo>0&&passo<5?' on':'');
 }
-function rmGrupo(i){grupos.splice(i,1);render();}
+function cart(){
+  if(!grupos.length)return'';
+  return `<div class="cart"><b>📦 No orçamento</b>
+    ${grupos.map((g,i)=>`<div class="l"><span>${g.nome}<br><small style="color:#94a3b8">${g.cortes.map(c=>c.quantidade+' x '+c.comprimentoM+'m').join(' · ')}</small></span>
+    <button onclick="rmG(${i})">remover</button></div>`).join('')}
+    <div class="tot"><span>Total</span><span>${metTot().toFixed(3)} mts</span></div></div>`;
+}
+function rmG(i){grupos.splice(i,1);render();}
 
 function render(){
-  prog();
-  // 0 — família
+  barra();
+  // ── 0 PRODUTO: famílias + modelos na mesma tela ───────────────────
   if(passo===0){
-    const fams=[...new Set(cat.telhas.map(t=>t.familia))];
-    el(boxCarrinho()+`<h1>${grupos.length?'Qual a linha da próxima telha?':'Qual linha de telha você procura?'}</h1>
-      <p class="sub">Telhas cortadas <b>sob medida</b>. Você pode incluir vários tipos no mesmo orçamento.</p>
-      <div class="cards">${fams.map(f=>{
-        const g=cat.telhas.filter(t=>t.familia===f);
-        const img=g.find(t=>t.imagem);
-        const min=Math.min(...g.map(t=>t.preco));
-        return `<button class="card" onclick="selFam('${f.replace(/'/g,"\\'")}')">
-          ${img?`<img src="${img.imagem}" loading="lazy">`:'<div class="ph">🏠</div>'}
-          <div class="info"><b>${f}</b><small>${g.length} modelo${g.length>1?'s':''}</small>
-          <span class="preco">a partir de R$ ${BRL(min)}/m</span></div></button>`;
-      }).join('')}</div>`);
+    const q=atual.busca.toLowerCase();
+    const lista=q?cat.telhas.filter(t=>(t.nome+' '+t.familia).toLowerCase().includes(q)):cat.telhas;
+    const fams=[...new Set(lista.map(t=>t.familia))];
+    el(cart()+`<h1>${grupos.length?'Qual a próxima telha?':'Qual telha você precisa?'}</h1>
+      <p class="sub">Cortadas <b>sob medida</b>. Toque na linha para ver os modelos.</p>
+      <input class="busca" placeholder="🔎 Buscar (ex: sanduíche, colonial, TP40)" value="${atual.busca}"
+        oninput="atual.busca=this.value;atual.famAberta=this.value?null:atual.famAberta;render();document.querySelector('.busca').focus()">
+      ${fams.map(f=>{
+        const g=lista.filter(t=>t.familia===f);
+        const im=g.find(t=>t.imagem);
+        const aberta=atual.famAberta===f||!!q;
+        return `<div class="fam ${aberta?'aberta':''}">
+          <button class="cab" onclick="abrirFam('${f.replace(/'/g,"\\'")}')">
+            ${im?`<img src="${im.imagem}" loading="lazy">`:'<div style="width:52px;height:40px;display:flex;align-items:center;justify-content:center;background:#f1f5f9;border-radius:7px">🏠</div>'}
+            <span class="txt"><b>${f}</b><small>${g.length} modelo${g.length>1?'s':''} · a partir de R$ ${BRL(Math.min(...g.map(t=>t.preco)))}/m</small></span>
+            <span class="seta">${aberta?'▲':'▼'}</span></button>
+          <div class="mods">${g.map(t=>`<button class="mod" onclick="selTelha('${t.id}')">
+            ${t.imagem?`<img src="${t.imagem}" loading="lazy">`:'<div class="ph">🏠</div>'}
+            <span class="i"><b>${t.nome}</b><span class="p">R$ ${BRL(t.preco)}/m</span></span></button>`).join('')}</div>
+        </div>`;
+      }).join('')||'<p class="sub">Nenhuma telha encontrada.</p>'}`);
   }
-  // 1 — modelo
+  // ── 1 MEDIDAS: abas cortes/ambiente numa tela só ──────────────────
   if(passo===1){
-    const g=cat.telhas.filter(t=>t.familia===atual.familia);
-    el(`<h1>Escolha o modelo</h1><p class="sub">Linha <b>${atual.familia}</b></p>
-      <div class="cards">${g.map(t=>`<button class="card" onclick="selTelha('${t.id}')">
-        ${t.imagem?`<img src="${t.imagem}" loading="lazy">`:'<div class="ph">🏠</div>'}
-        <div class="info"><b>${t.nome}</b><small>largura útil ${t.largura_util_m}m</small>
-        <span class="preco">R$ ${BRL(t.preco)}/m</span></div></button>`).join('')}</div>`);
+    const t=telha();
+    el(`<h1>Medidas</h1><p class="sub"><b>${t.nome}</b> — R$ ${BRL(t.preco)}/metro</p>
+      <div class="abas">
+        <button class="aba ${atual.modo==='cortes'?'on':''}" onclick="atual.modo='cortes';render()">Já sei os tamanhos</button>
+        <button class="aba ${atual.modo==='ambiente'?'on':''}" onclick="atual.modo='ambiente';render()">Calcular pra mim</button>
+      </div>
+      ${atual.modo==='cortes'?`
+        <p class="sub">Quantas peças de cada comprimento? Máximo ${t.comprimento_maximo_m}m por peça — se precisar de mais, eu divido com emenda.</p>
+        ${atual.cortes.map((c,i)=>`<div class="corte">
+          <input type="number" inputmode="numeric" placeholder="Qtd" value="${c.q}" oninput="atual.cortes[${i}].q=this.value;tot()">
+          <input type="number" inputmode="decimal" step="0.01" placeholder="Compr. (m)" value="${c.c}" oninput="atual.cortes[${i}].c=this.value;tot()">
+          <button onclick="delC(${i})" ${atual.cortes.length===1?'disabled style="opacity:.3"':''}>✕</button></div>`).join('')}
+        <button class="add" onclick="addC()">+ Outro comprimento</button>
+        <div class="caixa" id="tt" style="margin-top:12px"></div>
+        <button class="btn" onclick="okCortes()">Adicionar ao orçamento →</button>`
+      :`
+        <div class="l2">
+          <div class="campo"><label>Comprimento (m)</label><input id="mc" type="number" inputmode="decimal" placeholder="20" value="${atual.cg}" oninput="atual.cg=this.value"></div>
+          <div class="campo"><label>Largura (m)</label><input id="ml" type="number" inputmode="decimal" placeholder="10" value="${atual.lg}" oninput="atual.lg=this.value"></div>
+        </div>
+        <p class="dica" style="margin-bottom:12px">Comprimento = lado da cumeeira · largura = lado onde a água escorre.</p>
+        <label style="display:block;font-size:13px;font-weight:600;color:#334155;margin-bottom:6px">Quantas quedas?</label>
+        <button class="opt ${atual.quedas===1?'on':''}" onclick="atual.quedas=1;render()"><span class="r"></span>
+          <span><b>1 queda</b><small>Caída única — água escorre pra um lado</small></span></button>
+        <button class="opt ${atual.quedas===2?'on':''}" onclick="atual.quedas=2;render()"><span class="r"></span>
+          <span><b>2 quedas</b><small>Duas caídas com cumeeira no topo</small></span></button>
+        <button class="btn" onclick="okAmbiente()">Calcular e adicionar →</button>`}`);
+    if(atual.modo==='cortes')tot();
   }
-  // 2 — modo
+  // ── 2 COMPLEMENTOS: emenda (se houver) + estrutura + mais telhas ──
   if(passo===2){
-    const t=cat.telhas.find(x=>x.id===atual.telhaId);
-    el(`<h1>Você já sabe os tamanhos?</h1>
-      <p class="sub">Escolhido: <b>${t.nome}</b> — R$ ${BRL(t.preco)}/metro</p>
-      <div class="cards uma">
-        <button class="card" onclick="selModo('cortes')"><div class="info"><b>📏 Já sei os tamanhos</b>
-          <small>Informo quantas peças de cada comprimento</small></div></button>
-        <button class="card" onclick="selModo('ambiente')"><div class="info"><b>📐 Não sei — calculem pra mim</b>
-          <small>Informo as medidas do local</small></div></button>
-      </div>`);
+    el(cart()+`<h1>Complementos</h1><p class="sub">Só o que faltar — depois é só confirmar.</p>
+      ${split?`<div class="caixa" style="background:#fffbeb;border:1px solid #fde68a">
+        <b style="color:#92400e">Essa medida precisa de emenda</b><br>
+        <span style="color:#92400e">Você precisa de ${split.comp.toFixed(2)}m e a telha vai até ${split.max}m. Escolha como dividir:</span></div>
+        ${split.opcoes.map((o,i)=>`<button class="opt ${split.sel===i?'on':''}" onclick="split.sel=${i};render()"><span class="r"></span>
+          <span><b>${o.titulo}</b><small>${o.detalhe}</small><span class="m">${o.materialM.toFixed(2)}m de material por peça</span></span></button>`).join('')}
+        <div style="height:10px"></div>`:''}
+      <label style="display:block;font-size:13px;font-weight:600;color:#334155;margin-bottom:6px">Precisa de estrutura?</label>
+      <button class="opt ${!pedido.comEstrutura?'on':''}" onclick="pedido.comEstrutura=false;render()"><span class="r"></span>
+        <span><b>Só as telhas</b><small>Já tenho a estrutura</small></span></button>
+      <button class="opt ${pedido.comEstrutura?'on':''}" onclick="pedido.comEstrutura=true;render()"><span class="r"></span>
+        <span><b>Telhas + estrutura</b><small>Incluir vigas e terças galvanizadas</small></span></button>
+      <button class="btn" onclick="okComplementos()">Continuar →</button>
+      <button class="btn sec" onclick="novoProduto()">+ Adicionar outro tipo de telha</button>`);
   }
-  // 3 — cortes
+  // ── 3 DADOS ───────────────────────────────────────────────────────
   if(passo===3){
-    const t=cat.telhas.find(x=>x.id===atual.telhaId);
-    el(`<h1>Lista de cortes</h1>
-      <p class="sub"><b>${t.nome}</b> — quantas peças de cada comprimento? Máx. ${t.comprimento_maximo_m}m.</p>
-      <div>${atual.cortes.map((c,i)=>`<div class="corte">
-        <input type="number" inputmode="numeric" placeholder="Qtd" value="${c.q}" oninput="setCorte(${i},'q',this.value)">
-        <input type="number" inputmode="decimal" step="0.01" placeholder="Compr. (m)" value="${c.c}" oninput="setCorte(${i},'c',this.value)">
-        <button onclick="delCorte(${i})" ${atual.cortes.length===1?'disabled style="opacity:.3"':''}>✕</button>
-      </div>`).join('')}</div>
-      <button class="addlinha" onclick="addCorte()">+ Adicionar outro comprimento</button>
-      <div class="totalbox" id="tot"></div>
-      <button class="avancar" onclick="okCortes()">Adicionar ao orçamento →</button>`);
-    atualizaTotal();
-  }
-  // 4 — ambiente
-  if(passo===4){
-    el(`<h1>Medidas do local</h1>
-      <p class="sub">Em metros. <b>Comprimento</b> = lado da cumeeira · <b>Largura</b> = lado onde a água escorre.</p>
-      <div class="linha2">
-        <div class="campo"><label>Comprimento (m)</label><input id="mC" type="number" inputmode="decimal" placeholder="ex: 20"></div>
-        <div class="campo"><label>Largura (m)</label><input id="mL" type="number" inputmode="decimal" placeholder="ex: 10"></div>
-      </div>
-      <p class="dica">Estimativa serve — o vendedor confere antes da produção.</p>
-      <button class="avancar" onclick="okAmbiente()">Continuar →</button>`);
-  }
-  // 5 — quedas
-  if(passo===5){
-    el(`<h1>Quantas quedas?</h1><p class="sub">"Queda" é o lado pra onde a água escorre.</p>
-      <div class="cards">
-        <button class="card" onclick="selQuedas(1)"><div class="ph">📐</div>
-          <div class="info"><b>1 queda</b><small>Caída única</small></div></button>
-        <button class="card" onclick="selQuedas(2)"><div class="ph">⛰️</div>
-          <div class="info"><b>2 quedas</b><small>Duas caídas com cumeeira</small></div></button>
-      </div>`);
-  }
-  // 6 — mais produtos?
-  if(passo===6){
-    el(boxCarrinho()+`<h1>Falta mais alguma telha?</h1>
-      <p class="sub">Comum em galpões: um modelo em vários comprimentos + translúcida para iluminação.</p>
-      <button class="avancar sec" onclick="novoProduto()">+ Adicionar outro tipo de telha</button>
-      <button class="avancar" onclick="ir(7)">Não, seguir →</button>`);
-  }
-  // 7 — estrutura
-  if(passo===7){
-    el(`<h1>Quer estrutura também?</h1>
-      <p class="sub">Vigas e terças galvanizadas para sustentar o telhado.</p>
-      <div class="cards uma">
-        <button class="card" onclick="selEstrutura(false)"><div class="info"><b>🏠 Só as telhas</b>
-          <small>Já tenho a estrutura</small></div></button>
-        <button class="card" onclick="selEstrutura(true)"><div class="info"><b>🔧 Telhas + estrutura</b>
-          <small>Incluir vigas/terças no orçamento</small></div></button>
-      </div>`);
-  }
-  // 8 — dados
-  if(passo===8){
+    const conhecido=cliente.nome&&cliente.endereco;
     el(`<h1>Seus dados</h1>
-      <p class="sub">📍 O <b>endereço é obrigatório</b> para a entrega do material.</p>
-      <div class="campo"><label>Nome ou empresa</label><input id="dN" value="${cliente.nome}" placeholder="Seu nome"></div>
-      <div class="campo"><label>WhatsApp</label><input id="dT" inputmode="tel" value="${cliente.telefone}" placeholder="(17) 99999-9999"></div>
-      <div class="campo"><label>Cidade</label><input id="dC" value="${cliente.cidade}" placeholder="São José do Rio Preto - SP"></div>
-      <div class="campo"><label>Endereço da obra (rua, número e bairro)</label><input id="dE" value="${cliente.endereco}" placeholder="Rua Exemplo, 120 - Centro"></div>
-      <button class="avancar" onclick="okDados()">Ver resumo →</button>`);
+      <p class="sub">${conhecido?'Já preenchi com os dados do seu último orçamento — é só conferir. ':''}📍 O <b>endereço é obrigatório</b> para a entrega.</p>
+      <div class="campo"><label>Nome ou empresa</label><input id="dn" value="${cliente.nome}" placeholder="Seu nome"></div>
+      <div class="campo"><label>WhatsApp</label><input id="dt" inputmode="tel" value="${cliente.telefone}" placeholder="(17) 99999-9999"></div>
+      <div class="campo"><label>Cidade</label><input id="dc" value="${cliente.cidade}" placeholder="São José do Rio Preto - SP"></div>
+      <div class="campo"><label>Endereço da obra (rua, número e bairro)</label><input id="de" value="${cliente.endereco}" placeholder="Rua Exemplo, 120 - Centro"></div>
+      <button class="btn" onclick="okDados()">Ver resumo →</button>`);
   }
-  // 9 — resumo
-  if(passo===9){
+  // ── 4 RESUMO ──────────────────────────────────────────────────────
+  if(passo===4){
     el(`<h1>Confere tudo?</h1><p class="sub">Revise antes de gerar o PDF.</p>
-      <div class="resumo">
-        ${grupos.map(g=>`<h3>${g.nome}</h3>
-          <div class="cut">${g.cortes.map(c=>`${c.quantidade} x ${c.comprimentoM}m`).join(' · ')}</div>`).join('')}
-        <div class="item"><span>Metragem total</span><span>${metTotal().toFixed(3)} mts</span></div>
-        <div class="item"><span>Estrutura</span><span>${pedido.comEstrutura?'Sim':'Não'}</span></div>
-        <div class="item"><span>Cliente</span><span>${cliente.nome} — ${cliente.telefone}</span></div>
-        <div class="item"><span>Entrega</span><span>${cliente.endereco}, ${cliente.cidade}</span></div>
+      <div class="res">
+        ${grupos.map(g=>`<h3>${g.nome}</h3><div class="cut">${g.cortes.map(c=>c.quantidade+' x '+c.comprimentoM+'m').join(' · ')}</div>`).join('')}
+        <div class="li"><span>Metragem total</span><span>${metTot().toFixed(3)} mts</span></div>
+        <div class="li"><span>Estrutura</span><span>${pedido.comEstrutura?'Sim':'Não'}</span></div>
+        <div class="li"><span>Cliente</span><span>${cliente.nome} — ${cliente.telefone}</span></div>
+        <div class="li"><span>Entrega</span><span>${cliente.endereco}, ${cliente.cidade}</span></div>
       </div>
-      ${window._avisos?`<div class="aviso">⚠️ ${window._avisos.join('<br>')}</div>`:''}
-      <button class="avancar" id="btnGerar" onclick="gerar()">Gerar meu orçamento 📄</button>`);
+      ${window._av?`<div class="aviso">⚠️ ${window._av.join('<br>')}</div>`:''}
+      <button class="btn" id="bg" onclick="gerar()">Gerar orçamento 📄</button>`);
   }
-  // 10 — final
-  if(passo===10){
+  // ── 5 FINAL ───────────────────────────────────────────────────────
+  if(passo===5){
     const r=window._res;
-    el(`<div class="final"><div class="ok">🎉</div>
-      <h2>Orçamento ${r.numero}</h2>
-      <div class="total">R$ ${BRL(r.totalAvista)}</div>
+    el(`<div class="fim"><div class="ok">🎉</div><h2>Orçamento ${r.numero}</h2>
+      <div class="tt">R$ ${BRL(r.totalAvista)}</div>
       <div class="met">à vista · ${r.totalPecas} peças · ${r.metragemTotal} mts</div>
-      <div class="parcelas">${r.pagamentos.map(p=>`<div><span>${p.parcelas}x</span><span>R$ ${BRL(p.valorParcela)} <small style="color:#94a3b8">(R$ ${BRL(p.total)})</small></span></div>`).join('')}</div>
+      <div class="parc">${r.pagamentos.map(p=>`<div><span>${p.parcelas}x</span><span>R$ ${BRL(p.valorParcela)} <small style="color:#94a3b8">(R$ ${BRL(p.total)})</small></span></div>`).join('')}</div>
       ${r.avisos?.length?`<div class="aviso">⚠️ ${r.avisos.join('<br>')}</div>`:''}
-      <a class="pdf" href="${r.pdf}" target="_blank">📄 Baixar PDF do orçamento</a>
+      <a class="pdf" href="${r.pdf}" target="_blank">📄 Baixar PDF</a>
       <button onclick="location.reload()">Fazer novo orçamento</button></div>`);
   }
 }
 
-function novoProduto(){
-  atual={familia:null,telhaId:null,modo:null,cortes:[{q:'',c:''}],cg:null,lg:null,quedas:null};
-  ir(0);
+function abrirFam(f){atual.famAberta=atual.famAberta===f?null:f;render();}
+function selTelha(id){atual.telhaId=id;atual.cortes=[{q:'',c:''}];atual.cg='';atual.lg='';ir(1);}
+function addC(){atual.cortes.push({q:'',c:''});render();}
+function delC(i){if(atual.cortes.length>1){atual.cortes.splice(i,1);render();}}
+function tot(){
+  const b=document.getElementById('tt');if(!b)return;
+  const m=atual.cortes.reduce((s,c)=>s+(+c.q||0)*(+c.c||0),0);
+  const p=atual.cortes.reduce((s,c)=>s+(+c.q||0),0);
+  b.innerHTML=`${p} peças · <b>${m.toFixed(3)} mts</b> · ≈ <b>R$ ${BRL(m*telha().preco)}</b>`;
 }
-function selFam(f){atual.familia=f;ir(1);}
-function selTelha(id){atual.telhaId=id;ir(2);}
-function selModo(m){atual.modo=m;ir(m==='cortes'?3:4);}
-function setCorte(i,k,v){atual.cortes[i][k]=v;atualizaTotal();}
-function addCorte(){atual.cortes.push({q:'',c:''});render();}
-function delCorte(i){if(atual.cortes.length>1){atual.cortes.splice(i,1);render();}}
-function atualizaTotal(){
-  const box=document.getElementById('tot');if(!box)return;
-  const t=cat.telhas.find(x=>x.id===atual.telhaId);
-  const met=atual.cortes.reduce((s,c)=>s+(+c.q||0)*(+c.c||0),0);
-  const pc=atual.cortes.reduce((s,c)=>s+(+c.q||0),0);
-  box.innerHTML=`${pc} peças · <b>${met.toFixed(3)} mts</b> · estimativa <b>R$ ${BRL(met*t.preco)}</b>`;
+async function okCortes(){
+  const t=telha();
+  const v=atual.cortes.filter(c=>+c.q>0&&+c.c>0);
+  if(!v.length)return err('Informe ao menos uma quantidade e um comprimento.');
+  const gr=v.find(c=>+c.c>t.comprimento_maximo_m);
+  if(gr){
+    const r=await fetch('/api/opcoes-corte',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({telhaId:t.id,comprimentoM:+gr.c})}).then(r=>r.json()).catch(()=>({error:'falha'}));
+    if(r.error||!r.opcoes?.length)return err('Não consegui dividir essa medida — fale com o vendedor.');
+    split={comp:+gr.c,max:t.comprimento_maximo_m,opcoes:r.opcoes,sel:0,origem:'cortes',qtd:+gr.q,linha:atual.cortes.indexOf(gr)};
+    return ir(2);
+  }
+  grupos.push({telhaId:t.id,nome:t.nome,ambiente:null,cortes:v.map(c=>({quantidade:+c.q,comprimentoM:+c.c}))});
+  ir(2);
 }
-function okCortes(){
-  const t=cat.telhas.find(x=>x.id===atual.telhaId);
-  const val=atual.cortes.filter(c=>+c.q>0&&+c.c>0);
-  if(!val.length)return err('Informe ao menos uma quantidade e um comprimento.');
-  if(val.find(c=>+c.c>t.comprimento_maximo_m))return err(`Comprimento máximo desta telha é ${t.comprimento_maximo_m}m.`);
-  grupos.push({telhaId:t.id,nome:t.nome,ambiente:null,
-    cortes:val.map(c=>({quantidade:+c.q,comprimentoM:+c.c}))});
-  ir(6);
-}
-function okAmbiente(){
-  const c=parseFloat(String(document.getElementById('mC').value).replace(',','.'));
-  const l=parseFloat(String(document.getElementById('mL').value).replace(',','.'));
+async function okAmbiente(){
+  const c=parseFloat(String(atual.cg).replace(',','.')),l=parseFloat(String(atual.lg).replace(',','.'));
   if(!c||!l||c<=0||l<=0)return err('Preencha comprimento e largura em metros.');
-  atual.cg=c;atual.lg=l;ir(5);
+  const d=await fetch('/api/romaneio',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({telhaId:atual.telhaId,comprimentoGalpaoM:c,larguraGalpaoM:l,quedas:atual.quedas,comEstrutura:false})})
+    .then(r=>r.json()).catch(()=>({error:'falha'}));
+  if(d.error)return err(d.error);
+  const t=telha();
+  if(d.precisaEscolher){
+    split={comp:d.compTelha,max:t.comprimento_maximo_m,opcoes:d.opcoes,sel:0,origem:'ambiente'};
+    return ir(2);
+  }
+  grupos.push({telhaId:t.id,nome:t.nome,cortes:d.cortes,ambiente:{comprimentoGalpaoM:c,larguraGalpaoM:l,quedas:atual.quedas}});
+  window._av=d.avisos?.length?d.avisos:null;
+  ir(2);
 }
-async function selQuedas(q){
-  atual.quedas=q;
-  try{
-    const r=await fetch('/api/romaneio',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({telhaId:atual.telhaId,comprimentoGalpaoM:atual.cg,larguraGalpaoM:atual.lg,quedas:q,comEstrutura:false})});
-    const d=await r.json();
-    if(d.error)return err(d.error);
-    const t=cat.telhas.find(x=>x.id===atual.telhaId);
-    grupos.push({telhaId:t.id,nome:t.nome,cortes:d.cortes,
-      ambiente:{comprimentoGalpaoM:atual.cg,larguraGalpaoM:atual.lg,quedas:q}});
-    window._avisos=d.avisos&&d.avisos.length?d.avisos:null;
-    ir(6);
-  }catch(e){err('Falha ao calcular. Tente de novo.');}
-}
-async function selEstrutura(v){
-  pedido.comEstrutura=v;pedido.perfis=[];
-  if(v){
-    const comAmb=grupos.find(g=>g.ambiente);
-    if(comAmb){
-      try{
-        const r=await fetch('/api/romaneio',{method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({telhaId:comAmb.telhaId,...comAmb.ambiente,comEstrutura:true})});
-        const d=await r.json();
-        if(d.perfis)pedido.perfis=d.perfis;
-      }catch(e){}
+async function okComplementos(){
+  // aplica a divisão escolhida, se houver
+  if(split){
+    const op=split.opcoes[split.sel];
+    const t=telha();
+    if(split.origem==='cortes'){
+      const cont={};op.panos.forEach(p=>cont[p]=(cont[p]||0)+1);
+      const outras=atual.cortes.filter((c,i)=>i!==split.linha&&+c.q>0&&+c.c>0)
+        .map(c=>({quantidade:+c.q,comprimentoM:+c.c}));
+      grupos.push({telhaId:t.id,nome:t.nome,ambiente:null,cortes:[...outras,
+        ...Object.entries(cont).map(([c,v])=>({quantidade:split.qtd*v,comprimentoM:+c}))]});
+    }else{
+      const d=await fetch('/api/romaneio',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({telhaId:t.id,comprimentoGalpaoM:+atual.cg,larguraGalpaoM:+atual.lg,
+          quedas:atual.quedas,comEstrutura:false,opcaoCorte:op.id})}).then(r=>r.json()).catch(()=>({error:'falha'}));
+      if(d.error)return err(d.error);
+      grupos.push({telhaId:t.id,nome:t.nome,cortes:d.cortes,
+        ambiente:{comprimentoGalpaoM:+atual.cg,larguraGalpaoM:+atual.lg,quedas:atual.quedas,opcaoCorte:op.id}});
+      window._av=d.avisos?.length?d.avisos:null;
+    }
+    split=null;
+  }
+  if(!grupos.length)return err('Adicione ao menos uma telha.');
+  // estrutura
+  pedido.perfis=[];
+  if(pedido.comEstrutura){
+    const amb=grupos.find(g=>g.ambiente);
+    if(amb){
+      const d=await fetch('/api/romaneio',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({telhaId:amb.telhaId,...amb.ambiente,comEstrutura:true})}).then(r=>r.json()).catch(()=>({}));
+      if(d.perfis)pedido.perfis=d.perfis;
     }
   }
-  ir(8);
+  ir(3);
+}
+function novoProduto(){
+  if(split)return err('Escolha primeiro como dividir a peça acima.');
+  atual={telhaId:null,modo:'cortes',cortes:[{q:'',c:''}],cg:'',lg:'',quedas:2,famAberta:null,busca:''};
+  ir(0);
 }
 function okDados(){
-  cliente.nome=document.getElementById('dN').value.trim();
-  cliente.telefone=document.getElementById('dT').value.trim();
-  cliente.cidade=document.getElementById('dC').value.trim();
-  cliente.endereco=document.getElementById('dE').value.trim();
+  cliente.nome=document.getElementById('dn').value.trim();
+  cliente.telefone=document.getElementById('dt').value.trim();
+  cliente.cidade=document.getElementById('dc').value.trim();
+  cliente.endereco=document.getElementById('de').value.trim();
   if(cliente.nome.length<2)return err('Informe seu nome.');
   if(cliente.telefone.replace(/\D/g,'').length<10)return err('Informe um WhatsApp válido com DDD.');
   if(cliente.cidade.length<2)return err('Informe a cidade.');
   if(cliente.endereco.length<8||!/\d/.test(cliente.endereco))return err('Endereço completo com rua, número e bairro.');
-  ir(9);
+  try{localStorage.setItem('cliente4a',JSON.stringify(cliente));}catch(e){}
+  ir(4);
 }
 async function gerar(){
-  const b=document.getElementById('btnGerar');b.disabled=true;b.textContent='Gerando...';
-  try{
-    const r=await fetch('/api/orcamento',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({pedido:{grupos:grupos.map(g=>({telhaId:g.telhaId,cortes:g.cortes})),perfis:pedido.perfis},cliente})});
-    const d=await r.json();
-    if(d.error){err(d.error);b.disabled=false;b.textContent='Gerar meu orçamento 📄';return;}
-    window._res=d;ir(10);
-  }catch(e){err('Falha ao gerar — tente de novo.');b.disabled=false;b.textContent='Gerar meu orçamento 📄';}
+  const b=document.getElementById('bg');b.disabled=true;b.textContent='Gerando...';
+  const d=await fetch('/api/orcamento',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({pedido:{grupos:grupos.map(g=>({telhaId:g.telhaId,cortes:g.cortes})),perfis:pedido.perfis},cliente})})
+    .then(r=>r.json()).catch(()=>({error:'Falha ao gerar — tente de novo.'}));
+  if(d.error){err(d.error);b.disabled=false;b.textContent='Gerar orçamento 📄';return;}
+  window._res=d;ir(5);
 }
 
+try{const s=localStorage.getItem('cliente4a');if(s)Object.assign(cliente,JSON.parse(s));}catch(e){}
 fetch('/api/catalogo').then(r=>r.json()).then(c=>{cat=c;render();})
-  .catch(()=>{tela.innerHTML='<h1>Ops!</h1><p class="sub">Não consegui carregar o catálogo. O servidor está rodando?</p>';});
+  .catch(()=>{T.innerHTML='<h1>Ops!</h1><p class="sub">Não consegui carregar o catálogo. O servidor está rodando?</p>';});
 </script>
 </body>
 </html>

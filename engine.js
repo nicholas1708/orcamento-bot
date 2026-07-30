@@ -61,9 +61,12 @@ function calcularOrcamento(pedido, catalogo) {
       if (!Number.isFinite(comp) || comp <= 0) throw new Error(`Comprimento inválido: ${c.comprimentoM}`);
       if (!Number.isFinite(qtd) || qtd <= 0) throw new Error(`Quantidade inválida: ${c.quantidade}`);
 
+      // Comprimento acima do máximo de fábrica não é erro de orçamento: a peça
+      // é dividida em panos com transpasse (ver romaneio.opcoesDeCorte). Aqui
+      // só sinalizamos, para o vendedor conferir a emenda.
       const compMax = telha.comprimento_maximo_m || eng.comprimento_maximo_fabricacao_m;
       if (comp > compMax) {
-        avisos.push(`${telha.nome}: comprimento de ${comp.toFixed(2)}m excede o máximo de fabricação (${compMax}m) — emendar ou consultar o vendedor.`);
+        avisos.push(`${telha.nome}: peça de ${comp.toFixed(2)}m acima do máximo de fábrica (${compMax}m) — precisa ser emendada.`);
         escalarParaVendedor = true;
       }
       if (comp < eng.comprimento_minimo_fabricacao_m) {

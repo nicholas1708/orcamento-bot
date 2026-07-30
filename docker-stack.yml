@@ -30,6 +30,8 @@ services:
     volumes:
       - orcamento-sessions:/app/sessions   # fichas de conversa sobrevivem a redeploy
       - orcamento-pdfs:/app/out            # PDFs gerados
+      - orcamento-imgs:/app/img-cache      # fotos dos produtos (baixadas 1x)
+      - orcamento-clientes:/app/clientes   # cadastro de clientes recorrentes
     networks:
       - network_public
     deploy:
@@ -52,3 +54,5 @@ networks:
 volumes:
   orcamento-sessions:
   orcamento-pdfs:
+  orcamento-imgs:
+  orcamento-clientes:
