@@ -24,7 +24,7 @@ app.get('/simulador', (_req, res) => res.sendFile(path.join(__dirname, 'simulado
 // Mesmo catálogo + mesmo motor determinístico do WhatsApp, em formato de "slides".
 const { getCatalogo } = require('./pricing');
 const { calcularOrcamento } = require('./engine');
-const { calcularRomaneio, opcoesDeCorte } = require('./romaneio');
+const { calcularRomaneio, opcoesDeCorte, corteComTamanho } = require('./romaneio');
 const { gerarPDF } = require('./pdf');
 
 app.get('/orcamento', (_req, res) => res.sendFile(path.join(__dirname, 'orcamento.html')));
@@ -52,27 +52,34 @@ app.get('/api/catalogo', async (_req, res) => {
 /** Prévia do romaneio: ambiente → lista de cortes (sem gerar PDF) */
 app.post('/api/romaneio', async (req, res) => {
   try {
-    const { telhaId, comprimentoGalpaoM, larguraGalpaoM, quedas, comEstrutura, opcaoCorte } = req.body || {};
+    const { telhaId, comprimentoGalpaoM, larguraGalpaoM, quedas, comEstrutura, opcaoCorte, tamanhoPreferidoM } = req.body || {};
     const catalogo = await getCatalogo();
     const telha = catalogo.telhas.find((t) => t.id === telhaId);
     if (!telha) return res.status(400).json({ error: 'Telha inválida.' });
     const rom = calcularRomaneio(
-      { comprimentoGalpaoM, larguraGalpaoM, quedas, comEstrutura, opcaoCorte }, telha, catalogo
+      { comprimentoGalpaoM, larguraGalpaoM, quedas, comEstrutura, opcaoCorte, tamanhoPreferidoM }, telha, catalogo
     );
     res.json(rom);
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-/** Opções de divisão para um comprimento maior que o máximo de fábrica */
+/** Opções de divisão para um comprimento maior que o máximo de fábrica.
+ *  Se vier "tamanhoPreferidoM", devolve também a divisão nesse tamanho. */
 app.post('/api/opcoes-corte', async (req, res) => {
   try {
-    const { telhaId, comprimentoM } = req.body || {};
+    const { telhaId, comprimentoM, tamanhoPreferidoM } = req.body || {};
     const catalogo = await getCatalogo();
     const telha = catalogo.telhas.find((t) => t.id === telhaId);
     if (!telha) return res.status(400).json({ error: 'Telha inválida.' });
     const comp = Number(comprimentoM);
     if (!Number.isFinite(comp) || comp <= 0) return res.status(400).json({ error: 'Comprimento inválido.' });
-    res.json({ opcoes: opcoesDeCorte(comp, telha, catalogo) });
+
+    const opcoes = opcoesDeCorte(comp, telha, catalogo);
+    let personalizada = null;
+    if (tamanhoPreferidoM) {
+      personalizada = corteComTamanho(comp, tamanhoPreferidoM, telha, catalogo);
+    }
+    res.json({ opcoes, personalizada, maximoM: telha.comprimento_maximo_m });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 

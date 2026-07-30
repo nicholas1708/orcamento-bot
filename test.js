@@ -9,7 +9,7 @@
 require('dotenv').config();
 const { getCatalogo } = require('./pricing');
 const { calcularOrcamento } = require('./engine');
-const { calcularRomaneio, parseCortes } = require('./romaneio');
+const { calcularRomaneio, parseCortes, corteComTamanho } = require('./romaneio');
 const { gerarPDF } = require('./pdf');
 const path = require('path');
 
@@ -84,6 +84,15 @@ const check = (label, obtido, esperado, tol = 0.02) => {
   check('NÃO recusou o orçamento', romLongo.cortes.length > 0 ? 1 : 0, 1, 0);
   const maiorPano = Math.max(...romLongo.cortes.map((c) => c.comprimentoM));
   check('Maior peça dentro do máximo', maiorPano <= telha.comprimento_maximo_m ? 1 : 0, 1, 0);
+
+  // tamanho escolhido pelo cliente: peças de 10m até completar a água
+  const custom = corteComTamanho(romLongo.compTelha, 10, telha, catalogo);
+  console.log(`  Personalizado (peças de 10m): ${custom.erro || custom.titulo}`);
+  if (!custom.erro) {
+    const cobertura = custom.materialM - custom.emendas * catalogo.engenharia.transpasse_longitudinal_m;
+    check('Personalizado cobre a água', cobertura >= romLongo.compTelha - 0.02 ? 1 : 0, 1, 0);
+    check('Nenhuma peça acima do máximo', Math.max(...custom.panos) <= telha.comprimento_maximo_m ? 1 : 0, 1, 0);
+  }
 
   // ══ TESTE 2b: vários produtos no mesmo orçamento ═══════════════════
   console.log('\n═══ TESTE 2b — Orçamento com 3 produtos (fábrica) ═══\n');

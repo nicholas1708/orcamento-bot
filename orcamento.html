@@ -202,6 +202,21 @@ function render(){
         <span style="color:#92400e">Você precisa de ${split.comp.toFixed(2)}m e a telha vai até ${split.max}m. Escolha como dividir:</span></div>
         ${split.opcoes.map((o,i)=>`<button class="opt ${split.sel===i?'on':''}" onclick="split.sel=${i};render()"><span class="r"></span>
           <span><b>${o.titulo}</b><small>${o.detalhe}</small><span class="m">${o.materialM.toFixed(2)}m de material por peça</span></span></button>`).join('')}
+        <div class="opt ${split.sel===-1?'on':''}" style="display:block;cursor:default">
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <span class="r" style="cursor:pointer" onclick="usarCustom()"></span>
+            <span style="flex:1"><b>Quero peças de um tamanho específico</b>
+              <small>Ex.: peças de 10m até completar os ${split.comp.toFixed(2)}m</small>
+              <div style="display:flex;gap:8px;margin-top:8px">
+                <input id="tp" type="number" inputmode="decimal" step="0.01" placeholder="ex: 10" value="${split.pref||''}"
+                  style="flex:1;padding:9px 11px;border:2px solid #e2e8f0;border-radius:9px;font-size:14px;outline:none">
+                <button onclick="calcCustom()" style="background:#0ea5e9;color:#fff;border:none;padding:9px 14px;border-radius:9px;cursor:pointer;font-weight:600;font-size:13px">Calcular</button>
+              </div>
+              ${split.custom?`<span class="m" style="margin-top:7px">✅ ${split.custom.titulo} — ${split.custom.materialM.toFixed(2)}m de material</span>`:''}
+              ${split.customErro?`<span style="color:#b91c1c;font-size:12px;display:block;margin-top:6px">${split.customErro}</span>`:''}
+            </span>
+          </div>
+        </div>
         <div style="height:10px"></div>`:''}
       <label style="display:block;font-size:13px;font-weight:600;color:#334155;margin-bottom:6px">Precisa de estrutura?</label>
       <button class="opt ${!pedido.comEstrutura?'on':''}" onclick="pedido.comEstrutura=false;render()"><span class="r"></span>
@@ -248,6 +263,23 @@ function render(){
   }
 }
 
+/** Calcula a divisão no tamanho que o cliente digitou. */
+async function calcCustom(){
+  const v=parseFloat(String(document.getElementById('tp').value).replace(',','.'));
+  if(!v||v<=0){split.customErro='Informe o tamanho da peça em metros.';split.custom=null;return render();}
+  split.pref=v;
+  const r=await fetch('/api/opcoes-corte',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({telhaId:atual.telhaId,comprimentoM:split.comp,tamanhoPreferidoM:v})})
+    .then(r=>r.json()).catch(()=>({error:'falha'}));
+  if(r.error||!r.personalizada||r.personalizada.erro){
+    split.custom=null;split.customErro=r.personalizada?.erro||'Não consegui calcular com esse tamanho.';
+  }else{
+    split.custom=r.personalizada;split.customErro=null;split.sel=-1; // -1 = usar a personalizada
+  }
+  render();
+}
+function usarCustom(){if(split.custom){split.sel=-1;render();}else{calcCustom();}}
+
 function abrirFam(f){atual.famAberta=atual.famAberta===f?null:f;render();}
 function selTelha(id){atual.telhaId=id;atual.cortes=[{q:'',c:''}];atual.cg='';atual.lg='';ir(1);}
 function addC(){atual.cortes.push({q:'',c:''});render();}
@@ -292,7 +324,8 @@ async function okAmbiente(){
 async function okComplementos(){
   // aplica a divisão escolhida, se houver
   if(split){
-    const op=split.opcoes[split.sel];
+    const op=split.sel===-1?split.custom:split.opcoes[split.sel];
+    if(!op)return err('Escolha uma das opções de divisão (ou calcule o tamanho personalizado).');
     const t=telha();
     if(split.origem==='cortes'){
       const cont={};op.panos.forEach(p=>cont[p]=(cont[p]||0)+1);
@@ -301,12 +334,13 @@ async function okComplementos(){
       grupos.push({telhaId:t.id,nome:t.nome,ambiente:null,cortes:[...outras,
         ...Object.entries(cont).map(([c,v])=>({quantidade:split.qtd*v,comprimentoM:+c}))]});
     }else{
+      const amb={telhaId:t.id,comprimentoGalpaoM:+atual.cg,larguraGalpaoM:+atual.lg,
+        quedas:atual.quedas,comEstrutura:false,opcaoCorte:op.id,
+        tamanhoPreferidoM:split.sel===-1?split.pref:undefined};
       const d=await fetch('/api/romaneio',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({telhaId:t.id,comprimentoGalpaoM:+atual.cg,larguraGalpaoM:+atual.lg,
-          quedas:atual.quedas,comEstrutura:false,opcaoCorte:op.id})}).then(r=>r.json()).catch(()=>({error:'falha'}));
+        body:JSON.stringify(amb)}).then(r=>r.json()).catch(()=>({error:'falha'}));
       if(d.error)return err(d.error);
-      grupos.push({telhaId:t.id,nome:t.nome,cortes:d.cortes,
-        ambiente:{comprimentoGalpaoM:+atual.cg,larguraGalpaoM:+atual.lg,quedas:atual.quedas,opcaoCorte:op.id}});
+      grupos.push({telhaId:t.id,nome:t.nome,cortes:d.cortes,ambiente:{...amb,telhaId:undefined}});
       window._av=d.avisos?.length?d.avisos:null;
     }
     split=null;

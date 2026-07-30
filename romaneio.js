@@ -80,6 +80,57 @@ function opcoesDeCorte(comprimentoAgua, telha, catalogo) {
 }
 
 /**
+ * DIVISÃO COM TAMANHO ESCOLHIDO PELO CLIENTE.
+ * Ex.: precisa de 20,20m e quer peças de 10m → 2 de 10m + 1 de 0,60m.
+ *
+ * Com k peças do tamanho preferido (P) mais um complemento (r):
+ *   cobertura = k·P + r − k·transpasse  →  r = comprimento − k·(P − transpasse)
+ * Procuramos o menor k em que o complemento caiba entre o mínimo de fábrica e P.
+ */
+function corteComTamanho(comprimentoAgua, preferidoM, telha, catalogo) {
+  const eng = catalogo.engenharia;
+  const max = telha.comprimento_maximo_m || eng.comprimento_maximo_fabricacao_m;
+  const tr = eng.transpasse_longitudinal_m;
+  const comp = round(comprimentoAgua, 2);
+  const P = round(Number(preferidoM), 2);
+
+  if (!(P > 0)) return { erro: 'Informe um tamanho válido.' };
+  if (P > max) return { erro: `Esta telha é fabricada até ${max}m — escolha um tamanho menor.` };
+  if (P <= tr) return { erro: `O tamanho precisa ser maior que o transpasse (${tr}m).` };
+  if (comp <= P) {
+    return {
+      id: 'personalizado', panos: [comp], emendas: 0, materialM: comp,
+      titulo: `Peça única de ${comp.toFixed(2)}m`,
+      detalhe: 'Não precisa emendar — cabe numa peça só.',
+    };
+  }
+
+  for (let k = 1; k <= 200; k++) {
+    // k peças inteiras já cobrem tudo?
+    const cobertura = k * P - (k - 1) * tr;
+    if (cobertura >= comp - 0.001) {
+      return {
+        id: 'personalizado', panos: Array(k).fill(P), emendas: k - 1,
+        materialM: round(k * P, 2),
+        titulo: `${k} peças de ${P.toFixed(2)}m`,
+        detalhe: `${k - 1} emenda(s) · no tamanho que você escolheu.`,
+      };
+    }
+    // k peças inteiras + complemento
+    const r = round(comp - k * (P - tr), 2);
+    if (r >= eng.comprimento_minimo_fabricacao_m && r <= P) {
+      return {
+        id: 'personalizado', panos: [...Array(k).fill(P), r], emendas: k,
+        materialM: round(k * P + r, 2),
+        titulo: `${k} peça(s) de ${P.toFixed(2)}m + 1 de ${r.toFixed(2)}m`,
+        detalhe: `${k} emenda(s) · completa os ${comp.toFixed(2)}m no seu tamanho.`,
+      };
+    }
+  }
+  return { erro: 'Não consegui fechar a medida com esse tamanho — tente outro.' };
+}
+
+/**
  * @param {object} ambiente
  *   { comprimentoGalpaoM, larguraGalpaoM, quedas: 1|2, inclinacaoPct?, comEstrutura?: bool }
  * @param {object} telha  item do catálogo
@@ -143,6 +194,11 @@ function calcularRomaneio(ambiente, telha, catalogo) {
   if (!opcoes.length) {
     avisos.push(`Não foi possível resolver o comprimento de ${compTelha}m dentro do limite de ${compMax}m — orçamento com o vendedor.`);
     escalarParaVendedor = true;
+  }
+  // tamanho preferido pelo cliente entra como opção adicional
+  if (ambiente.tamanhoPreferidoM) {
+    const custom = corteComTamanho(compTelha, ambiente.tamanhoPreferidoM, telha, catalogo);
+    if (custom && !custom.erro) opcoes.unshift(custom);
   }
   // aplica a opção escolhida (ou a primeira, que é a de menos emendas)
   const escolhida = opcoes.find((o) => o.id === ambiente.opcaoCorte) || opcoes[0];
@@ -210,4 +266,4 @@ function parseCortes(texto) {
   return out;
 }
 
-module.exports = { calcularRomaneio, parseCortes, opcoesDeCorte };
+module.exports = { calcularRomaneio, parseCortes, opcoesDeCorte, corteComTamanho };

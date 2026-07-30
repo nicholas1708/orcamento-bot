@@ -14,7 +14,7 @@
 const state = require('./state');
 const { getCatalogo } = require('./pricing');
 const { calcularOrcamento } = require('./engine');
-const { calcularRomaneio } = require('./romaneio');
+const { calcularRomaneio, corteComTamanho } = require('./romaneio');
 const { gerarPDF } = require('./pdf');
 const ai = require('./ai');
 const conversa = require('./conversa');
@@ -238,11 +238,13 @@ async function processar(chatId, textoRaw) {
         // água maior que o comprimento de fábrica → cliente escolhe a emenda
         if (rom.precisaEscolher) {
           P.opcoesCorte = rom.opcoes;
+          P.atual.compTelha = rom.compTelha; // guarda pro cálculo personalizado
           say(
             `📐 Sua água ficou com *${rom.compTelha}m*, e esta telha vai até *${telha.comprimento_maximo_m}m* de fábrica.\n` +
             `Sem problema — dá pra emendar com transpasse. Como você prefere?\n\n` +
             rom.opcoes.map((o, i) =>
-              `*${i + 1}* — ${o.titulo}\n     _${o.detalhe}_`).join('\n')
+              `*${i + 1}* — ${o.titulo}\n     _${o.detalhe}_`).join('\n') +
+            `\n\n💡 _Ou me diga o tamanho que você quer nas peças — ex: *10m* — que eu completo o restante._`
           );
           ficha.etapa = 'OPCAO_CORTE';
           break;
@@ -266,15 +268,30 @@ async function processar(chatId, textoRaw) {
     }
 
     case 'OPCAO_CORTE': {
-      const i = parseInt(texto, 10);
-      const op = i >= 1 && i <= (P.opcoesCorte || []).length ? P.opcoesCorte[i - 1] : null;
-      if (!op) { erro('Responda com o *número* da opção de emenda.'); break; }
-      ficha.tentativasErro = 0;
+      const opcoes = P.opcoesCorte || [];
       const telha = catalogo.telhas.find((t) => t.id === P.atual.telhaId);
+      const i = parseInt(texto, 10);
+      // "10m" ou número maior que a quantidade de opções = tamanho preferido
+      const pareceTamanho = /\d\s*(m|mts|metros)\b/i.test(texto) || (Number.isFinite(i) && i > opcoes.length);
+      let op = null, tamanhoPreferidoM;
+
+      if (pareceTamanho) {
+        const v = num(texto);
+        const custom = corteComTamanho(P.atual.compTelha, v, telha, catalogo);
+        if (!custom || custom.erro) { erro(custom?.erro || 'Não consegui usar esse tamanho. Tente outro.'); break; }
+        op = custom;
+        tamanhoPreferidoM = v;
+      } else {
+        op = i >= 1 && i <= opcoes.length ? opcoes[i - 1] : null;
+        if (!op) { erro('Responda com o *número* da opção — ou diga o tamanho que quer, ex: *10m*.'); break; }
+      }
+
+      ficha.tentativasErro = 0;
       const rom = calcularRomaneio({
         comprimentoGalpaoM: P.atual.comprimentoGalpaoM,
         larguraGalpaoM: P.atual.larguraGalpaoM,
-        quedas: P.atual.quedas, comEstrutura: false, opcaoCorte: op.id,
+        quedas: P.atual.quedas, comEstrutura: false,
+        opcaoCorte: op.id, tamanhoPreferidoM,
       }, telha, catalogo);
       const resumo = rom.cortes.map((c) => `• ${c.quantidade} peças de ${c.comprimentoM}m`).join('\n');
       say(`✅ *${op.titulo}*\n\n${resumo}`);
@@ -283,7 +300,7 @@ async function processar(chatId, textoRaw) {
       fecharProduto(rom.cortes, {
         comprimentoGalpaoM: P.atual.comprimentoGalpaoM,
         larguraGalpaoM: P.atual.larguraGalpaoM,
-        quedas: P.atual.quedas, opcaoCorte: op.id,
+        quedas: P.atual.quedas, opcaoCorte: op.id, tamanhoPreferidoM,
       });
       break;
     }

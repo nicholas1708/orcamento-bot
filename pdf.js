@@ -30,16 +30,36 @@ async function gerarPDF({ cliente, pedido, orcamento, catalogo }, destino) {
   const txt = catalogo.textos_pdf || {};
 
   // ── helpers de layout ─────────────────────────────────────────────
-  const faixa = (titulo) => {
-    if (doc.y > 720) doc.addPage();
-    doc.rect(M, doc.y, W, 16).fill('#e8e8e8');
-    doc.fillColor('#000').font('Helvetica-Bold').fontSize(8.5)
-      .text(titulo, M + 6, doc.y - 12.5);
-    doc.moveDown(0.6);
+  const LIMITE_Y = 780;                      // rodapé útil da A4
+  /** Garante espaço para o próximo bloco; quebra a página se faltar. */
+  const espaco = (altura) => {
+    if (doc.y + altura > LIMITE_Y) { doc.addPage(); doc.y = M; }
   };
+  /** Faixa de título (fundo cinza). Deixa o cursor logo abaixo dela. */
+  const faixa = (titulo) => {
+    espaco(30);
+    const y = doc.y;
+    doc.rect(M, y, W, 15).fill('#e8e8e8');
+    doc.fillColor('#000').font('Helvetica-Bold').fontSize(8)
+      .text(titulo, M + 6, y + 4, { width: W - 12, lineBreak: false });
+    doc.y = y + 20;
+  };
+  /** Linha divisória tracejada, com espaçamento previsível. */
   const linhaTracejada = () => {
-    doc.fillColor('#666').font('Helvetica').fontSize(6)
-      .text('-'.repeat(160), M, doc.y, { width: W });
+    const y = doc.y + 2;
+    doc.moveTo(M, y).lineTo(M + W, y)
+      .lineWidth(0.5).strokeColor('#bbb').dash(2, { space: 2 }).stroke().undash();
+    doc.strokeColor('#999');
+    doc.y = y + 5;
+  };
+  /** Parágrafo simples que sempre avança o cursor corretamente. */
+  const par = (texto, opts = {}) => {
+    const { size = 6.5, font = 'Helvetica', cor = '#000', gap = 0 } = opts;
+    if (!texto) return;
+    doc.font(font).fontSize(size).fillColor(cor);
+    espaco(doc.heightOfString(String(texto), { width: W }) + 4);
+    doc.text(String(texto), M, doc.y, { width: W });
+    if (gap) doc.y += gap;
   };
 
   // ── CABEÇALHO ─────────────────────────────────────────────────────
@@ -187,65 +207,66 @@ async function gerarPDF({ cliente, pedido, orcamento, catalogo }, destino) {
   doc.moveDown(1);
 
   // ── DADOS DO PAGAMENTO ────────────────────────────────────────────
+  espaco(70);
   faixa('DADOS DO PAGAMENTO');
+  const cP = { venc: M + 4, val: M + 95, forma: M + 175, obs: M + 300 };
   const yP = doc.y;
-  doc.rect(M, yP, W, 15).strokeColor('#ccc').lineWidth(0.5).stroke();
+  doc.rect(M, yP, W, 16).strokeColor('#ccc').lineWidth(0.5).stroke();
   doc.font('Helvetica-Bold').fontSize(7).fillColor('#000');
-  doc.text('VENCIMENTO', M + 4, yP + 4);
-  doc.text('VALOR', M + 90, yP + 4);
-  doc.text('FORMA DE PAGAMENTO', M + 160, yP + 4);
-  doc.text('OBSERVAÇÃO', M + 290, yP + 4);
-  doc.rect(M, yP + 15, W, 15).strokeColor('#ccc').stroke();
+  doc.text('VENCIMENTO', cP.venc, yP + 5, { lineBreak: false });
+  doc.text('VALOR', cP.val, yP + 5, { lineBreak: false });
+  doc.text('FORMA DE PAGAMENTO', cP.forma, yP + 5, { lineBreak: false });
+  doc.text('OBSERVAÇÃO', cP.obs, yP + 5, { lineBreak: false });
+
+  doc.rect(M, yP + 16, W, 18).strokeColor('#ccc').stroke();
   doc.font('Helvetica').fontSize(7);
-  doc.text(dataBR(Date.now()), M + 4, yP + 19);
-  doc.text(BRL(orcamento.totalAvista), M + 90, yP + 19);
-  doc.text('A Combinar', M + 160, yP + 19);
-  doc.text(txt.pagamento_observacao || '', M + 290, yP + 19, { width: W - 294 });
-  doc.y = yP + 36;
+  doc.text(dataBR(Date.now()), cP.venc, yP + 22, { lineBreak: false });
+  doc.text(BRL(orcamento.totalAvista), cP.val, yP + 22, { lineBreak: false });
+  doc.text('A Combinar', cP.forma, yP + 22, { lineBreak: false });
+  doc.text(txt.pagamento_observacao || '', cP.obs, yP + 22, { width: W - (cP.obs - M) - 6, lineBreak: false });
+  doc.y = yP + 34 + 10;
 
   // ── TRANSPORTADORA ────────────────────────────────────────────────
   if (txt.transportadora) {
     faixa('TRANSPORTADORA');
-    doc.font('Helvetica').fontSize(7.5).fillColor('#000').text(txt.transportadora, M, doc.y, { width: W });
-    doc.moveDown(0.5);
+    par(txt.transportadora, { size: 7.5, gap: 8 });
   }
 
   // ── OBSERVAÇÕES ───────────────────────────────────────────────────
   faixa('OBSERVAÇÕES');
-  doc.font('Helvetica').fontSize(6.5).fillColor('#000');
-  for (const u of (txt.unidades || [])) doc.text(u, M, doc.y, { width: W });
+  for (const u of (txt.unidades || [])) par(u, { size: 6.3, cor: '#333' });
   linhaTracejada();
-  doc.font('Helvetica-Bold').fontSize(7).text('Atenção!', M, doc.y);
-  doc.font('Helvetica').fontSize(6.5);
-  for (const a of (txt.atencao || [])) doc.text('• ' + a, M, doc.y, { width: W });
-  doc.moveDown(0.4);
-  if (txt.dados_bancarios) doc.text(txt.dados_bancarios, M, doc.y, { width: W });
-  doc.moveDown(0.5);
+  par('Atenção!', { size: 7, font: 'Helvetica-Bold' });
+  for (const a of (txt.atencao || [])) par('• ' + a, { size: 6.3, cor: '#333' });
+  doc.y += 6;
+  par(txt.dados_bancarios, { size: 6.3, cor: '#333', gap: 10 });
 
-  if (doc.y > 640) doc.addPage();
-  doc.font('Helvetica-Bold').fontSize(7.5).text('GARANTIAS E RESPONSABILIDADES', M, doc.y);
-  doc.font('Helvetica').fontSize(6.5);
-  for (const g of (txt.garantias || [])) doc.text(g, M, doc.y, { width: W });
-  doc.moveDown(0.4);
+  // ── GARANTIAS ─────────────────────────────────────────────────────
+  espaco(90);
+  par('GARANTIAS E RESPONSABILIDADES', { size: 7.5, font: 'Helvetica-Bold' });
+  doc.y += 2;
+  for (const g of (txt.garantias || [])) par(g, { size: 6.3, cor: '#333' });
   if (txt.observacao_final) {
-    doc.font('Helvetica-Bold').fontSize(6.5).text('Observação:', M, doc.y);
-    doc.font('Helvetica').text(txt.observacao_final, M, doc.y, { width: W });
+    doc.y += 6;
+    par('Observação:', { size: 6.5, font: 'Helvetica-Bold' });
+    par(txt.observacao_final, { size: 6.3, cor: '#333' });
   }
   if (orcamento.avisos?.length) {
-    doc.moveDown(0.4).font('Helvetica-Oblique').fontSize(6.5)
-      .text('Observações do sistema: ' + orcamento.avisos.join(' '), M, doc.y, { width: W });
+    doc.y += 6;
+    par('Observações do sistema: ' + orcamento.avisos.join(' '), { size: 6.3, font: 'Helvetica-Oblique', cor: '#7a5b00' });
   }
 
   // ── ASSINATURA ────────────────────────────────────────────────────
-  doc.moveDown(1.5);
-  if (doc.y > 740) doc.addPage();
+  doc.y += 16;
+  espaco(60);
   const yA = doc.y;
-  doc.rect(M, yA, W, 42).strokeColor('#999').lineWidth(0.5).stroke();
+  doc.rect(M, yA, W, 44).strokeColor('#999').lineWidth(0.5).stroke();
   doc.font('Helvetica').fontSize(7.5).fillColor('#000')
-    .text('________________________________________________________', M, yA + 16, { width: W, align: 'center' })
-    .text('Assinatura do cliente', M, yA + 28, { width: W, align: 'center' });
+    .text('_____________________________________________________', M, yA + 18, { width: W, align: 'center', lineBreak: false })
+    .text('Assinatura do cliente', M, yA + 30, { width: W, align: 'center', lineBreak: false });
+  doc.y = yA + 52;
 
-  doc.moveDown(1.5);
+  espaco(20);
   doc.font('Helvetica-Oblique').fontSize(6.5).fillColor('#666')
     .text('Orçamento gerado automaticamente — 4A Representação', M, doc.y, { width: W, align: 'right' });
 
