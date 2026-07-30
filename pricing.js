@@ -57,21 +57,45 @@ async function getCatalogoGestaoClick() {
     return parseFloat(p?.valor_venda);
   };
 
-  const todos = [
-    ...catalogo.telhas, ...catalogo.forros, ...catalogo.estruturas,
-    ...Object.values(catalogo.acessorios),
-  ];
+  // ⚠️ O ERP atualiza SOMENTE O PREÇO. Largura útil, vão máximo, comprimento
+  // máximo e demais dados de engenharia continuam vindo do nosso catálogo —
+  // no GestãoClick eles não existem como campo (só dentro do nome do produto).
+  const todos = [...catalogo.telhas, ...(catalogo.perfis || [])];
   for (const item of todos) {
-    if (!item.gc_id) continue; // sem vínculo → mantém preço local
-    const p = porId.get(String(item.gc_id));
+    const chave = item.gc_id || item.codigo; // vínculo por id ou código do ERP
+    if (!chave) continue;                    // sem vínculo → mantém preço local
+    const p = porId.get(String(chave)) ||
+      produtos.find((x) => String(x.codigo_interno) === String(chave));
     if (!p) continue;
     const preco = valorVenda(p);
-    if (Number.isFinite(preco) && preco > 0) {
-      if ('preco' in item) item.preco = preco;
-      if ('preco_por_m2' in item) item.preco_por_m2 = preco;
-    }
+    if (Number.isFinite(preco) && preco > 0) item.preco = preco;
   }
   return catalogo;
+}
+
+/**
+ * VALIDAÇÃO DE INTEGRIDADE TÉCNICA.
+ * Dados de engenharia (largura útil, vão máximo, comprimento máximo) NÃO existem
+ * de forma estruturada no ERP — lá a largura aparece só dentro do nome do produto
+ * ("40/980"), como texto. Portanto eles vivem AQUI e precisam estar completos:
+ * sem largura útil não há como calcular quantidade de peças.
+ */
+function validarCatalogo(catalogo) {
+  const problemas = [];
+  for (const t of catalogo.telhas || []) {
+    if (!(Number(t.largura_util_m) > 0)) problemas.push(`${t.id}: largura_util_m ausente`);
+    if (!(Number(t.comprimento_maximo_m) > 0)) problemas.push(`${t.id}: comprimento_maximo_m ausente`);
+    if (!(Number(t.vao_maximo_m) > 0)) problemas.push(`${t.id}: vao_maximo_m ausente`);
+    if (!(Number(t.preco) > 0)) problemas.push(`${t.id}: preco ausente`);
+    if (t.largura_total_m && Number(t.largura_util_m) >= Number(t.largura_total_m)) {
+      problemas.push(`${t.id}: largura_util_m >= largura_total_m (útil deve ser menor)`);
+    }
+  }
+  if (problemas.length) {
+    console.warn('\n⚠️  CATÁLOGO INCOMPLETO — o cálculo por ambiente pode falhar:\n   - ' +
+      problemas.join('\n   - ') + '\n');
+  }
+  return problemas;
 }
 
 // Cache simples (5 min) pra não bater na API/disco a cada mensagem
@@ -80,6 +104,7 @@ async function getCatalogo() {
   if (cache && Date.now() - cacheAt < 5 * 60 * 1000) return cache;
   const fonte = process.env.PRICING_SOURCE || 'local';
   cache = fonte === 'gestaoclick' ? await getCatalogoGestaoClick() : await getCatalogoLocal();
+  validarCatalogo(cache);
   cacheAt = Date.now();
   return cache;
 }

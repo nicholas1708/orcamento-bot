@@ -1,196 +1,185 @@
 /**
  * MODO CONVERSACIONAL — a IA conduz o papo como um atendente humano,
- * mas com papel restrito: CONVERSAR e PREENCHER A FICHA. Ela pode citar
- * os preços por m² do catálogo (dado real, injetado no prompt), mas NUNCA
- * calcula o total — quem fecha o orçamento é o engine.js, determinístico.
+ * mas com papel restrito: CONVERSAR e PREENCHER A FICHA.
  *
- * Fluxo: mensagem → IA extrai campos + responde natural → código VALIDA os
- * campos contra o catálogo → quando a ficha completa, o CÓDIGO monta o resumo
- * de confirmação → cliente confirma → engine + PDF (fora da IA).
+ * Um orçamento pode ter VÁRIOS PRODUTOS (ex: fábrica com TP40 em vários
+ * comprimentos + translúcida). A IA monta a lista; o CÓDIGO valida cada
+ * produto contra o catálogo, calcula o romaneio quando o cliente dá o
+ * ambiente, e só então o engine calcula o preço.
  *
  * Requer OPENAI_API_KEY. Sem chave, o bot usa o modo menu (flow.js).
  */
 const ai = require('./ai');
+const { calcularRomaneio } = require('./romaneio');
 
-const CAMPOS_OBRIGATORIOS = [
-  ['pedido', 'telhaId', 'qual telha o cliente quer'],
-  ['pedido', 'forroId', 'forro (FR-NENHUM se não quiser; preenchido automático se a telha tem forro integrado)'],
-  ['pedido', 'estruturaId', 'estrutura de sustentação'],
-  ['pedido', 'areaM2', 'área em m²'],
-  ['pedido', 'cumeeiraM', 'metros de cumeeira (0 se não quer)'],
-  ['pedido', 'rufoM', 'metros de rufo (0 se não quer)'],
-  ['pedido', 'calhaM', 'metros de calha (0 se não quer)'],
-  ['cliente', 'nome', 'nome do cliente'],
-  ['cliente', 'cidade', 'cidade do cliente'],
-  ['cliente', 'endereco', 'endereço completo da obra/entrega (rua, número e bairro) — OBRIGATÓRIO para o frete'],
-];
-
-const fmtPreco = (v) => 'R$ ' + Number(v).toFixed(2).replace('.', ',');
-
+const fmt = (v) => 'R$ ' + Number(v).toFixed(2).replace('.', ',');
 const LIMITE_TELHAS_NO_PROMPT = 12;
+const metrosDe = (cortes) => cortes.reduce((s, c) => s + c.quantidade * c.comprimentoM, 0);
 
-/**
- * FUNIL DE CATÁLOGO — escala pra 100+ telhas sem estourar o prompt:
- * 1. Sem família definida e catálogo grande → IA só vê as FAMÍLIAS (com faixa de preço).
- * 2. Família definida → IA vê só as telhas daquela família (variações/atributos).
- * 3. Telha definida → IA vê só os forros COMPATÍVEIS com ela.
- */
+/** Funil: com catálogo grande, mostra só famílias até o cliente escolher uma. */
 function secaoTelhas(catalogo, ficha) {
   const todas = catalogo.telhas;
-  const familias = [...new Set(todas.map(t => t.familia))];
-
-  // catálogo pequeno → mostra tudo direto
+  const fam = ficha.pedido.familiaFoco;
   if (todas.length <= LIMITE_TELHAS_NO_PROMPT) {
-    return 'TELHAS:\n' + todas.map(t =>
-      `- id "${t.id}": ${t.nome} — ${fmtPreco(t.preco)}/m²${t.forro_integrado ? ' (JÁ INCLUI forro integrado)' : ''}. ${t.descricao || ''}`
+    return 'TELHAS:\n' + todas.map((t) =>
+      `- id "${t.id}": ${t.nome} — ${fmt(t.preco)}/metro (largura útil ${t.largura_util_m}m, máx ${t.comprimento_maximo_m}m)`
     ).join('\n');
   }
-
-  // catálogo grande, família ainda não escolhida → só famílias
-  if (!ficha.pedido.familia) {
-    const linhas = familias.map(f => {
-      const grupo = todas.filter(t => t.familia === f);
-      const precos = grupo.map(t => t.preco);
-      return `- "${f}" (${grupo.length} opções, de ${fmtPreco(Math.min(...precos))} a ${fmtPreco(Math.max(...precos))}/m²)`;
-    }).join('\n');
-    return `FAMÍLIAS DE TELHAS (ajude o cliente a escolher UMA família primeiro; preencha campos.familia com o nome EXATO):\n${linhas}\n(As variações exatas de cada família você verá após a escolha.)`;
+  if (!fam) {
+    const familias = [...new Set(todas.map((t) => t.familia))];
+    return 'FAMÍLIAS DE TELHAS (escolha UMA por vez; preencha campos.familiaFoco com o nome EXATO para ver os modelos):\n' +
+      familias.map((f) => {
+        const g = todas.filter((t) => t.familia === f);
+        const p = g.map((t) => t.preco);
+        return `- "${f}" (${g.length} opções, de ${fmt(Math.min(...p))} a ${fmt(Math.max(...p))}/metro)`;
+      }).join('\n');
   }
-
-  // família escolhida → só as telhas dela
-  const grupo = todas.filter(t => t.familia === ficha.pedido.familia);
-  return `TELHAS DA FAMÍLIA "${ficha.pedido.familia}" (ajude a escolher pela espessura/cor/acabamento):\n` +
-    grupo.map(t =>
-      `- id "${t.id}": ${t.nome} — ${fmtPreco(t.preco)}/m² · ${Object.entries(t.atributos || {}).map(([k, v]) => `${k}: ${v}`).join(', ')}${t.forro_integrado ? ' (forro integrado)' : ''}`
-    ).join('\n');
+  const grupo = todas.filter((t) => t.familia === fam);
+  return `TELHAS DA FAMÍLIA "${fam}":\n` + grupo.map((t) =>
+    `- id "${t.id}": ${t.nome} — ${fmt(t.preco)}/metro · largura útil ${t.largura_util_m}m · máx ${t.comprimento_maximo_m}m · ${Object.entries(t.atributos || {}).map(([k, v]) => `${k}: ${v}`).join(', ')}`
+  ).join('\n');
 }
 
-function secaoForros(catalogo, ficha) {
-  const telha = catalogo.telhas.find(t => t.id === ficha.pedido.telhaId);
-  let lista = catalogo.forros;
-  if (telha && Array.isArray(telha.forros_compativeis) && telha.forros_compativeis.length) {
-    lista = catalogo.forros.filter(f => telha.forros_compativeis.includes(f.id));
-  }
-  return lista.map(f =>
-    `- id "${f.id}": ${f.nome}${f.preco ? ' — ' + fmtPreco(f.preco) + '/m²' : ''}`
-  ).join('\n');
+function faltantes(ficha) {
+  const p = ficha.pedido, c = ficha.cliente;
+  const f = [];
+  if (!Array.isArray(p.grupos) || !p.grupos.length) f.push('pelo menos um produto (grupos)');
+  if (p.maisProdutos !== false) f.push('confirmar se há MAIS algum tipo de telha (campo maisProdutos: false quando o cliente disser que acabou)');
+  if (p.comEstrutura === null || p.comEstrutura === undefined) f.push('comEstrutura (true/false)');
+  if (!c.nome) f.push('nome');
+  if (!c.cidade) f.push('cidade');
+  if (!c.endereco) f.push('endereco (rua, número e bairro — OBRIGATÓRIO)');
+  return f;
 }
 
 function montarSystemPrompt(catalogo, ficha) {
-  const telhas = secaoTelhas(catalogo, ficha);
-  const forros = secaoForros(catalogo, ficha);
-  const estruturas = catalogo.estruturas.map(e =>
-    `- id "${e.id}": ${e.nome}${e.preco_por_m2 ? ' — ' + fmtPreco(e.preco_por_m2) + '/m² coberto' : ''}. ${e.descricao || ''}`
-  ).join('\n');
-
-  const faltam = CAMPOS_OBRIGATORIOS
-    .filter(([obj, campo]) => ficha[obj][campo] === null || ficha[obj][campo] === undefined)
-    .map(([, campo, desc]) => `${campo} (${desc})`);
-
+  const falta = faltantes(ficha);
+  const jaTem = (ficha.pedido.grupos || []).map((g) =>
+    `${g.nome}: ${g.cortes.map((c) => `${c.quantidade}x${c.comprimentoM}m`).join(', ')}`
+  );
   return (
-`Você é atendente virtual da ${process.env.EMPRESA_NOME || 'loja de telhas'} no WhatsApp. Simpático, direto, tom brasileiro informal-profissional. Mensagens CURTAS (1 a 3 frases), estilo WhatsApp, pode usar *negrito* e no máximo 1 emoji.
+`Você é atendente virtual da ${catalogo.empresa.razao_social} no WhatsApp. Simpático, direto, tom brasileiro informal-profissional. Mensagens CURTAS (1 a 3 frases), estilo WhatsApp, pode usar *negrito* e no máximo 1 emoji.
 
-SEU OBJETIVO: conversar naturalmente e coletar os dados pro orçamento, um ou dois por vez, sem parecer formulário. Responda dúvidas do cliente sobre os produtos usando SOMENTE o catálogo abaixo.
+A EMPRESA VENDE APENAS TELHAS (cortadas SOB MEDIDA) E ESTRUTURA METÁLICA (vigas/terças). Não executa serviços nem instalação.
 
-CATÁLOGO (única fonte de verdade — NUNCA invente produto, preço ou condição fora daqui):
-${telhas}
-FORROS COMPATÍVEIS (só se a telha NÃO tiver forro integrado):
-${forros}
-ESTRUTURAS:
-${estruturas}
+${secaoTelhas(catalogo, ficha)}
+
+COMO FUNCIONA: a telha é cortada no comprimento pedido e o preço é POR METRO LINEAR.
+UM ORÇAMENTO PODE TER VÁRIOS PRODUTOS — é comum (galpão/fábrica) usar um modelo em vários comprimentos e ainda combinar com translúcida ou sanduíche. Colete um produto de cada vez e SEMPRE pergunte se falta mais algum tipo antes de fechar.
+
+Para cada produto existem dois caminhos:
+ (A) cliente JÁ SABE os tamanhos → {"telhaId":"...","cortes":[{"comprimentoM":4.75,"quantidade":9}, ...]}
+ (B) cliente NÃO SABE → peça as medidas e envie {"telhaId":"...","comprimentoGalpaoM":20,"larguraGalpaoM":10,"quedas":2}. O SISTEMA calcula o romaneio — você NÃO calcula.
 
 REGRAS INEGOCIÁVEIS:
-1. NUNCA calcule nem estime o TOTAL do orçamento. Se perguntarem o total, diga que o sistema gera o orçamento certinho em PDF assim que fechar os dados. Pode citar os preços por m² do catálogo.
-2. NUNCA prometa prazo, desconto ou condição de pagamento — diga que o vendedor confirma. O FRETE é calculado pelo sistema com base no endereço — por isso o endereço completo (rua, número, bairro e cidade) é OBRIGATÓRIO: sem ele o orçamento não pode ser gerado. Nunca diga um valor de frete você mesmo.
-3. Se a telha escolhida tem forro integrado, defina forroId = "FR-NENHUM" e avise o cliente que o isopor já vem incluso.
-4. Prefira pedir as MEDIDAS do telhado (ex: 10x20) em vez da área — assim você registra areaM2 (=multiplicação) e sabe o comprimento. Para a cumeeira, NÃO pergunte "quantos metros de cumeeira" — pergunte se o telhado terá *1 queda* (caída única) ou *2 quedas*: 1 queda → cumeeiraM = 0; 2 quedas → cumeeiraM = comprimento do telhado (maior medida). Rufo = metros que encostam em parede/muro; calha = metros de beirada com coleta de chuva; explique em 1 frase simples se o cliente não souber o que são, e registre 0 quando não quiser.
-5. Se o cliente pedir humano, fugir muito do assunto ou você não conseguir ajudar, use "handoff": true.
-6. Área plausível: entre ${catalogo.regras.area_minima_m2} e 2000 m². Se der dimensões (ex: 10x8), você pode multiplicar SÓ pra registrar a área.
+1. NUNCA calcule quantidade de telhas, metragem ou valor total. Pode citar o preço por metro do catálogo.
+2. NUNCA prometa prazo, desconto ou condição de pagamento — o PDF traz as opções e o vendedor confirma.
+3. Quando o cliente disser que não quer mais nada, envie "maisProdutos": false.
+4. Pergunte se quer só telhas ou telhas + estrutura → comEstrutura (true/false).
+5. Endereço completo (rua, número, bairro) e cidade são OBRIGATÓRIOS. Sem eles não há orçamento.
+6. Se pedir humano, fugir do assunto ou pedir algo que não vendemos → "handoff": true.
+7. Foto enviada pelo cliente: agradeça e diga que fica anexada pro vendedor. NUNCA tire medidas de fotos.
+8. Não invente dado técnico. Se não souber, diga que o vendedor confirma.
 
-FICHA ATUAL (o que já foi coletado):
-${JSON.stringify({ pedido: ficha.pedido, cliente: { nome: ficha.cliente.nome, cidade: ficha.cliente.cidade } })}
+FOTOS: pode pedir o envio de imagens com "fotos": ["id1","id2"] (ids do catálogo, máx 4).
 
-AINDA FALTA: ${faltam.length ? faltam.join(', ') : 'nada — a ficha está completa'}
+PRODUTOS JÁ NA FICHA: ${jaTem.length ? jaTem.join(' | ') : 'nenhum ainda'}
+CLIENTE: ${JSON.stringify({ nome: ficha.cliente.nome, cidade: ficha.cliente.cidade, endereco: ficha.cliente.endereco })}
+comEstrutura: ${ficha.pedido.comEstrutura} · maisProdutos: ${ficha.pedido.maisProdutos}
 
-FOTOS: se o cliente estiver em dúvida entre acabamentos/cores, você pode pedir pro sistema enviar as fotos dos produtos incluindo "fotos": ["id1","id2"] (ids do catálogo acima, máx 4). Só funciona pra produtos com foto cadastrada. Se o cliente ENVIAR uma foto, agradeça e diga que ela fica anexada pro vendedor conferir — NUNCA tire medidas ou conclusões técnicas de fotos.
+AINDA FALTA: ${falta.length ? falta.join(', ') : 'nada — ficha completa'}
 
-RESPONDA APENAS JSON válido neste formato:
-{"reply": "sua mensagem pro cliente", "campos": {somente os campos que ficaram CERTOS nesta mensagem, ex: {"telhaId":"TL-TERMO-40","areaM2":80}}, "fotos": [], "handoff": false}
-Campos possíveis em "campos": familia, telhaId, forroId, estruturaId, areaM2, cumeeiraM, rufoM, calhaM, nome, cidade. Só inclua um campo se o cliente deixou claro. Não inclua o que já está na ficha, a menos que ele corrija. Só use telhaId de telhas listadas acima; se as telhas ainda não apareceram, escolha a familia primeiro.`
+RESPONDA APENAS JSON:
+{"reply":"sua mensagem","campos":{...},"fotos":[],"handoff":false}
+Campos possíveis: familiaFoco, novosProdutos (array, ver caminhos A/B), maisProdutos (bool), comEstrutura (bool), nome, cidade, endereco.
+Envie em "novosProdutos" APENAS produtos ainda não listados acima.`
   );
 }
 
-/** Valida e aplica os campos que a IA extraiu — o código é o juiz, não a IA. */
-function aplicarCampos(ficha, campos, catalogo) {
+/** Valida e aplica o que a IA extraiu — o CÓDIGO é o juiz, não a IA. */
+function aplicarCampos(ficha, campos, catalogo, acoes) {
   if (!campos || typeof campos !== 'object') return;
+  const p = ficha.pedido, c = ficha.cliente, eng = catalogo.engenharia;
   const okNum = (v, min, max) => Number.isFinite(Number(v)) && Number(v) >= min && Number(v) <= max;
 
-  // família (funil): valida contra as famílias reais do catálogo
-  if (typeof campos.familia === 'string') {
-    const familias = [...new Set(catalogo.telhas.map(t => t.familia))];
-    const match = familias.find(f => f.toLowerCase() === campos.familia.toLowerCase().trim());
-    if (match) ficha.pedido.familia = match;
+  if (typeof campos.familiaFoco === 'string') {
+    const fams = [...new Set(catalogo.telhas.map((t) => t.familia))];
+    const m = fams.find((f) => f.toLowerCase() === campos.familiaFoco.toLowerCase().trim());
+    if (m) p.familiaFoco = m;
+  }
+  if (typeof campos.maisProdutos === 'boolean') p.maisProdutos = campos.maisProdutos;
+  if (typeof campos.comEstrutura === 'boolean') p.comEstrutura = campos.comEstrutura;
+
+  // ── novos produtos ──────────────────────────────────────────────
+  p.grupos = p.grupos || [];
+  for (const np of (Array.isArray(campos.novosProdutos) ? campos.novosProdutos : [])) {
+    const telha = catalogo.telhas.find((t) => t.id === np.telhaId);
+    if (!telha) continue;
+
+    // caminho A — cortes informados
+    if (Array.isArray(np.cortes) && np.cortes.length) {
+      const validos = np.cortes
+        .map((x) => ({ comprimentoM: Number(x.comprimentoM), quantidade: Math.floor(Number(x.quantidade)) }))
+        .filter((x) => okNum(x.comprimentoM, eng.comprimento_minimo_fabricacao_m, 30) && okNum(x.quantidade, 1, 500));
+      if (validos.length) {
+        p.grupos.push({ telhaId: telha.id, nome: telha.nome, cortes: validos, ambiente: null });
+        p.familiaFoco = null;
+        p.maisProdutos = null; // volta a perguntar se tem mais
+      }
+      continue;
+    }
+
+    // caminho B — ambiente: o CÓDIGO calcula o romaneio
+    if (okNum(np.comprimentoGalpaoM, 1, 500) && okNum(np.larguraGalpaoM, 1, 200) &&
+        (np.quedas === 1 || np.quedas === 2)) {
+      try {
+        const rom = calcularRomaneio({
+          comprimentoGalpaoM: Number(np.comprimentoGalpaoM),
+          larguraGalpaoM: Number(np.larguraGalpaoM),
+          quedas: np.quedas, comEstrutura: false,
+        }, telha, catalogo);
+        p.grupos.push({
+          telhaId: telha.id, nome: telha.nome, cortes: rom.cortes,
+          ambiente: { comprimentoGalpaoM: Number(np.comprimentoGalpaoM), larguraGalpaoM: Number(np.larguraGalpaoM), quedas: np.quedas },
+        });
+        p.memoriaCalculo = (p.memoriaCalculo || []).concat(rom.memoria);
+        p.familiaFoco = null;
+        p.maisProdutos = null;
+        const linhas = rom.cortes.map((x) => `• ${x.quantidade} peças de ${x.comprimentoM}m`).join('\n');
+        acoes.push({ type: 'text', text: `📐 *${telha.nome}* — calculei:\n\n${linhas}` });
+        if (rom.avisos.length) acoes.push({ type: 'text', text: '⚠️ ' + rom.avisos.join('\n⚠️ ') });
+        if (rom.escalarParaVendedor) acoes.push({ type: 'handoff', motivo: 'Caso fora do padrão no cálculo' });
+      } catch (e) {
+        acoes.push({ type: 'text', text: `Não consegui calcular a ${telha.nome} com essas medidas 😕` });
+        acoes.push({ type: 'handoff', motivo: 'Erro no romaneio: ' + e.message });
+      }
+    }
   }
 
-  if (campos.telhaId && catalogo.telhas.some(t => t.id === campos.telhaId)) {
-    ficha.pedido.telhaId = campos.telhaId;
-    const t = catalogo.telhas.find(x => x.id === campos.telhaId);
-    ficha.pedido.familia = t.familia; // mantém o funil coerente
-    if (t.forro_integrado) ficha.pedido.forroId = 'FR-NENHUM';
-  }
-  if (campos.forroId && catalogo.forros.some(f => f.id === campos.forroId)) {
-    const t = catalogo.telhas.find(x => x.id === ficha.pedido.telhaId);
-    const compativel = !t || !Array.isArray(t.forros_compativeis) || !t.forros_compativeis.length ||
-      t.forros_compativeis.includes(campos.forroId);
-    if ((!t || !t.forro_integrado) && compativel) ficha.pedido.forroId = campos.forroId;
-  }
-  if (campos.estruturaId && catalogo.estruturas.some(e => e.id === campos.estruturaId)) {
-    ficha.pedido.estruturaId = campos.estruturaId;
-  }
-  if (okNum(campos.areaM2, 1, 2000)) ficha.pedido.areaM2 = Number(campos.areaM2);
-  if (okNum(campos.cumeeiraM, 0, 500)) ficha.pedido.cumeeiraM = Number(campos.cumeeiraM);
-  if (okNum(campos.rufoM, 0, 500)) ficha.pedido.rufoM = Number(campos.rufoM);
-  if (okNum(campos.calhaM, 0, 500)) ficha.pedido.calhaM = Number(campos.calhaM);
-  if (typeof campos.nome === 'string' && campos.nome.trim().length >= 2) ficha.cliente.nome = campos.nome.trim();
-  if (typeof campos.cidade === 'string' && campos.cidade.trim().length >= 2) ficha.cliente.cidade = campos.cidade.trim();
-  // endereço: exige rua + número (frete depende dele) — validação do CÓDIGO, não da IA
+  if (typeof campos.nome === 'string' && campos.nome.trim().length >= 2) c.nome = campos.nome.trim();
+  if (typeof campos.cidade === 'string' && campos.cidade.trim().length >= 2) c.cidade = campos.cidade.trim();
   if (typeof campos.endereco === 'string' && campos.endereco.trim().length >= 8 && /\d/.test(campos.endereco)) {
-    ficha.cliente.endereco = campos.endereco.trim();
+    c.endereco = campos.endereco.trim();
   }
-
-  // telha sem forro escolhida e cliente não quer forro → IA manda forroId FR-NENHUM; default:
-  if (ficha.pedido.telhaId && ficha.pedido.forroId === undefined) ficha.pedido.forroId = null;
 }
 
-const fichaCompleta = (ficha) =>
-  CAMPOS_OBRIGATORIOS.every(([obj, campo]) => ficha[obj][campo] !== null && ficha[obj][campo] !== undefined) &&
-  ficha.pedido.forroId !== null && ficha.pedido.forroId !== undefined;
-
-/** Resumo de confirmação — montado pelo CÓDIGO com dados validados, não pela IA. */
-function resumoConfirmacao(ficha, catalogo) {
-  const t = catalogo.telhas.find(x => x.id === ficha.pedido.telhaId);
-  const f = catalogo.forros.find(x => x.id === ficha.pedido.forroId);
-  const e = catalogo.estruturas.find(x => x.id === ficha.pedido.estruturaId);
+/** Resumo montado pelo CÓDIGO com dados já validados. */
+function resumoConfirmacao(ficha) {
+  const linhas = ficha.pedido.grupos.map((g, i) =>
+    `*${i + 1}. ${g.nome}*\n` + g.cortes.map((c) => `   • ${c.quantidade} x ${c.comprimentoM}m`).join('\n')
+  ).join('\n');
+  const met = ficha.pedido.grupos.reduce((s, g) => s + metrosDe(g.cortes), 0);
   return (
-    `✅ *Confere pra mim, ${ficha.cliente.nome}?*\n\n` +
-    `• Telha: ${t.nome}\n` +
-    `• Forro: ${t.forro_integrado ? 'Isopor integrado à telha' : f.nome}\n` +
-    `• Estrutura: ${e.nome}\n` +
-    `• Área: ${ficha.pedido.areaM2} m²\n` +
-    `• Cumeeira: ${ficha.pedido.cumeeiraM} m · Rufo: ${ficha.pedido.rufoM} m · Calha: ${ficha.pedido.calhaM} m\n` +
-    `• Entrega: ${ficha.cliente.endereco} — ${ficha.cliente.cidade}\n\n` +
+    `✅ *Confere pra mim, ${ficha.cliente.nome}?*\n\n${linhas}\n\n` +
+    `*Metragem total:* ${met.toFixed(3)} mts\n` +
+    `*Estrutura:* ${ficha.pedido.comEstrutura ? 'sim' : 'não'}\n` +
+    `*Entrega:* ${ficha.cliente.endereco} — ${ficha.cliente.cidade}\n\n` +
     `Posso gerar o orçamento em PDF? (*sim* / *não*)`
   );
 }
 
-/**
- * Processa uma mensagem no modo conversacional.
- * Retorna { acoes, confirmar } — confirmar=true quando a ficha fechou
- * e o flow deve mudar a etapa pra CONFIRMA.
- */
 async function coletar(ficha, texto, catalogo) {
   const acoes = [];
-
-  // histórico curto pra IA manter o fio da conversa (o estado REAL vive na ficha)
   ficha.historico = (ficha.historico || []).slice(-8);
   ficha.historico.push({ role: 'user', content: String(texto).slice(0, 500) });
 
@@ -205,35 +194,50 @@ async function coletar(ficha, texto, catalogo) {
     return { acoes: [{ type: 'text', text: 'Opa, tive uma instabilidade aqui 🙈 Pode repetir, por favor?' }], confirmar: false };
   }
 
-  aplicarCampos(ficha, r.campos, catalogo);
+  if (r.reply) ficha.historico.push({ role: 'assistant', content: r.reply });
+  aplicarCampos(ficha, r.campos, catalogo, acoes);
 
-  // fotos de produtos: só envia o que EXISTE no catálogo e TEM imagem cadastrada
   if (Array.isArray(r.fotos)) {
     for (const id of r.fotos.slice(0, 4)) {
-      const p = catalogo.telhas.find(t => t.id === id);
-      if (p && p.imagem) acoes.push({ type: 'image', url: p.imagem, caption: p.nome });
+      const prod = catalogo.telhas.find((t) => t.id === id);
+      if (prod && prod.imagem) acoes.push({ type: 'image', url: prod.imagem, caption: prod.nome });
     }
   }
 
   if (r.handoff) {
     acoes.push({ type: 'handoff', motivo: 'Solicitado na conversa (IA)' });
-    acoes.push({ type: 'text', text: r.reply || 'Vou te passar pra um dos nossos vendedores, só um instante! 👍' });
+    acoes.push({ type: 'text', text: r.reply || 'Vou te passar pra um vendedor, só um instante 👍' });
     return { acoes, confirmar: false, humano: true };
   }
 
-  if (fichaCompleta(ficha)) {
-    // ficha fechou → o CÓDIGO assume: resumo determinístico + confirmação
-    if (r.reply) {
-      ficha.historico.push({ role: 'assistant', content: r.reply });
-      acoes.push({ type: 'text', text: r.reply });
+  // estrutura pedida: calcula os perfis com base no maior corte e no vão mais restritivo
+  const p = ficha.pedido;
+  if (p.comEstrutura && !p.perfis && p.grupos?.length) {
+    const comAmb = p.grupos.find((g) => g.ambiente);
+    if (comAmb) {
+      const perfil = (catalogo.perfis || []).find((x) => x.tipo === 'terca');
+      if (perfil) {
+        let maior = 0, vaoMax = Infinity;
+        for (const g of p.grupos) {
+          const t = catalogo.telhas.find((x) => x.id === g.telhaId);
+          maior = Math.max(maior, ...g.cortes.map((c) => c.comprimentoM));
+          vaoMax = Math.min(vaoMax, t.vao_maximo_m || catalogo.engenharia.vao_maximo_terca_padrao_m);
+        }
+        const tercas = Math.ceil(maior / vaoMax) + 1;
+        const metros = Math.round(tercas * comAmb.ambiente.comprimentoGalpaoM * 100) / 100;
+        p.perfis = [{ perfilId: perfil.id, metros }];
+        acoes.push({ type: 'text', text: `🔧 Estrutura: ${tercas} terças → *${metros}m* de ${perfil.nome}.` });
+      }
     }
-    acoes.push({ type: 'text', text: resumoConfirmacao(ficha, catalogo) });
+  }
+
+  if (!faltantes(ficha).length) {
+    if (r.reply) acoes.push({ type: 'text', text: r.reply });
+    acoes.push({ type: 'text', text: resumoConfirmacao(ficha) });
     return { acoes, confirmar: true };
   }
 
-  const reply = r.reply || 'Pode me contar mais sobre o que você precisa?';
-  ficha.historico.push({ role: 'assistant', content: reply });
-  acoes.push({ type: 'text', text: reply });
+  acoes.push({ type: 'text', text: r.reply || 'Pode me contar mais sobre o que você precisa?' });
   return { acoes, confirmar: false };
 }
 

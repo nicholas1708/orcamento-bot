@@ -24,6 +24,7 @@ app.get('/simulador', (_req, res) => res.sendFile(path.join(__dirname, 'simulado
 // Mesmo catálogo + mesmo motor determinístico do WhatsApp, em formato de "slides".
 const { getCatalogo } = require('./pricing');
 const { calcularOrcamento } = require('./engine');
+const { calcularRomaneio } = require('./romaneio');
 const { gerarPDF } = require('./pdf');
 
 app.get('/orcamento', (_req, res) => res.sendFile(path.join(__dirname, 'orcamento.html')));
@@ -31,53 +32,75 @@ app.get('/orcamento', (_req, res) => res.sendFile(path.join(__dirname, 'orcament
 app.get('/api/catalogo', async (_req, res) => {
   try {
     const c = await getCatalogo();
-    // só o que o front precisa (não expõe coeficientes/custos internos)
     res.json({
-      telhas: c.telhas.map(t => ({ id: t.id, familia: t.familia, nome: t.nome, preco: t.preco, imagem: t.imagem || null, atributos: t.atributos || {}, forro_integrado: t.forro_integrado })),
-      estruturas: c.estruturas.map(e => ({ id: e.id, nome: e.nome, descricao: e.descricao || '', preco_por_m2: e.preco_por_m2 })),
-      regras: { area_minima_m2: c.regras.area_minima_m2, area_maxima_autoatendimento_m2: c.regras.area_maxima_autoatendimento_m2 },
+      empresa: { razao_social: c.empresa.razao_social, site: c.empresa.site },
+      telhas: c.telhas.map((t) => ({
+        id: t.id, familia: t.familia, nome: t.nome, preco: t.preco,
+        imagem: t.imagem || null, atributos: t.atributos || {},
+        largura_util_m: t.largura_util_m, comprimento_maximo_m: t.comprimento_maximo_m,
+        forro_integrado: t.forro_integrado,
+      })),
+      temEstrutura: (c.perfis || []).some((p) => p.tipo === 'terca'),
+      engenharia: {
+        comprimento_minimo_fabricacao_m: c.engenharia.comprimento_minimo_fabricacao_m,
+        comprimento_maximo_fabricacao_m: c.engenharia.comprimento_maximo_fabricacao_m,
+      },
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/** Prévia do romaneio: ambiente → lista de cortes (sem gerar PDF) */
+app.post('/api/romaneio', async (req, res) => {
+  try {
+    const { telhaId, comprimentoGalpaoM, larguraGalpaoM, quedas, comEstrutura } = req.body || {};
+    const catalogo = await getCatalogo();
+    const telha = catalogo.telhas.find((t) => t.id === telhaId);
+    if (!telha) return res.status(400).json({ error: 'Telha inválida.' });
+    const rom = calcularRomaneio(
+      { comprimentoGalpaoM, larguraGalpaoM, quedas, comEstrutura }, telha, catalogo
+    );
+    res.json(rom);
+  } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
 app.post('/api/orcamento', async (req, res) => {
   try {
     const { pedido, cliente } = req.body || {};
-    // REGRA: sem endereço não existe orçamento (frete depende da localidade)
+    // REGRA: sem endereço não existe orçamento (entrega/frete dependem dele)
     if (!cliente?.nome || !cliente?.cidade || !cliente?.endereco || !/\d/.test(cliente.endereco)) {
-      return res.status(400).json({ error: 'Endereço completo (rua, número e bairro), cidade e nome são obrigatórios.' });
+      return res.status(400).json({ error: 'Nome, cidade e endereço completo (rua, número e bairro) são obrigatórios.' });
     }
     if (!cliente?.telefone || String(cliente.telefone).replace(/\D/g, '').length < 10) {
       return res.status(400).json({ error: 'Informe um telefone/WhatsApp válido com DDD.' });
     }
     const catalogo = await getCatalogo();
-    const t = catalogo.telhas.find(x => x.id === pedido?.telhaId);
-    const e = catalogo.estruturas.find(x => x.id === pedido?.estruturaId);
-    if (!t || !e) return res.status(400).json({ error: 'Produto ou estrutura inválidos.' });
+    const grupos = Array.isArray(pedido?.grupos) && pedido.grupos.length
+      ? pedido.grupos
+      : [{ telhaId: pedido?.telhaId, cortes: pedido?.cortes }];
+    if (!grupos.length || grupos.some((g) => !catalogo.telhas.some((t) => t.id === g.telhaId))) {
+      return res.status(400).json({ error: 'Produto inválido.' });
+    }
 
-    const orcamento = calcularOrcamento(
-      { ...pedido, forroId: pedido.forroId || 'FR-NENHUM', cidade: cliente.cidade },
-      catalogo
-    );
+    const orcamento = calcularOrcamento({ grupos, perfis: pedido.perfis || [] }, catalogo);
+
     const numero = 'WEB-' + Date.now().toString(36).toUpperCase();
     const pdfPath = path.join(__dirname, 'out', `orcamento-${numero}.pdf`);
     await gerarPDF({
       cliente,
-      pedido: {
-        ...pedido, numero,
-        telhaNome: t.nome,
-        forroNome: t.forro_integrado ? 'Integrado à telha' : 'Sem forro',
-        estruturaNome: e.nome,
-      },
+      pedido: { numero, vendedor: catalogo.empresa.vendedor_padrao },
       orcamento, catalogo,
-      empresa: {
-        nome: process.env.EMPRESA_NOME || 'Empresa',
-        telefone: process.env.EMPRESA_TELEFONE || '',
-        cidade: process.env.EMPRESA_CIDADE || '',
-      },
     }, pdfPath);
-    console.log(`[WEB] Orçamento ${numero} — ${cliente.nome} (${cliente.telefone}) — R$ ${orcamento.total}`);
-    res.json({ numero, total: orcamento.total, avisos: orcamento.avisos, pdf: '/out/' + path.basename(pdfPath) });
+
+    console.log(`[WEB] Orçamento ${numero} — ${cliente.nome} (${cliente.telefone}) — ${orcamento.metragemTotal}mts — R$ ${orcamento.totalAvista}`);
+    res.json({
+      numero,
+      totalAvista: orcamento.totalAvista,
+      metragemTotal: orcamento.metragemTotal,
+      totalPecas: orcamento.totalPecas,
+      pagamentos: orcamento.pagamentos,
+      avisos: orcamento.avisos,
+      pdf: '/out/' + path.basename(pdfPath),
+    });
   } catch (e) {
     console.error('Erro /api/orcamento:', e);
     res.status(500).json({ error: e.message });

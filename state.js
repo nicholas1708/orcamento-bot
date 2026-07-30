@@ -2,7 +2,7 @@
  * ESTADO DA CONVERSA — a "ficha" de cada cliente, persistida em disco.
  * O contexto vive AQUI, não na memória de nenhuma IA. Cliente pode sumir
  * e voltar horas depois: a ficha continua intacta.
- * (Base: 1 arquivo JSON por chat. Em produção com volume, trocar por SQLite/Postgres.)
+ * (1 arquivo JSON por chat. Com volume, trocar por SQLite/Postgres.)
  */
 const fs = require('fs');
 const path = require('path');
@@ -17,11 +17,29 @@ function novaFicha(chatId) {
     chatId,
     etapa: 'INICIO',
     tentativasErro: 0,
-    cliente: { nome: null, cidade: null, endereco: null, telefone: chatId.replace(/@.*$/, '') },
-    pedido: {
-      telhaId: null, forroId: null, estruturaId: null,
-      areaM2: null, cumeeiraM: null, rufoM: null, calhaM: null,
+    cliente: {
+      nome: null, cidade: null, endereco: null, documento: null,
+      cep: null, estado: null, email: null,
+      telefone: chatId.replace(/@.*$/, ''),
     },
+    pedido: {
+      // VÁRIOS produtos por orçamento (ex: fábrica com TP40 + translúcida)
+      grupos: [],                 // [{ telhaId, nome, cortes:[{comprimentoM,quantidade}], ambiente? }]
+      // produto sendo montado agora
+      atual: {
+        familia: null,
+        telhaId: null,
+        cortes: null,             // caminho A — cliente informa
+        comprimentoGalpaoM: null, // caminho B — sistema calcula
+        larguraGalpaoM: null,
+        quedas: null,
+      },
+      // estrutura é OPCIONAL e vale para o orçamento todo
+      comEstrutura: null,
+      perfis: null,               // [{ perfilId, metros }]
+      memoriaCalculo: null,       // rastro do cálculo (auditoria)
+    },
+    anexos: [],
     criadoEm: new Date().toISOString(),
     atualizadoEm: null,
   };
@@ -33,7 +51,7 @@ function carregar(chatId) {
   try {
     return JSON.parse(fs.readFileSync(f, 'utf8'));
   } catch {
-    return novaFicha(chatId); // arquivo corrompido → recomeça
+    return novaFicha(chatId);
   }
 }
 
