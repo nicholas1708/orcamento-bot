@@ -18,6 +18,8 @@
 
   "pagamento": {
     "_como_funciona": "Acréscimo percentual sobre o total à vista. Coeficientes extraídos do orçamento real nº 11247 — confirmar com o financeiro.",
+    "aplicar_sobre": "total",
+    "_aplicar_sobre_opcoes": "'total' = parcela produtos + frete · 'produtos' = frete fica fora do parcelamento (pago à parte)",
     "condicoes_avista": "À Vista (Data do Pedido 50% / CONTRA EMBARQUE 50%)",
     "opcoes": [
       { "parcelas": 1,  "acrescimo_pct": 4.385,  "descricao": "1 x Cartão Crédito Via LINK de Pagamento" },
@@ -101,15 +103,16 @@
     "frete": "FRETE COMPARTILHADO",
     "pagamento_observacao": "FRETE GRÁTIS - VALOR JÁ ENTREGUE NA OBRA",
     "transportadora": "A L DE LIMA REPRESENTACAO MATERIAIS DE CONSTRUCAO",
+    "_unidades_nota": "Sem telefone por unidade: o contato é do representante e já aparece no cabeçalho. Estes textos são só reserva — quando 3-unidades.csv for importado, o PDF passa a usar o cadastro.",
     "unidades": [
-      "UNIDADE 1 | Rod SP308 (Açucar, Do), S/N - KM - 159 | Dois Corregos | Piracicaba - SP | CEP 13419-150 | (11) 96231-4953",
-      "UNIDADE 2 | Av. Litério Grecco, 456 | Fernandópolis, SP | 15600-000 | (17) 98173-4676",
-      "UNIDADE 3 | Rua Osvaldo Almeida de Souza, 32 | Distrito Industrial | Sertãozinho - SP | 14176-122 | (17) 98173-4676",
-      "UNIDADE 4 | Dos Nascimento, 354 | Congonhal | Cambuí - MG | 37600-000 | (17) 98173-4676",
-      "UNIDADE 5 | Rodovia BR 101, nº 17175 Km 63,5 | ARAQUARI-SC | 89245-000 | (17) 98173-4676",
-      "UNIDADE 6 | Av. das Palmeiras, Lote C Industrial | Capão do Pequi | VÁRZEA GRANDE-MT | 78134-302 | (17) 98173-4676",
-      "UNIDADE 7 | Rua VP-5D Qd.08 Módulos 06/08 e 10/21 | DAIA | ANÁPOLIS-GO | 75132-120 | (17) 98173-4676",
-      "UNIDADE 8 | Rodovia Luiz Gonzaga, BR 232, Km 51,8 | Distrito Industrial | VITÓRIO DE SANTO ANTÃO-PE | 55613-010 | (17) 98173-4676"
+      "UNIDADE 1 | Rod SP308 (Açúcar) S/N KM 159 | Dois Córregos | Piracicaba - SP | CEP 13419-150",
+      "UNIDADE 2 | Av. Litério Grecco, 456 | Fernandópolis - SP | CEP 15600-000",
+      "UNIDADE 3 | Rua Osvaldo Almeida de Souza, 32 | Distrito Industrial | Sertãozinho - SP | CEP 14176-122",
+      "UNIDADE 4 | Dos Nascimento, 354 | Congonhal | Cambuí - MG | CEP 37600-000",
+      "UNIDADE 5 | Rodovia BR 101, nº 17175 Km 63,5 | Araquari - SC | CEP 89245-000",
+      "UNIDADE 6 | Av. das Palmeiras, Lote C Industrial | Capão do Pequi | Várzea Grande - MT | CEP 78134-302",
+      "UNIDADE 7 | Rua VP-5D Qd.08 Módulos 06/08 e 10/21 | DAIA | Anápolis - GO | CEP 75132-120",
+      "UNIDADE 8 | Rodovia Luiz Gonzaga BR 232 Km 51,8 | Distrito Industrial | Vitória de Santo Antão - PE | CEP 55613-010"
     ],
     "atencao": [
       "A 4A não envia e-mails ofertando vantagens financeiras na liquidação de boletos. Confira sempre o favorecido durante o pagamento!",

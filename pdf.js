@@ -200,10 +200,30 @@ async function gerarPDF({ cliente, pedido, orcamento, catalogo }, destino) {
   doc.text(BRL(orcamento.totalAvista), col.sub, yTot + 4, { width: col.subW, align: 'right' });
   doc.y = yTot + 20;
 
-  doc.font('Helvetica-Bold').fontSize(8.5)
-    .text(`PRODUTOS: ${BRL(orcamento.totalAvista)}`, M, doc.y, { width: W - 4, align: 'right' })
-    .fontSize(10)
-    .text(`TOTAL: R$ ${BRL(orcamento.totalAvista)}`, M, doc.y + 2, { width: W - 4, align: 'right' });
+  // ── TOTAIS: frete é cobrado À PARTE, em linha própria ─────────────
+  doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000')
+    .text(`PRODUTOS: ${BRL(orcamento.totalProdutos)}`, M, doc.y, { width: W - 4, align: 'right' });
+
+  const fr = orcamento.frete;
+  if (fr) {
+    const linhaFrete = !Number.isFinite(fr.valor)
+      ? 'FRETE: a confirmar pelo vendedor'
+      : fr.valor === 0 ? 'FRETE: GRÁTIS' : `FRETE: ${BRL(fr.valor)}`;
+    doc.fontSize(8.5).text(linhaFrete, M, doc.y + 1, { width: W - 4, align: 'right' });
+    if (fr.descricao) {
+      doc.font('Helvetica').fontSize(6.8).fillColor('#555')
+        .text(fr.descricao, M, doc.y, { width: W - 4, align: 'right' });
+      doc.font('Helvetica-Bold').fillColor('#000');
+    }
+  }
+
+  doc.fontSize(10)
+    .text(`TOTAL: R$ ${BRL(orcamento.totalAvista)}`, M, doc.y + 3, { width: W - 4, align: 'right' });
+  if (fr && !Number.isFinite(fr.valor)) {
+    doc.font('Helvetica-Oblique').fontSize(6.8).fillColor('#7a5b00')
+      .text('Total sem o frete — o vendedor confirma o valor da entrega.', M, doc.y + 1, { width: W - 4, align: 'right' });
+    doc.fillColor('#000');
+  }
   doc.moveDown(1);
 
   // ── DADOS DO PAGAMENTO ────────────────────────────────────────────
@@ -223,7 +243,12 @@ async function gerarPDF({ cliente, pedido, orcamento, catalogo }, destino) {
   doc.text(dataBR(Date.now()), cP.venc, yP + 22, { lineBreak: false });
   doc.text(BRL(orcamento.totalAvista), cP.val, yP + 22, { lineBreak: false });
   doc.text('A Combinar', cP.forma, yP + 22, { lineBreak: false });
-  doc.text(txt.pagamento_observacao || '', cP.obs, yP + 22, { width: W - (cP.obs - M) - 6, lineBreak: false });
+  doc.text(
+    orcamento.frete && Number.isFinite(orcamento.frete.valor) && orcamento.frete.valor > 0
+      ? 'FRETE COBRADO À PARTE — INCLUÍDO NO TOTAL'
+      : (txt.pagamento_observacao || ''),
+    cP.obs, yP + 22, { width: W - (cP.obs - M) - 6, lineBreak: false }
+  );
   doc.y = yP + 34 + 10;
 
   // ── TRANSPORTADORA ────────────────────────────────────────────────
@@ -233,8 +258,14 @@ async function gerarPDF({ cliente, pedido, orcamento, catalogo }, destino) {
   }
 
   // ── OBSERVAÇÕES ───────────────────────────────────────────────────
+  // As unidades saem do cadastro (sem telefone: o contato é do representante,
+  // e já aparece no cabeçalho). Cai nos textos fixos se ainda não houver cadastro.
   faixa('OBSERVAÇÕES');
-  for (const u of (txt.unidades || [])) par(u, { size: 6.3, cor: '#333' });
+  const unidadesTexto = (catalogo.unidades || []).filter((u) => u.ativa).length
+    ? catalogo.unidades.filter((u) => u.ativa).map((u) =>
+        `${u.nome.toUpperCase()} | ${u.endereco || ''} | ${u.cidade} - ${u.uf} | CEP ${u.cep}`)
+    : (txt.unidades || []);
+  for (const u of unidadesTexto) par(u, { size: 6.3, cor: '#333' });
   linhaTracejada();
   par('Atenção!', { size: 7, font: 'Helvetica-Bold' });
   for (const a of (txt.atencao || [])) par('• ' + a, { size: 6.3, cor: '#333' });

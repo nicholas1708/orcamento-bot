@@ -109,4 +109,7 @@ async function getCatalogo() {
   return cache;
 }
 
-module.exports = { getCatalogo };
+/** Zera o cache — usado após importar planilhas pelo painel. */
+function limparCache() { cache = null; cacheAt = 0; }
+
+module.exports = { getCatalogo, limparCache };

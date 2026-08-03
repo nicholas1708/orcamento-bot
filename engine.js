@@ -129,8 +129,17 @@ function calcularOrcamento(pedido, catalogo) {
     }
   }
 
-  // ── 3) Totais e limites de autoatendimento ────────────────────────
-  const totalAvista = money(itens.reduce((s, i) => s + i.subtotal, 0));
+  // ── 3) Totais: FRETE É COBRADO À PARTE ────────────────────────────
+  // Não entra como item nem é diluído no preço do produto: aparece em
+  // linha própria e soma no total geral.
+  const totalProdutos = money(itens.reduce((s, i) => s + i.subtotal, 0));
+  let totalFrete = 0;
+  if (pedido.frete) {
+    if (Number.isFinite(pedido.frete.valor)) totalFrete = money(pedido.frete.valor);
+    if (pedido.frete.valor === 0 && pedido.frete.descricao) avisos.push(pedido.frete.descricao);
+    if (pedido.frete.aviso) avisos.push(pedido.frete.aviso);
+  }
+  const totalAvista = money(totalProdutos + totalFrete);
 
   const r = catalogo.regras;
   if (metragemTotal > r.metragem_maxima_autoatendimento_m) {
@@ -143,8 +152,11 @@ function calcularOrcamento(pedido, catalogo) {
   }
 
   // ── 4) Formas de pagamento (acréscimo cadastrado, nunca inventado) ─
+  // Base configurável: "produtos" (frete pago à parte, fora do cartão) ou
+  // "total" (frete parcelado junto). Padrão: produtos + frete.
+  const base = catalogo.pagamento?.aplicar_sobre === 'produtos' ? totalProdutos : totalAvista;
   const pagamentos = (catalogo.pagamento?.opcoes || []).map((o) => {
-    const total = money(totalAvista * (1 + o.acrescimo_pct / 100));
+    const total = money(base * (1 + o.acrescimo_pct / 100));
     return {
       parcelas: o.parcelas,
       descricao: o.descricao,
@@ -154,7 +166,9 @@ function calcularOrcamento(pedido, catalogo) {
   });
 
   return {
-    itens, metragemTotal, totalPecas, totalAvista,
+    itens, metragemTotal, totalPecas,
+    totalProdutos, totalFrete, totalAvista,
+    frete: pedido.frete || null,
     pagamentos, resumoPorProduto, avisos, escalarParaVendedor,
   };
 }

@@ -3,4 +3,6 @@ sessions/
 out/
 img-cache/
 clientes/
+orcamentos/
+cache-geo.json
 .env

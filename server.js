@@ -11,18 +11,110 @@ const app = express();
 app.use(express.json({ limit: '5mb' }));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
-app.get('/', (_req, res) => res.redirect('/simulador')); // raiz → simulador
+app.get('/', (_req, res) => res.redirect('/orcamento')); // raiz → wizard do cliente
+
+// ===== ÁREA INTERNA (painel + PDFs) — protegida por senha =====
+// Os orçamentos têm nome, telefone e endereço de clientes: nunca deixar público.
+const PAINEL_SENHA = process.env.PAINEL_SENHA || '';
+function exigirSenha(req, res, next) {
+  if (!PAINEL_SENHA) {
+    return res.status(503).send('Painel desativado: defina PAINEL_SENHA nas variáveis de ambiente.');
+  }
+  const h = req.headers.authorization || '';
+  const [tipo, dados] = h.split(' ');
+  if (tipo === 'Basic' && dados) {
+    const [, senha] = Buffer.from(dados, 'base64').toString().split(':');
+    if (senha === PAINEL_SENHA) return next();
+  }
+  res.set('WWW-Authenticate', 'Basic realm="Painel 4A"');
+  return res.status(401).send('Acesso restrito.');
+}
 
 // ===== SIMULADOR LOCAL (testes sem WhatsApp) =====
 // Abra /simulador — conversa com o mesmo flow.js do WhatsApp.
 const path = require('path');
-app.use('/out', express.static(path.join(__dirname, 'out'))); // PDFs acessíveis no navegador
+const orcamentosDb = require('./orcamentos');
 
-app.get('/simulador', (_req, res) => res.sendFile(path.join(__dirname, 'simulador.html')));
+// PDFs: SEM senha — o cliente precisa baixar o próprio orçamento na hora.
+// A proteção é o nome do arquivo, que leva um token aleatório: o link só é
+// conhecido por quem gerou (e pela empresa, pelo painel). Sem listagem de
+// diretório, não dá pra descobrir os orçamentos dos outros.
+app.use('/out', express.static(path.join(__dirname, 'out'), { index: false }));
+
+app.get('/simulador', exigirSenha, (_req, res) => res.sendFile(path.join(__dirname, 'simulador.html')));
+
+// ── PAINEL ────────────────────────────────────────────────────────────
+app.get('/painel', exigirSenha, (_req, res) => res.sendFile(path.join(__dirname, 'painel.html')));
+
+app.get('/api/painel/orcamentos', exigirSenha, (req, res) => {
+  const { de, ate, canal, origem, status, busca } = req.query;
+  const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  let lista = orcamentosDb.listar();
+
+  if (de) lista = lista.filter((o) => o.criadoEm >= de);
+  if (ate) lista = lista.filter((o) => o.criadoEm <= ate + 'T23:59:59');
+  if (canal) lista = lista.filter((o) => o.canal === canal);
+  if (origem) lista = lista.filter((o) => (o.origem || 'cliente') === origem);
+  if (status) lista = lista.filter((o) => o.status === status);
+  if (busca) {
+    const b = norm(busca);
+    lista = lista.filter((o) =>
+      norm(o.numero).includes(b) || norm(o.cliente?.nome).includes(b) ||
+      norm(o.cliente?.telefone).includes(b) || norm(o.cliente?.cidade).includes(b));
+  }
+  res.json({ orcamentos: lista, estatisticas: orcamentosDb.estatisticas(lista) });
+});
+
+// ── PAINEL › CADASTRO DE DADOS (upload das planilhas) ─────────────────
+app.get('/painel/dados', exigirSenha, (_req, res) => res.sendFile(path.join(__dirname, 'painel-dados.html')));
+
+/** Baixa o modelo de planilha (em branco ou com o que já está cadastrado). */
+app.get('/api/painel/modelo/:qual', exigirSenha, (req, res) => {
+  const mapa = { produtos: '1-produtos.csv', fretes: '2-fretes.csv', unidades: '3-unidades.csv' };
+  const arq = mapa[req.params.qual];
+  if (!arq) return res.status(404).send('Modelo não encontrado.');
+  res.download(path.join(__dirname, 'planilhas', arq));
+});
+
+/** Valida os CSVs enviados. Só grava quando "aplicar" vem true. */
+app.post('/api/painel/importar', exigirSenha, async (req, res) => {
+  try {
+    const { produtosCsv, fretesCsv, unidadesCsv, aplicar: confirmar } = req.body || {};
+    if (!produtosCsv && !fretesCsv && !unidadesCsv) {
+      return res.status(400).json({ error: 'Envie ao menos uma planilha.' });
+    }
+    const { processar, aplicar: montar } = require('./importador');
+    const arquivoCat = path.join(__dirname, 'catalogo.json');
+    const catalogo = JSON.parse(require('fs').readFileSync(arquivoCat, 'utf8'));
+
+    const r = processar({ produtosCsv, fretesCsv, unidadesCsv }, catalogo);
+
+    if (confirmar && r.ok) {
+      // guarda uma cópia antes de sobrescrever — dá pra voltar atrás
+      const backup = path.join(__dirname, 'catalogo.backup.json');
+      require('fs').writeFileSync(backup, JSON.stringify(catalogo, null, 2));
+      require('fs').writeFileSync(arquivoCat, JSON.stringify(montar(catalogo, r), null, 2));
+      limparCacheCatalogo();
+      console.log(`[PAINEL] Catálogo atualizado: ${r.resumo.produtos} produtos, ${r.resumo.faixasFrete} faixas de frete`);
+      return res.json({ ...r, aplicado: true });
+    }
+    res.json({ ...r, aplicado: false });
+  } catch (e) {
+    console.error('Erro /api/painel/importar:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/painel/status', exigirSenha, (req, res) => {
+  const { numero, status, nota } = req.body || {};
+  const r = orcamentosDb.atualizarStatus(numero, status, nota);
+  if (!r) return res.status(400).json({ error: 'Orçamento ou status inválido.' });
+  res.json({ ok: true, orcamento: r });
+});
 
 // ===== ORÇAMENTO SELF-SERVICE (wizard web) =====
 // Mesmo catálogo + mesmo motor determinístico do WhatsApp, em formato de "slides".
-const { getCatalogo } = require('./pricing');
+const { getCatalogo, limparCache: limparCacheCatalogo } = require('./pricing');
 const { calcularOrcamento } = require('./engine');
 const { calcularRomaneio, opcoesDeCorte, corteComTamanho } = require('./romaneio');
 const { gerarPDF } = require('./pdf');
@@ -101,10 +193,24 @@ app.post('/api/orcamento', async (req, res) => {
       return res.status(400).json({ error: 'Produto inválido.' });
     }
 
-    const orcamento = calcularOrcamento({ grupos, perfis: pedido.perfis || [] }, catalogo);
+    // frete é cobrado À PARTE: calculado aqui e somado como linha própria
+    const { calcularFrete } = require('./frete');
+    const previa = calcularOrcamento({ grupos, perfis: pedido.perfis || [] }, catalogo);
+    const frete = await calcularFrete(
+      { cep: cliente.cep, cidade: cliente.cidade, uf: cliente.estado },
+      {
+        metragemTotal: previa.metragemTotal,
+        totalProdutos: previa.totalProdutos,
+        codigos: grupos.map((g) => catalogo.telhas.find((t) => t.id === g.telhaId)?.codigo).filter(Boolean),
+      },
+      catalogo
+    );
+    const orcamento = calcularOrcamento({ grupos, perfis: pedido.perfis || [], frete }, catalogo);
 
     const numero = 'WEB-' + Date.now().toString(36).toUpperCase();
-    const pdfPath = path.join(__dirname, 'out', `orcamento-${numero}.pdf`);
+    // token aleatório no nome: deixa o link do PDF impossível de adivinhar
+    const token = require('crypto').randomBytes(8).toString('hex');
+    const pdfPath = path.join(__dirname, 'out', `orcamento-${numero}-${token}.pdf`);
     await gerarPDF({
       cliente,
       pedido: { numero, vendedor: catalogo.empresa.vendedor_padrao },
@@ -114,10 +220,21 @@ app.post('/api/orcamento', async (req, res) => {
     // grava o cadastro (mesma base do WhatsApp — chave é o telefone)
     require('./clientes').salvar(cliente);
 
+    // registra no histórico para o painel
+    orcamentosDb.salvar({
+      numero, canal: 'web',
+      origem: req.body?.vendedor ? 'vendedor' : 'cliente',
+      vendedor: req.body?.vendedor || null,
+      cliente, orcamento, grupos, pdfPath,
+    });
+
     console.log(`[WEB] Orçamento ${numero} — ${cliente.nome} (${cliente.telefone}) — ${orcamento.metragemTotal}mts — R$ ${orcamento.totalAvista}`);
     res.json({
       numero,
+      totalProdutos: orcamento.totalProdutos,
+      totalFrete: orcamento.totalFrete,
       totalAvista: orcamento.totalAvista,
+      frete: orcamento.frete,
       metragemTotal: orcamento.metragemTotal,
       totalPecas: orcamento.totalPecas,
       pagamentos: orcamento.pagamentos,

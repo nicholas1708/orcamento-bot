@@ -23,6 +23,9 @@ services:
       GC_ACCESS_TOKEN: ""
       GC_SECRET_TOKEN: ""
 
+      # Painel interno — obrigatório (protege /painel e os PDFs com dados de clientes)
+      PAINEL_SENHA: "DEFINIR_NO_PORTAINER"
+
       # Dados da empresa (aparecem no PDF)
       EMPRESA_NOME: "DEFINIR_NO_PORTAINER"
       EMPRESA_TELEFONE: "DEFINIR_NO_PORTAINER"
@@ -32,6 +35,7 @@ services:
       - orcamento-pdfs:/app/out            # PDFs gerados
       - orcamento-imgs:/app/img-cache      # fotos dos produtos (baixadas 1x)
       - orcamento-clientes:/app/clientes   # cadastro de clientes recorrentes
+      - orcamento-hist:/app/orcamentos     # histórico exibido no painel
     networks:
       - network_public
     deploy:
@@ -56,3 +60,4 @@ volumes:
   orcamento-pdfs:
   orcamento-imgs:
   orcamento-clientes:
+  orcamento-hist:

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cadastro de Produtos e Frete — 4A</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif}
+  body{background:#f1f5f9;color:#0f172a;padding:20px}
+  .wrap{max-width:880px;margin:0 auto}
+  header{display:flex;align-items:center;gap:14px;margin-bottom:8px}
+  header h1{font-size:22px}header .sp{flex:1}
+  .sub{color:#64748b;font-size:14px;margin-bottom:20px;line-height:1.55}
+  .btn{background:#0ea5e9;color:#fff;border:none;padding:11px 18px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn:hover{background:#0284c7}
+  .btn.g{background:#fff;color:#334155;border:1px solid #cbd5e1}
+  .btn:disabled{background:#cbd5e1;cursor:not-allowed}
+  .btn.ok{background:#16a34a}.btn.ok:hover{background:#15803d}
+  .passo{background:#fff;border:1px solid #e2e8f0;border-radius:13px;padding:18px;margin-bottom:14px}
+  .passo h2{font-size:16px;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+  .passo h2 i{background:#0ea5e9;color:#fff;width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-style:normal;font-weight:700}
+  .passo p{color:#64748b;font-size:13.5px;margin-bottom:12px;line-height:1.5}
+  .arqs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .arq{border:2px dashed #cbd5e1;border-radius:11px;padding:14px;text-align:center;cursor:pointer;transition:.15s}
+  .arq:hover{border-color:#7dd3fc;background:#f0f9ff}
+  .arq.tem{border-style:solid;border-color:#16a34a;background:#f0fdf4}
+  .arq b{display:block;font-size:13.5px;margin-bottom:3px}
+  .arq small{color:#64748b;font-size:11.5px;display:block}
+  .arq .st{font-size:11.5px;margin-top:6px;font-weight:600;color:#16a34a}
+  .modelos{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .modelos a{font-size:12.5px;color:#0369a1;text-decoration:none;border:1px solid #bae6fd;background:#f0f9ff;padding:6px 11px;border-radius:8px}
+  .modelos a:hover{background:#e0f2fe}
+  /* resultado */
+  .res{display:none}
+  .box{border-radius:11px;padding:14px;margin-bottom:10px;font-size:13.5px;line-height:1.55}
+  .box.err{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+  .box.warn{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+  .box.good{background:#f0fdf4;border:1px solid #86efac;color:#166534}
+  .box b{display:block;margin-bottom:6px}
+  .box ul{margin:0 0 0 18px}.box li{margin:3px 0}
+  .resumo{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:12px}
+  .rc{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px}
+  .rc b{display:block;font-size:20px;color:#0284c7}
+  .rc small{color:#64748b;font-size:11.5px}
+  .fams{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;font-size:13px;margin-bottom:12px}
+  .fams div{display:flex;justify-content:space-between;padding:3px 0;color:#334155}
+  .ajuda{background:#f8fafc;border-left:3px solid #0ea5e9;padding:12px 14px;border-radius:0 9px 9px 0;font-size:13px;color:#475569;line-height:1.6;margin-top:14px}
+  .ajuda b{color:#0f172a}
+  @media(max-width:720px){.arqs{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>📦 Cadastro de Produtos e Frete</h1>
+    <span class="sp"></span>
+    <a class="btn g" href="/painel">← Voltar ao painel</a>
+  </header>
+  <p class="sub">Aqui você atualiza o catálogo que o sistema usa para montar os orçamentos.
+    Baixe o modelo, preencha no Excel e envie de volta — o sistema confere tudo antes de aplicar.</p>
+
+  <div class="passo">
+    <h2><i>1</i> Baixe os modelos</h2>
+    <p>Os arquivos já vêm com o que está cadastrado hoje. Preencha ou corrija e salve como <b>CSV UTF-8</b>.</p>
+    <div class="modelos">
+      <a href="/api/painel/modelo/produtos">⬇️ Produtos</a>
+      <a href="/api/painel/modelo/fretes">⬇️ Tabela de frete</a>
+      <a href="/api/painel/modelo/unidades">⬇️ Unidades</a>
+    </div>
+  </div>
+
+  <div class="passo">
+    <h2><i>2</i> Envie as planilhas preenchidas</h2>
+    <p>Pode enviar as três ou só a que mudou — o que não for enviado permanece como está.</p>
+    <div class="arqs">
+      <label class="arq" id="a-produtos">
+        <input type="file" accept=".csv,text/csv" hidden onchange="pegar(this,'produtos')">
+        <b>📄 Produtos</b><small>telhas, preços e regras de corte</small><div class="st"></div>
+      </label>
+      <label class="arq" id="a-fretes">
+        <input type="file" accept=".csv,text/csv" hidden onchange="pegar(this,'fretes')">
+        <b>🚚 Frete</b><small>faixas de km e valores</small><div class="st"></div>
+      </label>
+      <label class="arq" id="a-unidades">
+        <input type="file" accept=".csv,text/csv" hidden onchange="pegar(this,'unidades')">
+        <b>🏭 Unidades</b><small>fábricas e CEPs</small><div class="st"></div>
+      </label>
+    </div>
+    <div style="margin-top:14px"><button class="btn" id="bt-conf" onclick="conferir()" disabled>Conferir planilhas</button></div>
+  </div>
+
+  <div class="passo res" id="res">
+    <h2><i>3</i> Confira antes de aplicar</h2>
+    <div id="conteudo"></div>
+    <div id="acoes" style="margin-top:14px"></div>
+  </div>
+
+  <div class="ajuda">
+    <b>Como o sistema valida:</b> ele recusa a planilha se faltar <b>largura útil</b>, <b>preço</b> ou
+    <b>comprimento máximo</b> em algum produto — e mostra a linha exata do problema. Avisos (em amarelo)
+    não impedem a aplicação, mas vale conferir.<br><br>
+    <b>Nada é perdido:</b> ao aplicar, o catálogo anterior é salvo como cópia de segurança automaticamente.
+  </div>
+</div>
+
+<script>
+const csv={produtos:null,fretes:null,unidades:null};
+let ultimo=null;
+
+function pegar(input,qual){
+  const f=input.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    csv[qual]=r.result;
+    const el=document.getElementById('a-'+qual);
+    el.classList.add('tem');
+    el.querySelector('.st').textContent='✓ '+f.name;
+    document.getElementById('bt-conf').disabled=false;
+  };
+  r.readAsText(f,'UTF-8');
+}
+
+async function conferir(aplicar=false){
+  const bt=document.getElementById('bt-conf');
+  bt.disabled=true;bt.textContent='Conferindo...';
+  const r=await fetch('/api/painel/importar',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({produtosCsv:csv.produtos,fretesCsv:csv.fretes,unidadesCsv:csv.unidades,aplicar})})
+    .then(x=>x.json()).catch(()=>({error:'Falha de conexão.'}));
+  bt.disabled=false;bt.textContent='Conferir planilhas';
+  ultimo=r;
+  mostrar(r);
+}
+
+function mostrar(r){
+  const box=document.getElementById('res');box.style.display='block';
+  const c=document.getElementById('conteudo');
+  const a=document.getElementById('acoes');
+
+  if(r.error){c.innerHTML=`<div class="box err"><b>Erro</b>${r.error}</div>`;a.innerHTML='';return;}
+
+  if(r.aplicado){
+    c.innerHTML=`<div class="box good"><b>✅ Catálogo atualizado!</b>
+      ${r.resumo.produtos} produtos em ${r.resumo.familias} famílias · ${r.resumo.faixasFrete} faixas de frete ·
+      ${r.resumo.unidadesAtivas} unidades ativas.<br><br>
+      O sistema já está usando os dados novos — teste em <a href="/orcamento" target="_blank">/orcamento</a>.</div>`;
+    a.innerHTML='<a class="btn" href="/painel">Ir para o painel</a>';
+    return;
+  }
+
+  let h='';
+  if(r.erros?.length){
+    h+=`<div class="box err"><b>❌ ${r.erros.length} erro(s) — corrija antes de aplicar</b><ul>
+      ${r.erros.map(e=>`<li>${e}</li>`).join('')}</ul></div>`;
+  }
+  if(r.alertas?.length){
+    h+=`<div class="box warn"><b>⚠️ ${r.alertas.length} aviso(s) — dá pra aplicar, mas confira</b><ul>
+      ${r.alertas.map(e=>`<li>${e}</li>`).join('')}</ul></div>`;
+  }
+  h+=`<div class="resumo">
+    <div class="rc"><b>${r.resumo.produtos}</b><small>produtos</small></div>
+    <div class="rc"><b>${r.resumo.familias}</b><small>famílias</small></div>
+    <div class="rc"><b>${r.resumo.faixasFrete}</b><small>faixas de frete</small></div>
+    <div class="rc"><b>${r.resumo.unidadesAtivas}/${r.resumo.unidadesTotal}</b><small>unidades ativas</small></div>
+  </div>`;
+  if(Object.keys(r.resumo.porFamilia||{}).length){
+    h+=`<div class="fams">${Object.entries(r.resumo.porFamilia)
+      .map(([f,n])=>`<div><span>${f}</span><span><b>${n}</b></span></div>`).join('')}</div>`;
+  }
+  c.innerHTML=h;
+
+  a.innerHTML=r.ok
+    ? `<button class="btn ok" onclick="conferir(true)">✅ Aplicar ao sistema</button>`
+    : `<span style="color:#991b1b;font-size:13.5px">Corrija os erros acima e envie de novo.</span>`;
+}
+</script>
+</body>
+</html>

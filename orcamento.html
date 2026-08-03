@@ -256,6 +256,11 @@ function render(){
     el(`<div class="fim"><div class="ok">🎉</div><h2>Orçamento ${r.numero}</h2>
       <div class="tt">R$ ${BRL(r.totalAvista)}</div>
       <div class="met">à vista · ${r.totalPecas} peças · ${r.metragemTotal} mts</div>
+      <div class="parc" style="margin-bottom:10px">
+        <div><span>Produtos</span><span>R$ ${BRL(r.totalProdutos)}</span></div>
+        <div><span>Frete ${r.frete?.km?`<small style="color:#94a3b8">(${r.frete.km} km)</small>`:''}</span>
+          <span>${r.frete&&!Number.isFinite(r.frete.valor)?'a confirmar':r.totalFrete>0?'R$ '+BRL(r.totalFrete):'grátis'}</span></div>
+      </div>
       <div class="parc">${r.pagamentos.map(p=>`<div><span>${p.parcelas}x</span><span>R$ ${BRL(p.valorParcela)} <small style="color:#94a3b8">(R$ ${BRL(p.total)})</small></span></div>`).join('')}</div>
       ${r.avisos?.length?`<div class="aviso">⚠️ ${r.avisos.join('<br>')}</div>`:''}
       <a class="pdf" href="${r.pdf}" target="_blank">📄 Baixar PDF</a>
@@ -378,7 +383,8 @@ function okDados(){
 async function gerar(){
   const b=document.getElementById('bg');b.disabled=true;b.textContent='Gerando...';
   const d=await fetch('/api/orcamento',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({pedido:{grupos:grupos.map(g=>({telhaId:g.telhaId,cortes:g.cortes})),perfis:pedido.perfis},cliente})})
+    body:JSON.stringify({pedido:{grupos:grupos.map(g=>({telhaId:g.telhaId,cortes:g.cortes})),perfis:pedido.perfis},
+      cliente,vendedor:new URLSearchParams(location.search).get('vendedor')||null})})
     .then(r=>r.json()).catch(()=>({error:'Falha ao gerar — tente de novo.'}));
   if(d.error){err(d.error);b.disabled=false;b.textContent='Gerar orçamento 📄';return;}
   window._res=d;ir(5);

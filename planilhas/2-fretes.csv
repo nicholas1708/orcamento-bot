@@ -1,0 +1,8 @@
+km_de;km_ate;valor_fixo;valor_por_metro;frete_gratis_acima_de;observacao
+0;50;150,00;0,00;3000,00;entrega local - grátis acima de R$ 3.000
+51;100;280,00;0,00;5000,00;
+101;200;450,00;1,20;8000,00;acima de 100km cobra por metro linear também
+201;350;700,00;1,80;12000,00;
+351;500;1100,00;2,50;20000,00;
+501;800;1800,00;3,20;;acima de 500km sem frete grátis
+801;99999;;;;acima de 800km o vendedor cota manualmente (deixe os valores em branco)

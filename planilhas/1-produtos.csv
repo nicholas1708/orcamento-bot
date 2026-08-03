@@ -1,0 +1,20 @@
+codigo;nome;familia;cor;preco_por_metro;largura_util_m;comprimento_maximo_m;comprimento_minimo_m;transpasse_m;vao_maximo_m;inclinacao_minima_pct;forro_integrado;ativo;imagem_url;observacao
+5942;Telha Comum Galvalume Trapézio 40/980 0,43mm;Telha Galvalume (simples);Natural;33,50;0,98;12;0,50;0,20;1,80;10;NAO;SIM;;EXEMPLO REAL - conferido no orçamento 11247
+;Telha Comum Galvalume Trapézio 40/1020 0,43mm;Telha Galvalume (simples);Natural;34,50;1,02;12;0,50;0,20;1,80;10;NAO;SIM;;
+;Telha Comum Galvalume Trapézio 25/1020 0,43mm;Telha Galvalume (simples);Natural;31,00;1,02;12;0,50;0,20;1,50;12;NAO;SIM;;
+;Telha Comum Galvalume Trapézio 100/950;Telha Galvalume (simples);Natural;55,00;0,95;12;0,50;0,20;4,00;5;NAO;SIM;;perfil estrutural - vão maior
+;Telha Comum Galvalume Ondulada;Telha Galvalume (simples);Natural;30,00;0,98;12;0,50;0,20;1,50;15;NAO;SIM;;
+;Telha Sanduíche Galvalume EPS 30mm;Telha Termoisolante EPS;Natural;95,00;0,98;12;0,50;0,20;2,00;10;SIM;SIM;;
+;Telha Forro Branco Galvalume EPS;Telha Termoisolante EPS;Branco;65,00;0,98;12;0,50;0,20;1,80;10;SIM;SIM;;
+;Telha Forro Preto Galvalume EPS;Telha Termoisolante EPS;Preto;65,00;0,98;12;0,50;0,20;1,80;10;SIM;SIM;;
+;Telha Forro Efeito Amadeirado Tradicional;Telha Termoisolante EPS;Amadeirado Tradicional;78,00;0,98;12;0,50;0,20;1,80;10;SIM;SIM;;
+;Telha Forro Efeito Amadeirado 3D;Telha Termoisolante EPS;Amadeirado 3D;82,00;0,98;12;0,50;0,20;1,80;10;SIM;SIM;;
+;Telha Sanduíche PIR;Telha Termoisolante PIR;Natural;120,00;0,98;12;0,50;0,20;2,00;10;SIM;SIM;;
+;Telha Forro Branco PIR;Telha Termoisolante PIR;Branco;110,00;0,98;12;0,50;0,20;2,00;10;SIM;SIM;;
+;Isotelha Colonial;Telha Colonial PIR (Isotelha);Terracota c/ Forro Preto;135,00;0,90;8;0,50;0,25;1,50;15;SIM;SIM;;
+;Isotelha Colonial;Telha Colonial PIR (Isotelha);Terracota c/ Forro Branco;135,00;0,90;8;0,50;0,25;1,50;15;SIM;SIM;;
+;Isotelha Colonial;Telha Colonial PIR (Isotelha);Cinza Ardósia c/ Forro Preto;135,00;0,90;8;0,50;0,25;1,50;15;SIM;SIM;;
+;Isotelha Colonial;Telha Colonial PIR (Isotelha);Marfim c/ Forro Amadeirado Claro;142,00;0,90;8;0,50;0,25;1,50;15;SIM;SIM;;
+;Isoluz Translúcida Policarbonato 3 Trapézios;Telha Translúcida;Cristal;180,00;0,98;6;0,50;0,20;1,50;10;NAO;SIM;;
+;Telha Fibra de Vidro;Telha Fibra de Vidro;Natural;60,00;0,98;6;0,50;0,20;1,50;15;NAO;SIM;;
+;Telha Fibra de Vidro;Telha Fibra de Vidro;Colorida;68,00;0,98;6;0,50;0,20;1,50;15;NAO;SIM;;

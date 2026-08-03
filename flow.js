@@ -15,6 +15,7 @@ const state = require('./state');
 const { getCatalogo } = require('./pricing');
 const { calcularOrcamento } = require('./engine');
 const { calcularRomaneio, corteComTamanho } = require('./romaneio');
+const { calcularFrete } = require('./frete');
 const { gerarPDF } = require('./pdf');
 const ai = require('./ai');
 const conversa = require('./conversa');
@@ -403,12 +404,25 @@ async function processar(chatId, textoRaw) {
       }
 
       // ==== MATEMÁTICA PURA — nada de IA ====
+      // frete cobrado À PARTE: calculado sobre a prévia e somado em linha própria
+      const previa = calcularOrcamento({ grupos: P.grupos, perfis: P.perfis || [] }, catalogo);
+      const frete = await calcularFrete(
+        { cep: ficha.cliente.cep, cidade: ficha.cliente.cidade, uf: ficha.cliente.estado },
+        {
+          metragemTotal: previa.metragemTotal,
+          totalProdutos: previa.totalProdutos,
+          codigos: P.grupos.map((g) => catalogo.telhas.find((t) => t.id === g.telhaId)?.codigo).filter(Boolean),
+        },
+        catalogo
+      );
       const orcamento = calcularOrcamento(
-        { grupos: P.grupos, perfis: P.perfis || [] },
+        { grupos: P.grupos, perfis: P.perfis || [], frete },
         catalogo
       );
       const numero = 'WA-' + Date.now().toString(36).toUpperCase();
-      const pdfPath = path.join(__dirname, 'out', `orcamento-${numero}.pdf`);
+      // token aleatório no nome: o link do PDF não pode ser adivinhado
+      const token = require('crypto').randomBytes(8).toString('hex');
+      const pdfPath = path.join(__dirname, 'out', `orcamento-${numero}-${token}.pdf`);
       await gerarPDF({
         cliente: ficha.cliente,
         pedido: { numero, vendedor: catalogo.empresa.vendedor_padrao },
@@ -418,9 +432,19 @@ async function processar(chatId, textoRaw) {
       // grava o cadastro — no próximo orçamento não perguntamos de novo
       clientes.salvar(ficha.cliente);
 
+      // registra no histórico para o painel da empresa
+      require('./orcamentos').salvar({
+        numero, canal: 'whatsapp', origem: 'cliente',
+        cliente: ficha.cliente, orcamento, grupos: P.grupos, pdfPath,
+      });
+
+      const linhaFrete = !Number.isFinite(orcamento.totalFrete) || orcamento.frete?.valor === null
+        ? ' (frete a confirmar)'
+        : orcamento.totalFrete > 0 ? ` + frete R$ ${BRL(orcamento.totalFrete)}` : ' · frete grátis';
       acoes.push({
         type: 'pdf', filePath: pdfPath,
-        caption: `📄 Orçamento ${numero} — ${orcamento.totalPecas} peças · ${orcamento.metragemTotal} mts · *R$ ${BRL(orcamento.totalAvista)}* à vista`,
+        caption: `📄 Orçamento ${numero} — ${orcamento.totalPecas} peças · ${orcamento.metragemTotal} mts\n` +
+          `Produtos R$ ${BRL(orcamento.totalProdutos)}${linhaFrete}\n*Total: R$ ${BRL(orcamento.totalAvista)}* à vista`,
       });
       say(R.T.fechamento(catalogo.validade_orcamento_dias));
       if (orcamento.escalarParaVendedor) {
