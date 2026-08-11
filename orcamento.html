@@ -75,6 +75,13 @@
   .btn:disabled{background:#cbd5e1;cursor:not-allowed}
   .erro{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;border-radius:10px;padding:10px 14px;font-size:13.5px;margin-top:12px;display:none}
   .aviso{background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:10px 14px;border-radius:10px;font-size:13px;margin:12px 0}
+  .promo{background:#ecfdf5;border:1px solid #6ee7b7;color:#065f46;padding:11px 14px;border-radius:10px;font-size:13px;margin-bottom:12px;display:flex;gap:9px;align-items:flex-start}
+  .promo.fora{background:#fff7ed;border-color:#fdba74;color:#9a3412}
+  .promo b{display:block;margin-bottom:2px}
+  .prop{text-align:center;padding:22px 8px}
+  .prop .ic{font-size:50px}.prop h2{margin:10px 0 6px}
+  .prop p{color:#475569;font-size:14px;line-height:1.6;margin-bottom:14px}
+  .prop .cx{background:#fff;border-radius:12px;padding:14px;text-align:left;font-size:13px;color:#334155}
   .res{background:#fff;border-radius:14px;padding:16px}
   .res h3{font-size:14px;margin:12px 0 3px}.res h3:first-child{margin-top:0}
   .res .cut{font-size:13px;color:#475569;padding-left:6px}
@@ -103,6 +110,50 @@
 </div>
 
 <script>
+// ── Ilustrações (SVG inline: não dependem de internet nem de arquivo) ──
+const ART={
+  umaQueda:`<svg viewBox="0 0 120 74" width="100%" height="70">
+    <rect x="18" y="40" width="84" height="26" fill="#e2e8f0"/>
+    <path d="M10 40 L110 20 L110 30 L10 50 Z" fill="#0ea5e9"/>
+    <path d="M10 40 L110 20" stroke="#0369a1" stroke-width="2" fill="none"/>
+    <path d="M22 16 L38 12" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#s1)"/>
+    <defs><marker id="s1" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L5,3 L0,6 Z" fill="#94a3b8"/></marker></defs>
+    <text x="60" y="12" font-size="8" fill="#64748b" text-anchor="middle">água escorre p/ um lado</text>
+  </svg>`,
+  duasQuedas:`<svg viewBox="0 0 120 74" width="100%" height="70">
+    <rect x="18" y="42" width="84" height="24" fill="#e2e8f0"/>
+    <path d="M8 44 L60 18 L60 28 L8 54 Z" fill="#0ea5e9"/>
+    <path d="M112 44 L60 18 L60 28 L112 54 Z" fill="#38bdf8"/>
+    <circle cx="60" cy="18" r="3.5" fill="#f59e0b"/>
+    <text x="60" y="12" font-size="8" fill="#b45309" text-anchor="middle">cumeeira</text>
+    <text x="60" y="72" font-size="7.5" fill="#64748b" text-anchor="middle">duas caídas</text>
+  </svg>`,
+  medidas:`<svg viewBox="0 0 200 96" width="100%" height="92">
+    <path d="M30 62 L110 34 L180 50 L100 78 Z" fill="#bae6fd" stroke="#0284c7" stroke-width="1.5"/>
+    <path d="M30 62 L30 76 M100 78 L100 92" stroke="#94a3b8" stroke-width="1"/>
+    <path d="M30 84 L100 84" stroke="#0f172a" stroke-width="1.2" marker-start="url(#a2)" marker-end="url(#a2)"/>
+    <path d="M186 54 L116 38" stroke="#0f172a" stroke-width="1.2" marker-start="url(#a2)" marker-end="url(#a2)"/>
+    <defs><marker id="a2" markerWidth="7" markerHeight="7" refX="3.5" refY="3" orient="auto">
+      <path d="M0,3 L6,0 L6,6 Z" fill="#0f172a"/></marker></defs>
+    <text x="65" y="94" font-size="9" fill="#0f172a" text-anchor="middle" font-weight="600">comprimento</text>
+    <text x="163" y="34" font-size="9" fill="#0f172a" text-anchor="middle" font-weight="600">largura</text>
+    <text x="105" y="56" font-size="7.5" fill="#0369a1" text-anchor="middle">telhado</text>
+  </svg>`,
+  emenda:`<svg viewBox="0 0 220 56" width="100%" height="54">
+    <rect x="8" y="18" width="96" height="16" rx="2" fill="#0ea5e9"/>
+    <rect x="92" y="18" width="96" height="16" rx="2" fill="#38bdf8"/>
+    <rect x="92" y="18" width="12" height="16" fill="#f59e0b" opacity=".85"/>
+    <path d="M92 42 L104 42" stroke="#b45309" stroke-width="1.2" marker-start="url(#a3)" marker-end="url(#a3)"/>
+    <defs><marker id="a3" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+      <path d="M0,3 L5,0 L5,6 Z" fill="#b45309"/></marker></defs>
+    <text x="98" y="53" font-size="8" fill="#b45309" text-anchor="middle">transpasse</text>
+    <text x="50" y="30" font-size="8.5" fill="#fff" text-anchor="middle">peça 1</text>
+    <text x="148" y="30" font-size="8.5" fill="#fff" text-anchor="middle">peça 2</text>
+    <text x="110" y="12" font-size="8" fill="#64748b" text-anchor="middle">as peças se sobrepõem na emenda</text>
+  </svg>`,
+};
+
 let cat=null;
 const grupos=[];
 let atual={telhaId:null,modo:'cortes',cortes:[{q:'',c:''}],cg:'',lg:'',quedas:2,famAberta:null,busca:''};
@@ -119,6 +170,8 @@ const BRL=v=>Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFr
 const metG=g=>g.cortes.reduce((s,c)=>s+c.quantidade*c.comprimentoM,0);
 const metTot=()=>grupos.reduce((s,g)=>s+metG(g),0);
 const telha=()=>cat.telhas.find(x=>x.id===atual.telhaId);
+/** maior comprimento digitado, para avisar quando sai da promoção */
+const maiorCorte=()=>Math.max(0,...atual.cortes.map(c=>+c.c||0));
 
 function ir(n){hist.push(passo);passo=n;err('');render();}
 function voltar(){if(hist.length){passo=hist.pop();err('');render();}}
@@ -171,6 +224,11 @@ function render(){
         <button class="aba ${atual.modo==='cortes'?'on':''}" onclick="atual.modo='cortes';render()">Já sei os tamanhos</button>
         <button class="aba ${atual.modo==='ambiente'?'on':''}" onclick="atual.modo='ambiente';render()">Calcular pra mim</button>
       </div>
+      ${t.promocao_ate_m?`<div class="promo ${maiorCorte()>t.promocao_ate_m?'fora':''}">
+        <span>${maiorCorte()>t.promocao_ate_m?'⚠️':'🏷️'}</span>
+        <span>${maiorCorte()>t.promocao_ate_m
+          ? `<b>Fora da promoção</b>Peças acima de ${t.promocao_ate_m}m têm outra base de cálculo — nossa equipe cota esse valor pra você.`
+          : `<b>Preço promocional</b>Válido para peças de até ${t.promocao_ate_m}m. Acima disso, o valor muda de base.`}</span></div>`:''}
       ${atual.modo==='cortes'?`
         <p class="sub">Quantas peças de cada comprimento? Máximo ${t.comprimento_maximo_m}m por peça — se precisar de mais, eu divido com emenda.</p>
         ${atual.cortes.map((c,i)=>`<div class="corte">
@@ -186,11 +244,14 @@ function render(){
           <div class="campo"><label>Largura (m)</label><input id="ml" type="number" inputmode="decimal" placeholder="10" value="${atual.lg}" oninput="atual.lg=this.value"></div>
         </div>
         <p class="dica" style="margin-bottom:12px">Comprimento = lado da cumeeira · largura = lado onde a água escorre.</p>
+        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:11px;padding:10px 12px;margin-bottom:12px">${ART.medidas}</div>
         <label style="display:block;font-size:13px;font-weight:600;color:#334155;margin-bottom:6px">Quantas quedas?</label>
         <button class="opt ${atual.quedas===1?'on':''}" onclick="atual.quedas=1;render()"><span class="r"></span>
-          <span><b>1 queda</b><small>Caída única — água escorre pra um lado</small></span></button>
+          <span style="flex:1"><b>1 queda</b><small>Caída única — água escorre pra um lado</small>
+            <span style="display:block;max-width:130px;margin-top:5px">${ART.umaQueda}</span></span></button>
         <button class="opt ${atual.quedas===2?'on':''}" onclick="atual.quedas=2;render()"><span class="r"></span>
-          <span><b>2 quedas</b><small>Duas caídas com cumeeira no topo</small></span></button>
+          <span style="flex:1"><b>2 quedas</b><small>Duas caídas com cumeeira no topo</small>
+            <span style="display:block;max-width:130px;margin-top:5px">${ART.duasQuedas}</span></span></button>
         <button class="btn" onclick="okAmbiente()">Calcular e adicionar →</button>`}`);
     if(atual.modo==='cortes')tot();
   }
@@ -199,7 +260,8 @@ function render(){
     el(cart()+`<h1>Complementos</h1><p class="sub">Só o que faltar — depois é só confirmar.</p>
       ${split?`<div class="caixa" style="background:#fffbeb;border:1px solid #fde68a">
         <b style="color:#92400e">Essa medida precisa de emenda</b><br>
-        <span style="color:#92400e">Você precisa de ${split.comp.toFixed(2)}m e a telha vai até ${split.max}m. Escolha como dividir:</span></div>
+        <span style="color:#92400e">Você precisa de ${split.comp.toFixed(2)}m e a telha vai até ${split.max}m. Escolha como dividir:</span>
+        <div style="margin-top:8px">${ART.emenda}</div></div>
         ${split.opcoes.map((o,i)=>`<button class="opt ${split.sel===i?'on':''}" onclick="split.sel=${i};render()"><span class="r"></span>
           <span><b>${o.titulo}</b><small>${o.detalhe}</small><span class="m">${o.materialM.toFixed(2)}m de material por peça</span></span></button>`).join('')}
         <div class="opt ${split.sel===-1?'on':''}" style="display:block;cursor:default">
@@ -251,6 +313,20 @@ function render(){
       <button class="btn" id="bg" onclick="gerar()">Gerar orçamento 📄</button>`);
   }
   // ── 5 FINAL ───────────────────────────────────────────────────────
+  // Obra fora do raio de entrega: não conclui, encaminha para a equipe
+  if(passo===5&&window._res?.foraDoRaio){
+    const r=window._res;
+    el(`<div class="prop"><div class="ic">📬</div>
+      <h2>Pedido registrado!</h2>
+      <p>${r.mensagem}</p>
+      <div class="cx"><b>Protocolo:</b> ${r.numero}<br>
+        <b>Seu pedido:</b> ${r.resumo.totalPecas} peças · ${r.resumo.metragemTotal} mts<br>
+        ${r.resumo.produtos.map(p=>`• ${p.nome} — ${p.metros} mts`).join('<br>')}</div>
+      <p style="margin-top:14px;font-size:13px;color:#64748b">Guardamos tudo que você montou —
+        nossa equipe entra em contato pelo WhatsApp informado.</p>
+      <button onclick="location.reload()">Fazer outro orçamento</button></div>`);
+    return;
+  }
   if(passo===5){
     const r=window._res;
     el(`<div class="fim"><div class="ok">🎉</div><h2>Orçamento ${r.numero}</h2>
@@ -259,7 +335,7 @@ function render(){
       <div class="parc" style="margin-bottom:10px">
         <div><span>Produtos</span><span>R$ ${BRL(r.totalProdutos)}</span></div>
         <div><span>Frete ${r.frete?.km?`<small style="color:#94a3b8">(${r.frete.km} km)</small>`:''}</span>
-          <span>${r.frete&&!Number.isFinite(r.frete.valor)?'a confirmar':r.totalFrete>0?'R$ '+BRL(r.totalFrete):'grátis'}</span></div>
+          <span>${r.frete?.embutido?'incluso':(r.frete&&!Number.isFinite(r.frete.valor)?'a confirmar':(r.totalFrete>0?'R$ '+BRL(r.totalFrete):'grátis'))}</span></div>
       </div>
       <div class="parc">${r.pagamentos.map(p=>`<div><span>${p.parcelas}x</span><span>R$ ${BRL(p.valorParcela)} <small style="color:#94a3b8">(R$ ${BRL(p.total)})</small></span></div>`).join('')}</div>
       ${r.avisos?.length?`<div class="aviso">⚠️ ${r.avisos.join('<br>')}</div>`:''}

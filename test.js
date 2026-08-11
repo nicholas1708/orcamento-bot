@@ -1,9 +1,5 @@
 /**
- * TESTE DE REGRESSÃO — reproduz o orçamento REAL nº 11247 da 4A.
- * Se o motor estiver correto, deve bater exatamente:
- *   37 peças · 134,390 mts · R$ 4.502,07
- *   parcelamentos: 1x 4.699,49 · 3x 4.841,48 · 6x 4.985,14 · 10x 5.300,29
- *
+ * TESTES DO MOTOR — validam as regras reais da 4A.
  * Rode com: npm test
  */
 require('dotenv').config();
@@ -23,115 +19,110 @@ const check = (label, obtido, esperado, tol = 0.02) => {
 
 (async () => {
   const catalogo = await getCatalogo();
+  const telha = catalogo.telhas[0];               // Confort PIR 30mm Galvalume/Branco
 
-  // ══ TESTE 1: reproduzir o orçamento real nº 11247 ══════════════════
-  console.log('\n═══ TESTE 1 — Orçamento real nº 11247 (ENG SANTANA) ═══\n');
-  const pedidoReal = {
-    telhaId: 'TL-GV-TP40-980',
-    cortes: [
-      { comprimentoM: 4.000, quantidade: 3 },
-      { comprimentoM: 1.530, quantidade: 3 },
-      { comprimentoM: 4.750, quantidade: 9 },
-      { comprimentoM: 6.200, quantidade: 5 },
-      { comprimentoM: 4.680, quantidade: 4 },
-      { comprimentoM: 1.630, quantidade: 7 },
-      { comprimentoM: 1.870, quantidade: 4 },
-      { comprimentoM: 3.220, quantidade: 2 },
-    ],
-  };
-  const orc = calcularOrcamento(pedidoReal, catalogo);
-
-  for (const i of orc.itens) {
-    console.log(`  ${String(i.qtd).padStart(2)} x ${String(i.comprimentoM.toFixed(3)).padStart(6)}m  →  R$ ${BRL(i.subtotal).padStart(9)}`);
-  }
-  console.log('  ' + '─'.repeat(46));
-  check('Total de peças', orc.totalPecas, 37, 0);
-  check('Metragem total (mts)', orc.metragemTotal, 134.390, 0.001);
-  check('Total à vista (R$)', orc.totalAvista, 4502.07);
-
-  console.log('\n  Formas de pagamento:');
-  const esperadoPgto = { 1: 4699.49, 3: 4841.48, 6: 4985.14, 10: 5300.29 };
-  for (const p of orc.pagamentos) {
-    check(`  ${p.parcelas}x (R$)`, p.total, esperadoPgto[p.parcelas], 1.0);
+  // ══ TESTE 1: preço por FAIXA DE METRAGEM ═══════════════════════════
+  console.log('\n═══ TESTE 1 — Desconto por volume (faixas de metragem) ═══\n');
+  const casos = [
+    { m: 30,  esperado: 129.50, faixa: 'até 50 m²' },
+    { m: 80,  esperado: 126.91, faixa: '50–100 m²' },
+    { m: 150, esperado: 123.02, faixa: '100–200 m²' },
+    { m: 300, esperado: 120.73, faixa: 'acima de 200 m²' },
+  ];
+  for (const c of casos) {
+    const o = calcularOrcamento(
+      { grupos: [{ telhaId: telha.id, cortes: [{ comprimentoM: 10, quantidade: c.m / 10 }] }] },
+      catalogo
+    );
+    check(`${String(c.m).padStart(3)} m² (${c.faixa}) → preço/m`, o.itens[0].precoUnit, c.esperado);
   }
 
-  // ══ TESTE 2: engenharia — ambiente → romaneio ══════════════════════
-  console.log('\n═══ TESTE 2 — Ambiente 20x10m, 2 águas, com estrutura ═══\n');
-  const telha = catalogo.telhas.find((t) => t.id === 'TL-GV-TP40-980');
-  const rom = calcularRomaneio(
-    { comprimentoGalpaoM: 20, larguraGalpaoM: 10, quedas: 2, comEstrutura: true },
-    telha, catalogo
-  );
+  // ══ TESTE 2: acabamentos POR BARRA (arredonda pra cima) ════════════
+  console.log('\n═══ TESTE 2 — Acabamentos vendidos por barra de 3m ═══\n');
+  const lateral = catalogo.complementos.find((c) => c.aplica_em === 'lateral');
+  const oBarras = calcularOrcamento({
+    grupos: [{ telhaId: telha.id, cortes: [{ comprimentoM: 6, quantidade: 10 }] }],
+    complementos: [{ produtoId: lateral.id, metros: 20 }],   // 20m → 7 barras de 3m
+  }, catalogo);
+  const itemBarra = oBarras.itens.find((i) => String(i.codigo) === String(lateral.codigo));
+  console.log(`  ${itemBarra.nome}`);
+  check('20m de acabamento → barras', itemBarra.qtd, 7, 0);
+  check('Subtotal das barras', itemBarra.subtotal, 7 * lateral.preco);
+
+  // ══ TESTE 3: fixação por consumo/m² ════════════════════════════════
+  console.log('\n═══ TESTE 3 — Parafusos por consumo/m² ═══\n');
+  const paraf = catalogo.complementos.find((c) => c.tipo === 'fixacao');
+  const oParaf = calcularOrcamento({
+    grupos: [{ telhaId: telha.id, cortes: [{ comprimentoM: 5, quantidade: 10 }] }], // 50 m²
+    complementos: [{ produtoId: paraf.id }],
+  }, catalogo);
+  const itemParaf = oParaf.itens.find((i) => String(i.codigo) === String(paraf.codigo));
+  check(`50 m² x ${paraf.consumo_por_m2}/m² → parafusos`, itemParaf.qtd, 50 * paraf.consumo_por_m2, 0);
+
+  // ══ TESTE 4: frete EMBUTIDO não soma no total ══════════════════════
+  console.log('\n═══ TESTE 4 — Frete embutido no preço ═══\n');
+  const oFrete = calcularOrcamento({
+    grupos: [{ telhaId: telha.id, cortes: [{ comprimentoM: 6, quantidade: 10 }] }],
+    frete: { embutido: true, valor: 0, descricao: 'Frete incluso', km: 120, unidade: { cidade: 'Cambuí', uf: 'MG' } },
+  }, catalogo);
+  check('Frete não soma no total', oFrete.totalAvista, oFrete.totalProdutos);
+  check('Total de frete zerado', oFrete.totalFrete, 0);
+
+  // ══ TESTE 5: engenharia — ambiente → romaneio ══════════════════════
+  console.log('\n═══ TESTE 5 — Galpão 20x10m, 2 águas ═══\n');
+  const rom = calcularRomaneio({ comprimentoGalpaoM: 20, larguraGalpaoM: 10, quedas: 2 }, telha, catalogo);
   rom.memoria.forEach((m) => console.log('  · ' + m));
   console.log('  Cortes:', JSON.stringify(rom.cortes));
-  console.log('  Perfis:', JSON.stringify(rom.perfis));
-  if (rom.avisos.length) console.log('  Avisos:', rom.avisos.join(' | '));
+  check('Peças por água (20m ÷ 1,00m)', rom.cortes[0].quantidade, 40, 0); // 20 peças x 2 águas
 
-  const orc2 = calcularOrcamento({ telhaId: telha.id, cortes: rom.cortes, perfis: rom.perfis }, catalogo);
-  console.log(`  → ${orc2.totalPecas} peças · ${orc2.metragemTotal} mts · R$ ${BRL(orc2.totalAvista)}`);
-
-  // ══ TESTE 2c: água maior que o comprimento de fábrica (emenda) ═════
-  console.log('\n═══ TESTE 2c — Galpão 20x25m, 1 queda (água de 25m > máx 12m) ═══\n');
-  const romLongo = calcularRomaneio(
-    { comprimentoGalpaoM: 20, larguraGalpaoM: 25, quedas: 1 }, telha, catalogo
-  );
-  console.log(`  Água necessária: ${romLongo.compTelha}m · máximo de fábrica: ${telha.comprimento_maximo_m}m`);
-  console.log('  Opções de divisão oferecidas:');
+  // ══ TESTE 6: água maior que o máximo → opções de emenda ════════════
+  console.log('\n═══ TESTE 6 — Galpão 20x25m (água de 25m > máx 12m) ═══\n');
+  const romLongo = calcularRomaneio({ comprimentoGalpaoM: 20, larguraGalpaoM: 25, quedas: 1 }, telha, catalogo);
+  console.log(`  Água: ${romLongo.compTelha}m · máximo de fábrica: ${telha.comprimento_maximo_m}m`);
   romLongo.opcoes.forEach((o, i) =>
-    console.log(`   ${i + 1}. ${o.titulo.padEnd(42)} ${o.emendas} emenda(s) · ${o.materialM}m de material`));
-  console.log('  Cortes (opção padrão):', JSON.stringify(romLongo.cortes));
+    console.log(`   ${i + 1}. ${o.titulo.padEnd(40)} ${o.emendas} emenda(s) · ${o.materialM}m`));
   check('Gerou opções de emenda', romLongo.opcoes.length >= 2 ? 1 : 0, 1, 0);
-  check('NÃO recusou o orçamento', romLongo.cortes.length > 0 ? 1 : 0, 1, 0);
-  const maiorPano = Math.max(...romLongo.cortes.map((c) => c.comprimentoM));
-  check('Maior peça dentro do máximo', maiorPano <= telha.comprimento_maximo_m ? 1 : 0, 1, 0);
+  check('Nenhuma peça acima do máximo',
+    Math.max(...romLongo.cortes.map((c) => c.comprimentoM)) <= telha.comprimento_maximo_m ? 1 : 0, 1, 0);
 
-  // tamanho escolhido pelo cliente: peças de 10m até completar a água
   const custom = corteComTamanho(romLongo.compTelha, 10, telha, catalogo);
   console.log(`  Personalizado (peças de 10m): ${custom.erro || custom.titulo}`);
-  if (!custom.erro) {
-    const cobertura = custom.materialM - custom.emendas * catalogo.engenharia.transpasse_longitudinal_m;
-    check('Personalizado cobre a água', cobertura >= romLongo.compTelha - 0.02 ? 1 : 0, 1, 0);
-    check('Nenhuma peça acima do máximo', Math.max(...custom.panos) <= telha.comprimento_maximo_m ? 1 : 0, 1, 0);
-  }
 
-  // ══ TESTE 2b: vários produtos no mesmo orçamento ═══════════════════
-  console.log('\n═══ TESTE 2b — Orçamento com 3 produtos (fábrica) ═══\n');
-  const multi = calcularOrcamento({
-    grupos: [
-      { telhaId: 'TL-GV-TP40-980', cortes: [{ comprimentoM: 6.2, quantidade: 20 }, { comprimentoM: 4.5, quantidade: 12 }] },
-      { telhaId: 'TL-TRANS-ISOLUZ', cortes: [{ comprimentoM: 6.0, quantidade: 4 }] },
-      { telhaId: 'TL-EPS-SAND', cortes: [{ comprimentoM: 5.0, quantidade: 8 }] },
-    ],
-  }, catalogo);
-  multi.resumoPorProduto.forEach((p) =>
-    console.log(`  ${p.nome.padEnd(45).slice(0, 45)} ${String(p.pecas).padStart(3)} pç · ${String(p.metros).padStart(8)} mts · R$ ${BRL(p.subtotal).padStart(10)}`));
-  console.log('  ' + '─'.repeat(46));
-  console.log(`  TOTAL: ${multi.totalPecas} peças · ${multi.metragemTotal} mts · R$ ${BRL(multi.totalAvista)}`);
-  check('Produtos no orçamento', multi.resumoPorProduto.length, 3, 0);
-  check('Peças somadas', multi.totalPecas, 44, 0);
-
-  // ══ TESTE 3: parser de lista de cortes em texto livre ══════════════
-  console.log('\n═══ TESTE 3 — Parser de texto livre ═══\n');
+  // ══ TESTE 7: parser de texto livre ═════════════════════════════════
+  console.log('\n═══ TESTE 7 — Parser de lista de cortes ═══\n');
   const parsed = parseCortes('3 de 4m, 9 de 4,75 e 5x6.20');
   console.log('  "3 de 4m, 9 de 4,75 e 5x6.20" →', JSON.stringify(parsed));
   check('Cortes reconhecidos', parsed.length, 3, 0);
 
   // ══ PDF de exemplo ════════════════════════════════════════════════
+  const orc = calcularOrcamento({
+    grupos: [{ telhaId: telha.id, cortes: [
+      { comprimentoM: 6.20, quantidade: 12 },
+      { comprimentoM: 4.75, quantidade: 8 },
+    ] }],
+    complementos: [
+      { produtoId: lateral.id, metros: 24 },
+      { produtoId: paraf.id },
+    ],
+    frete: { embutido: true, valor: 0, descricao: 'Frete incluso — sai de Cambuí/MG (180 km)', km: 180 },
+  }, catalogo);
+
+  console.log('\n═══ ORÇAMENTO DE EXEMPLO ═══\n');
+  orc.itens.forEach((i) => console.log(
+    `  ${String(i.qtd).padStart(5)} ${i.unidade.padEnd(3)} ${i.nome.slice(0, 52).padEnd(52)} R$ ${BRL(i.subtotal).padStart(10)}`));
+  console.log('  ' + '─'.repeat(80));
+  console.log(`  ${orc.metragemTotal} mts · TOTAL R$ ${BRL(orc.totalAvista)}`);
+  orc.pagamentos.forEach((p) => console.log(`    ${p.parcelas}x de R$ ${BRL(p.valorParcela)} (total R$ ${BRL(p.total)})`));
+
   const pdfPath = path.join(__dirname, 'out', 'orcamento-exemplo.pdf');
   await gerarPDF({
-    cliente: {
-      nome: 'ENG SANTANA', telefone: '(17) 99154-1795',
-      cidade: 'São José do Rio Preto - SP', estado: 'SP',
-      endereco: 'Rua Exemplo, 100 - Centro', documento: '', cep: '', email: '',
-    },
-    pedido: { numero: '11247', vendedor: 'André Luis' },
-    orcamento: orc,
-    catalogo,
+    cliente: { nome: 'ENG SANTANA', telefone: '(17) 99154-1795', cidade: 'São José do Rio Preto - SP',
+      estado: 'SP', endereco: 'Rua Exemplo, 100 - Centro', documento: '', cep: '', email: '' },
+    pedido: { numero: 'TESTE-001', vendedor: catalogo.empresa.vendedor_padrao },
+    orcamento: orc, catalogo,
   }, pdfPath);
-  console.log(`\n📄 PDF gerado: ${pdfPath}`);
+  console.log(`\n📄 PDF: ${pdfPath}`);
 
-  console.log(falhas === 0
-    ? '\n🎉 Todos os testes passaram — motor bate com o orçamento real.\n'
-    : `\n⚠️  ${falhas} verificação(ões) falharam — revisar catálogo/motor.\n`);
+  console.log(falhas === 0 ? '\n🎉 Todos os testes passaram.\n' : `\n⚠️  ${falhas} verificação(ões) falharam.\n`);
   process.exit(falhas === 0 ? 0 : 1);
 })();

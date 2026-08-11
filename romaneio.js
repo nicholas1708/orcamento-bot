@@ -239,8 +239,30 @@ function calcularRomaneio(ambiente, telha, catalogo) {
     }
   }
 
+  // ── Acabamentos pelo PERÍMETRO do telhado ─────────────────────────
+  // frontal  = beiral de cada água       → L x nº de águas
+  // lateral  = as duas bordas de cada água → compTelha x 2 x nº de águas
+  // cumeeira = encontro das águas no topo  → L (só em 2 águas)
+  const complementos = [];
+  const perimetro = {
+    frontalM: round(L * quedas, 2),
+    lateralM: round(compTelha * 2 * quedas, 2),
+    cumeeiraM: quedas === 2 ? round(L, 2) : 0,
+  };
+  memoria.push(`Perímetro: frontal ${perimetro.frontalM}m · lateral ${perimetro.lateralM}m · cumeeira ${perimetro.cumeeiraM}m`);
+
+  for (const item of (catalogo.complementos || [])) {
+    if (item.ativo === false) continue;
+    let metros = 0;
+    if (item.aplica_em === 'frontal') metros = perimetro.frontalM;
+    else if (item.aplica_em === 'lateral') metros = perimetro.lateralM;
+    else if (item.aplica_em === 'cumeeira') metros = perimetro.cumeeiraM;
+    else continue;                                    // 'interno' e outros: sob demanda
+    if (metros > 0) complementos.push({ produtoId: item.id, metros, nome: item.nome, sugerido: true });
+  }
+
   return {
-    cortes, perfis, memoria, avisos, escalarParaVendedor,
+    cortes, perfis, complementos, perimetro, memoria, avisos, escalarParaVendedor,
     compTelha, totalPecas,
     opcoes,                                   // planos de divisão disponíveis
     opcaoAplicada: escolhida ? escolhida.id : null,

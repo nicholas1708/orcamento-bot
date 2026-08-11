@@ -1,6 +1,5 @@
 {
-  "_comentario": "CATÁLOGO 4A REPRESENTAÇÃO — modelado a partir do orçamento real nº 11247 (GestãoClick). VENDA SOB MEDIDA: telhas são cortadas no comprimento pedido. Preço é POR METRO LINEAR (a empresa rotula como M², convenção do setor, pois a largura útil é ~1m). Subtotal = quantidade x comprimento x preço. 'codigo' = código do produto no GestãoClick.",
-  "_atencao_largura_util": "⚠️ 'largura_util_m' é DADO DE ENGENHARIA e vive SOMENTE aqui — no ERP a largura existe apenas dentro do nome do produto ('40/980'), como texto, e não pode ser lida de forma confiável pela API. Ela NÃO entra no preço (que é por metro linear), mas define a QUANTIDADE DE PEÇAS no cálculo por ambiente: peças = comprimento do galpão ÷ largura útil. Use sempre a largura ÚTIL (com o recobrimento lateral já descontado), nunca a largura total da chapa — confundir as duas gera telha a menos. Opcionalmente preencha 'largura_total_m' para ativar a checagem automática de coerência.",
+  "_comentario": "CATÁLOGO 4A — montado a partir dos arquivos reais enviados pelo cliente (1-produtos e 3-unidades). Preço é POR METRO LINEAR e varia por FAIXA DE METRAGEM (desconto por volume). O FRETE JÁ ESTÁ EMBUTIDO nesses preços.",
   "moeda": "BRL",
   "validade_orcamento_dias": 1,
   "prazo_entrega_dias": 9,
@@ -17,9 +16,8 @@
   },
 
   "pagamento": {
-    "_como_funciona": "Acréscimo percentual sobre o total à vista. Coeficientes extraídos do orçamento real nº 11247 — confirmar com o financeiro.",
+    "_como_funciona": "Acréscimo percentual sobre o total. Coeficientes extraídos do orçamento real nº 11247 — confirmar com o financeiro.",
     "aplicar_sobre": "total",
-    "_aplicar_sobre_opcoes": "'total' = parcela produtos + frete · 'produtos' = frete fica fora do parcelamento (pago à parte)",
     "condicoes_avista": "À Vista (Data do Pedido 50% / CONTRA EMBARQUE 50%)",
     "opcoes": [
       { "parcelas": 1,  "acrescimo_pct": 4.385,  "descricao": "1 x Cartão Crédito Via LINK de Pagamento" },
@@ -30,7 +28,7 @@
   },
 
   "engenharia": {
-    "_aviso": "⚠️ REGRAS CADASTRÁVEIS — devem ser validadas pelo responsável técnico da empresa. O sistema apenas APLICA estas regras, nunca as inventa. Casos fora do padrão vão para o vendedor.",
+    "_aviso": "⚠️ REGRAS CADASTRÁVEIS — validar com o responsável técnico. O sistema só APLICA, nunca inventa. Fora do padrão vai para o vendedor.",
     "beiral_m": 0.10,
     "transpasse_longitudinal_m": 0.20,
     "comprimento_maximo_fabricacao_m": 12.0,
@@ -42,78 +40,179 @@
   },
 
   "telhas": [
-    { "id": "TL-GV-TP40-980", "codigo": "5942", "gc_id": null, "site_id": 49, "familia": "Telha Galvalume (simples)", "nome": "Telha Comum Galvalume Trapézio 40/980 0,43mm Cor Natural", "atributos": { "perfil": "trapezoidal TP40", "altura_onda_mm": 40, "espessura": "0,43mm", "cor": "natural" }, "_largura_util_confirmada": "980mm = largura útil (confirmado). 40 = altura da onda/entalhe em mm.", "unidade": "M²", "preco": 33.50, "largura_util_m": 0.98, "vao_maximo_m": 1.80, "inclinacao_minima_pct": 10, "comprimento_maximo_m": 12.0, "forro_integrado": false, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/telha-comum-galvalume-trapezio-20240626183507.png" },
-    { "id": "TL-GV-TP40-1020", "codigo": null, "gc_id": null, "site_id": 51, "familia": "Telha Galvalume (simples)", "nome": "Telha Comum Galvalume Trapézio 40/1020 0,43mm Cor Natural", "atributos": { "perfil": "trapezoidal TP40", "espessura": "0,43mm", "cor": "natural" }, "unidade": "M²", "preco": 34.50, "largura_util_m": 1.02, "vao_maximo_m": 1.80, "inclinacao_minima_pct": 10, "comprimento_maximo_m": 12.0, "forro_integrado": false, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/telha-comum-galvalume-tp-40-10-20240626184235.png" },
-    { "id": "TL-GV-TP25", "codigo": null, "gc_id": null, "site_id": 48, "familia": "Telha Galvalume (simples)", "nome": "Telha Galvalume Trapézio 25/1020 0,43mm", "atributos": { "perfil": "trapezoidal TP25", "espessura": "0,43mm" }, "unidade": "M²", "preco": 31.00, "largura_util_m": 1.02, "vao_maximo_m": 1.50, "inclinacao_minima_pct": 12, "comprimento_maximo_m": 12.0, "forro_integrado": false, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/telha-galvalume-trapezio-20240626183139.jpg" },
-    { "id": "TL-GV-TP100", "codigo": null, "gc_id": null, "site_id": 50, "familia": "Telha Galvalume (simples)", "nome": "Telha Comum Galvalume Trapézio 100/950 (estrutural)", "atributos": { "perfil": "trapezoidal TP100 (estrutural)", "largura_util": "950mm" }, "unidade": "M²", "preco": 55.00, "largura_util_m": 0.95, "vao_maximo_m": 4.00, "inclinacao_minima_pct": 5, "comprimento_maximo_m": 12.0, "forro_integrado": false, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/quero-saber-mais-20250407200849.jpg" },
-    { "id": "TL-GV-OND", "codigo": null, "gc_id": null, "site_id": 7, "familia": "Telha Galvalume (simples)", "nome": "Telha Comum Galvalume Ondulada", "atributos": { "perfil": "ondulada" }, "unidade": "M²", "preco": 30.00, "largura_util_m": 0.98, "vao_maximo_m": 1.50, "inclinacao_minima_pct": 15, "comprimento_maximo_m": 12.0, "forro_integrado": false, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/TELHA-COMUM-GALVALUME-20240111230014.png" },
-
-    { "id": "TL-EPS-SAND", "codigo": null, "gc_id": null, "site_id": 9, "familia": "Telha Termoisolante EPS", "nome": "Telha Sanduíche Galvalume EPS (aço/EPS/aço)", "atributos": { "nucleo": "EPS", "acabamento_inferior": "chapa de aço" }, "unidade": "M²", "preco": 95.00, "largura_util_m": 0.98, "vao_maximo_m": 2.00, "inclinacao_minima_pct": 10, "comprimento_maximo_m": 12.0, "forro_integrado": true, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/TELHA-SANDUiCHE-GALVALUME-20221010175030-06-15-2023-15-51-44-000000.jpg" },
-    { "id": "TL-EPS-SEMI", "codigo": null, "gc_id": null, "site_id": 8, "familia": "Telha Termoisolante EPS", "nome": "Telha Manta/Filme Semi-Sanduíche Galvalume", "atributos": { "nucleo": "EPS", "acabamento_inferior": "manta/filme" }, "unidade": "M²", "preco": 55.00, "largura_util_m": 0.98, "vao_maximo_m": 1.80, "inclinacao_minima_pct": 10, "comprimento_maximo_m": 12.0, "forro_integrado": true, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/quero-saber-mais-20241210094138.jpeg" },
-    { "id": "TL-EPS-SEMI-BR", "codigo": null, "gc_id": null, "site_id": 60, "familia": "Telha Termoisolante EPS", "nome": "Telha Manta/Filme Semi-Sanduíche Branco Galvalume", "atributos": { "nucleo": "EPS", "acabamento_inferior": "manta/filme branco" }, "unidade": "M²", "preco": 58.00, "largura_util_m": 0.98, "vao_maximo_m": 1.80, "inclinacao_minima_pct": 10, "comprimento_maximo_m": 12.0, "forro_integrado": true, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/quero-saber-mais-20241210102825.jpeg" },
-    { "id": "TL-EPS-FORRO-BR", "codigo": null, "gc_id": null, "site_id": 10, "familia": "Telha Termoisolante EPS", "nome": "Telha Forro Branco Galvalume", "atributos": { "nucleo": "EPS", "acabamento_inferior": "forro branco" }, "unidade": "M²", "preco": 65.00, "largura_util_m": 0.98, "vao_maximo_m": 1.80, "inclinacao_minima_pct": 10, "comprimento_maximo_m": 12.0, "forro_integrado": true, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/quero-saber-mais-20241210085755.jpeg" },
-    { "id": "TL-EPS-FORRO-PT", "codigo": null, "gc_id": null, "site_id": 61, "familia": "Telha Termoisolante EPS", "nome": "Telha Forro Preto Galvalume", "atributos": { "nucleo": "EPS", "acabamento_inferior": "forro preto" }, "unidade": "M²", "preco": 65.00, "largura_util_m": 0.98, "vao_maximo_m": 1.80, "inclinacao_minima_pct": 10, "comprimento_maximo_m": 12.0, "forro_integrado": true, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/quero-saber-mais-20241210082927.jpeg" },
-    { "id": "TL-EPS-AMAD-TRAD", "codigo": null, "gc_id": null, "site_id": 37, "familia": "Telha Termoisolante EPS", "nome": "Telha Forro Efeito Amadeirado Tradicional", "atributos": { "nucleo": "EPS", "acabamento_inferior": "amadeirado tradicional" }, "unidade": "M²", "preco": 78.00, "largura_util_m": 0.98, "vao_maximo_m": 1.80, "inclinacao_minima_pct": 10, "comprimento_maximo_m": 12.0, "forro_integrado": true, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/quero-saber-mais-20250407202331.jpg" },
-    { "id": "TL-EPS-AMAD-3D", "codigo": null, "gc_id": null, "site_id": 38, "familia": "Telha Termoisolante EPS", "nome": "Telha Forro Efeito Amadeirado 3D", "atributos": { "nucleo": "EPS", "acabamento_inferior": "amadeirado 3D" }, "unidade": "M²", "preco": 82.00, "largura_util_m": 0.98, "vao_maximo_m": 1.80, "inclinacao_minima_pct": 10, "comprimento_maximo_m": 12.0, "forro_integrado": true, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/telha-forro-efeito-amadeirado--20240224164858.jpeg" },
-    { "id": "TL-EPS-AMAD-EC", "codigo": null, "gc_id": null, "site_id": 67, "familia": "Telha Termoisolante EPS", "nome": "Telha Forro Efeito Amadeirado Escuro e Claro", "atributos": { "nucleo": "EPS", "acabamento_inferior": "amadeirado escuro/claro" }, "unidade": "M²", "preco": 78.00, "largura_util_m": 0.98, "vao_maximo_m": 1.80, "inclinacao_minima_pct": 10, "comprimento_maximo_m": 12.0, "forro_integrado": true, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/quero-saber-mais-20241210090419.jpeg" },
-    { "id": "TL-EPS-AMAD-PARIS", "codigo": null, "gc_id": null, "site_id": 74, "familia": "Telha Termoisolante EPS", "nome": "Telha Forro Efeito Amadeirado Paris", "atributos": { "nucleo": "EPS", "acabamento_inferior": "amadeirado Paris" }, "unidade": "M²", "preco": 82.00, "largura_util_m": 0.98, "vao_maximo_m": 1.80, "inclinacao_minima_pct": 10, "comprimento_maximo_m": 12.0, "forro_integrado": true, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/quero-saber-mais-20250408144911.jpg" },
-    { "id": "TL-EPS-AMAD-JACAR", "codigo": null, "gc_id": null, "site_id": 75, "familia": "Telha Termoisolante EPS", "nome": "Telha Forro Efeito Amadeirado Jacar", "atributos": { "nucleo": "EPS", "acabamento_inferior": "amadeirado Jacar" }, "unidade": "M²", "preco": 82.00, "largura_util_m": 0.98, "vao_maximo_m": 1.80, "inclinacao_minima_pct": 10, "comprimento_maximo_m": 12.0, "forro_integrado": true, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/quero-saber-mais-20250408151609.jpg" },
-
-    { "id": "TL-PIR-SAND", "codigo": null, "gc_id": null, "site_id": 59, "familia": "Telha Termoisolante PIR", "nome": "Telha Sanduíche PIR", "atributos": { "nucleo": "PIR (anti-chama)", "acabamento_inferior": "chapa de aço" }, "unidade": "M²", "preco": 120.00, "largura_util_m": 0.98, "vao_maximo_m": 2.00, "inclinacao_minima_pct": 10, "comprimento_maximo_m": 12.0, "forro_integrado": true, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/telha-sanduiche-pir-20251028160541.jpeg" },
-    { "id": "TL-PIR-AMAD-CLA", "codigo": null, "gc_id": null, "site_id": 91, "familia": "Telha Termoisolante PIR", "nome": "Telha Termoisolante PIR Amadeirado Claro", "atributos": { "nucleo": "PIR", "acabamento_inferior": "amadeirado claro" }, "unidade": "M²", "preco": 128.00, "largura_util_m": 0.98, "vao_maximo_m": 2.00, "inclinacao_minima_pct": 10, "comprimento_maximo_m": 12.0, "forro_integrado": true, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/telha-termoisolante-pir-amadei-20251028152440.jpeg" },
-    { "id": "TL-PIR-AMAD-ESC", "codigo": null, "gc_id": null, "site_id": 68, "familia": "Telha Termoisolante PIR", "nome": "Telha Termoisolante PIR Amadeirado Escuro", "atributos": { "nucleo": "PIR", "acabamento_inferior": "amadeirado escuro" }, "unidade": "M²", "preco": 128.00, "largura_util_m": 0.98, "vao_maximo_m": 2.00, "inclinacao_minima_pct": 10, "comprimento_maximo_m": 12.0, "forro_integrado": true, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/quero-saber-mais-20250704164932.jpeg" },
-    { "id": "TL-PIR-FORRO-PT", "codigo": null, "gc_id": null, "site_id": 76, "familia": "Telha Termoisolante PIR", "nome": "Telha Forro Preto PIR", "atributos": { "nucleo": "PIR", "acabamento_inferior": "forro preto" }, "unidade": "M²", "preco": 110.00, "largura_util_m": 0.98, "vao_maximo_m": 2.00, "inclinacao_minima_pct": 10, "comprimento_maximo_m": 12.0, "forro_integrado": true, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/quero-saber-mais-20250704163750.jpeg" },
-    { "id": "TL-PIR-FORRO-BR", "codigo": null, "gc_id": null, "site_id": 77, "familia": "Telha Termoisolante PIR", "nome": "Telha Forro Branco PIR", "atributos": { "nucleo": "PIR", "acabamento_inferior": "forro branco" }, "unidade": "M²", "preco": 110.00, "largura_util_m": 0.98, "vao_maximo_m": 2.00, "inclinacao_minima_pct": 10, "comprimento_maximo_m": 12.0, "forro_integrado": true, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/quero-saber-mais-20250704164407.jpeg" },
-
-    { "id": "TL-COL-TER-PT", "codigo": null, "gc_id": null, "site_id": 78, "familia": "Telha Colonial PIR (Isotelha)", "nome": "Isotelha Colonial Terracota com Forro Preto", "atributos": { "cor": "terracota", "forro": "preto" }, "unidade": "M²", "preco": 135.00, "largura_util_m": 0.90, "vao_maximo_m": 1.50, "inclinacao_minima_pct": 15, "comprimento_maximo_m": 8.0, "forro_integrado": true, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/994ab7fd0be913970fdf89eb47c45269-20250928194151.jpeg" },
-    { "id": "TL-COL-TER-BR", "codigo": null, "gc_id": null, "site_id": 79, "familia": "Telha Colonial PIR (Isotelha)", "nome": "Isotelha Colonial Terracota com Forro Branco", "atributos": { "cor": "terracota", "forro": "branco" }, "unidade": "M²", "preco": 135.00, "largura_util_m": 0.90, "vao_maximo_m": 1.50, "inclinacao_minima_pct": 15, "comprimento_maximo_m": 8.0, "forro_integrado": true, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/37a549f52d9d9bb2ca2c4625d44682ad-20250928202710.jpeg" },
-    { "id": "TL-COL-TER-AE", "codigo": null, "gc_id": null, "site_id": 80, "familia": "Telha Colonial PIR (Isotelha)", "nome": "Isotelha Colonial Terracota Forro Amadeirado Escuro", "atributos": { "cor": "terracota", "forro": "amadeirado escuro" }, "unidade": "M²", "preco": 142.00, "largura_util_m": 0.90, "vao_maximo_m": 1.50, "inclinacao_minima_pct": 15, "comprimento_maximo_m": 8.0, "forro_integrado": true, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/f344fd90cff54654f49948ed15a89a38-20250928204107.jpeg" },
-    { "id": "TL-COL-TER-AC", "codigo": null, "gc_id": null, "site_id": 81, "familia": "Telha Colonial PIR (Isotelha)", "nome": "Isotelha Colonial Terracota Forro Amadeirado Claro", "atributos": { "cor": "terracota", "forro": "amadeirado claro" }, "unidade": "M²", "preco": 142.00, "largura_util_m": 0.90, "vao_maximo_m": 1.50, "inclinacao_minima_pct": 15, "comprimento_maximo_m": 8.0, "forro_integrado": true, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/3c6b82e670da8ee9efabbc54fea4d51e-20250928205135.jpeg" },
-    { "id": "TL-COL-CIN-PT", "codigo": null, "gc_id": null, "site_id": 82, "familia": "Telha Colonial PIR (Isotelha)", "nome": "Isotelha Colonial Cinza Ardósia com Forro Preto", "atributos": { "cor": "cinza ardósia", "forro": "preto" }, "unidade": "M²", "preco": 135.00, "largura_util_m": 0.90, "vao_maximo_m": 1.50, "inclinacao_minima_pct": 15, "comprimento_maximo_m": 8.0, "forro_integrado": true, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/05351307567cc718186363094aa6d2ff-20250928210258.jpeg" },
-    { "id": "TL-COL-CIN-BR", "codigo": null, "gc_id": null, "site_id": 83, "familia": "Telha Colonial PIR (Isotelha)", "nome": "Isotelha Colonial Cinza Ardósia com Forro Branco", "atributos": { "cor": "cinza ardósia", "forro": "branco" }, "unidade": "M²", "preco": 135.00, "largura_util_m": 0.90, "vao_maximo_m": 1.50, "inclinacao_minima_pct": 15, "comprimento_maximo_m": 8.0, "forro_integrado": true, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/c2e704990d150366977584ae937f4f3f-20250928211359.jpeg" },
-    { "id": "TL-COL-CIN-AE", "codigo": null, "gc_id": null, "site_id": 84, "familia": "Telha Colonial PIR (Isotelha)", "nome": "Isotelha Colonial Cinza Ardósia Forro Amadeirado Escuro", "atributos": { "cor": "cinza ardósia", "forro": "amadeirado escuro" }, "unidade": "M²", "preco": 142.00, "largura_util_m": 0.90, "vao_maximo_m": 1.50, "inclinacao_minima_pct": 15, "comprimento_maximo_m": 8.0, "forro_integrado": true, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/de48fecd2169cba7ded1e962d92349c5-20250928212337.jpeg" },
-    { "id": "TL-COL-CIN-AC", "codigo": null, "gc_id": null, "site_id": 85, "familia": "Telha Colonial PIR (Isotelha)", "nome": "Isotelha Colonial Cinza Ardósia Forro Amadeirado Claro", "atributos": { "cor": "cinza ardósia", "forro": "amadeirado claro" }, "unidade": "M²", "preco": 142.00, "largura_util_m": 0.90, "vao_maximo_m": 1.50, "inclinacao_minima_pct": 15, "comprimento_maximo_m": 8.0, "forro_integrado": true, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/910f7262539facc13dc7f499863babf9-20250928213004.jpeg" },
-    { "id": "TL-COL-MAR-PT", "codigo": null, "gc_id": null, "site_id": 86, "familia": "Telha Colonial PIR (Isotelha)", "nome": "Isotelha Colonial Marfim com Forro Preto", "atributos": { "cor": "marfim", "forro": "preto" }, "unidade": "M²", "preco": 135.00, "largura_util_m": 0.90, "vao_maximo_m": 1.50, "inclinacao_minima_pct": 15, "comprimento_maximo_m": 8.0, "forro_integrado": true, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/83466de574ca8b283856b5e6fbb55b8d-20250928213604.jpeg" },
-    { "id": "TL-COL-MAR-BR", "codigo": null, "gc_id": null, "site_id": 87, "familia": "Telha Colonial PIR (Isotelha)", "nome": "Isotelha Colonial Marfim com Forro Branco", "atributos": { "cor": "marfim", "forro": "branco" }, "unidade": "M²", "preco": 135.00, "largura_util_m": 0.90, "vao_maximo_m": 1.50, "inclinacao_minima_pct": 15, "comprimento_maximo_m": 8.0, "forro_integrado": true, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/f2f3b2232b57f5f2f4d81ff85eec9506-20250928214656.jpeg" },
-    { "id": "TL-COL-MAR-AE", "codigo": null, "gc_id": null, "site_id": 88, "familia": "Telha Colonial PIR (Isotelha)", "nome": "Isotelha Colonial Marfim Forro Amadeirado Escuro", "atributos": { "cor": "marfim", "forro": "amadeirado escuro" }, "unidade": "M²", "preco": 142.00, "largura_util_m": 0.90, "vao_maximo_m": 1.50, "inclinacao_minima_pct": 15, "comprimento_maximo_m": 8.0, "forro_integrado": true, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/045f81fe6c118c75f17fa9e02b40584d-20250928215440.jpeg" },
-    { "id": "TL-COL-MAR-AC", "codigo": null, "gc_id": null, "site_id": 89, "familia": "Telha Colonial PIR (Isotelha)", "nome": "Isotelha Colonial Marfim Forro Amadeirado Claro", "atributos": { "cor": "marfim", "forro": "amadeirado claro" }, "unidade": "M²", "preco": 142.00, "largura_util_m": 0.90, "vao_maximo_m": 1.50, "inclinacao_minima_pct": 15, "comprimento_maximo_m": 8.0, "forro_integrado": true, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/865429ceeb52d2371fdd1b0e5600fe45-20250928220036.jpeg" },
-
-    { "id": "TL-FIBRA-NAT", "codigo": null, "gc_id": null, "site_id": 11, "familia": "Telha Fibra de Vidro", "nome": "Telha Fibra de Vidro (natural/translúcida)", "atributos": { "cor": "natural" }, "unidade": "M²", "preco": 60.00, "largura_util_m": 0.98, "vao_maximo_m": 1.50, "inclinacao_minima_pct": 15, "comprimento_maximo_m": 6.0, "forro_integrado": false, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/TELHA-FIBRA-DE-VIDRO-20221010191149-06-15-2023-15-52-11-000000.jpg" },
-    { "id": "TL-FIBRA-COLOR", "codigo": null, "gc_id": null, "site_id": 14, "familia": "Telha Fibra de Vidro", "nome": "Telha Fibra de Vidro Colorida", "atributos": { "cor": "colorida" }, "unidade": "M²", "preco": 68.00, "largura_util_m": 0.98, "vao_maximo_m": 1.50, "inclinacao_minima_pct": 15, "comprimento_maximo_m": 6.0, "forro_integrado": false, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/TELHA-FIBRA-DE-VIDRO-COLORIDAS-20221011092910-06-15-2023-15-52-31-000000.jpg" },
-    { "id": "TL-TRANS-ISOLUZ", "codigo": null, "gc_id": null, "site_id": 70, "familia": "Telha Translúcida", "nome": "Isoluz Translúcida de Policarbonato 3 Trapézios", "atributos": { "material": "policarbonato" }, "unidade": "M²", "preco": 180.00, "largura_util_m": 0.98, "vao_maximo_m": 1.50, "inclinacao_minima_pct": 10, "comprimento_maximo_m": 6.0, "forro_integrado": false, "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/quero-saber-mais-20240925174105.jpeg" }
+    {
+      "id": "P358769", "codigo": "358769", "gc_id": null,
+      "familia": "Telha Termoisolante PIR",
+      "nome": "Confort PIR 30mm Trapézio 40/1000 — Galvalume / Branco",
+      "descricao_completa": "358769 - CONFORT PIR 30mm TRAPÉZIO 40/1000 ZCL 0,43mm GALVALUME Superior - FORRO RAL 9003 BRANCO SLIM Inferior - NCM: 73089090",
+      "atributos": {
+        "linha": "CONFORT", "nucleo": "PIR", "espessura_isolamento_mm": 30,
+        "perfil": "Trapézio 40/1000", "onda_mm": 40, "espessura_chapa_mm": 0.43,
+        "face_superior": "Galvalume ZCL", "face_inferior": "Forro RAL 9003 Branco Slim",
+        "ncm": "73089090"
+      },
+      "tipo": "telha", "unidade": "M²", "venda_por": "metro",
+      "preco": 129.50,
+      "faixas_preco": [
+        { "ate_m2": 50,  "preco": 129.50 },
+        { "ate_m2": 100, "preco": 126.91 },
+        { "ate_m2": 200, "preco": 123.02 },
+        { "ate_m2": null, "preco": 120.73 }
+      ],
+      "largura_util_m": 1.00,
+      "comprimento_maximo_m": 8.0,
+      "comprimento_minimo_m": 0.5,
+      "transpasse_m": 0.20,
+      "vao_maximo_m": 2.00,
+      "inclinacao_minima_pct": 10,
+      "forro_integrado": true,
+      "promocao_ate_m": 8.0,
+      "_promocao_nota": "Os preços das faixas são PROMOCIONAIS e valem para peças de até 8m. Peça maior sai da promoção e entra em outra base de cálculo — o sistema encaminha ao vendedor.",
+      "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/telha-sanduiche-pir-20251028160541.jpeg",
+      "ativo": true
+    },
+    {
+      "id": "P358768", "codigo": "358768", "gc_id": null,
+      "familia": "Telha Termoisolante PIR",
+      "nome": "Confort PIR 30mm Trapézio 40/1000 — Branco / Branco",
+      "descricao_completa": "358768 - CONFORT PIR 30mm TRAPÉZIO 40/1000 ZCL 0,38mm RAL 9003 BRANCO Superior - FORRO RAL 9003 BRANCO SLIM Inferior - NCM: 73089090",
+      "atributos": {
+        "linha": "CONFORT", "nucleo": "PIR", "espessura_isolamento_mm": 30,
+        "perfil": "Trapézio 40/1000", "onda_mm": 40, "espessura_chapa_mm": 0.38,
+        "face_superior": "RAL 9003 Branco", "face_inferior": "Forro RAL 9003 Branco Slim",
+        "ncm": "73089090"
+      },
+      "tipo": "telha", "unidade": "M²", "venda_por": "metro",
+      "preco": 139.73,
+      "faixas_preco": [
+        { "ate_m2": 50,  "preco": 139.73 },
+        { "ate_m2": 100, "preco": 136.94 },
+        { "ate_m2": 200, "preco": 132.75 },
+        { "ate_m2": null, "preco": 131.35 }
+      ],
+      "largura_util_m": 1.00,
+      "comprimento_maximo_m": 8.0,
+      "comprimento_minimo_m": 0.5,
+      "transpasse_m": 0.20,
+      "vao_maximo_m": 2.00,
+      "inclinacao_minima_pct": 10,
+      "forro_integrado": true,
+      "promocao_ate_m": 8.0,
+      "_promocao_nota": "Os preços das faixas são PROMOCIONAIS e valem para peças de até 8m. Peça maior sai da promoção e entra em outra base de cálculo — o sistema encaminha ao vendedor.",
+      "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/quero-saber-mais-20250704164407.jpeg",
+      "ativo": true
+    }
   ],
 
-  "perfis": [
-    { "id": "PF-VIGA-130", "codigo": null, "gc_id": null, "tipo": "viga", "nome": "Viga Aberta Galvanizada 130x50 / 1,25mm", "unidade": "M", "preco": 62.00, "barra_m": 6.0, "vao_maximo_m": 6.0 },
-    { "id": "PF-CAIBRO-AB", "codigo": null, "gc_id": null, "tipo": "terca", "nome": "Caibro Aberto Galvanizado 80x40", "unidade": "M", "preco": 28.00, "barra_m": 6.0, "vao_maximo_m": 3.0 },
-    { "id": "PF-CAIBRO-FE", "codigo": null, "gc_id": null, "tipo": "terca", "nome": "Caibro Fechado Galvanizado 80x40", "unidade": "M", "preco": 34.00, "barra_m": 6.0, "vao_maximo_m": 4.0 },
-    { "id": "PF-RIPA", "codigo": null, "gc_id": null, "tipo": "ripa", "nome": "Ripa Galvanizada 30x20x10", "unidade": "M", "preco": 12.00, "barra_m": 6.0, "vao_maximo_m": 1.5 },
-    { "id": "PF-CANTONEIRA", "codigo": null, "gc_id": null, "tipo": "cantoneira", "nome": "Cantoneira 50x50 / 1,25mm - 6mts", "unidade": "M", "preco": 22.00, "barra_m": 6.0 },
-    { "id": "PF-CONTRAVENTO", "codigo": null, "gc_id": null, "tipo": "contravento", "nome": "Contra Vento 30x15x0,65", "unidade": "M", "preco": 9.50, "barra_m": 6.0 },
-    { "id": "PF-CONEXAO-U", "codigo": null, "gc_id": null, "tipo": "conexao", "nome": "Conexão U / 80x45x100 - 1,25mm", "unidade": "UN", "preco": 14.00 }
+  "_complementos_nota": "Acabamentos e fixação: VENDIDOS POR BARRA/PEÇA (não por metro). O sistema arredonda para cima. Preço igual em todas as faixas de metragem. Preencha 'imagem' com a URL da foto para ela aparecer na coluna IMAGEM do PDF.",
+  "complementos": [
+    {
+      "id": "P143019", "codigo": "143019", "familia": "Acabamento",
+      "nome": "Acabamento Frontal TP 40/1000 p/ Telha 30mm — Branco",
+      "descricao_completa": "143019 - ACABAMENTO FRONTAL TP 40/1000 P/ T-30mm RAL 9003 BRANCO",
+      "imagem": null,
+      "tipo": "acabamento", "venda_por": "barra", "comprimento_barra_m": 3.0,
+      "unidade": "PC", "preco": 25.10,
+      "aplica_em": "frontal", "ativo": true
+    },
+    {
+      "id": "P152327", "codigo": "152327", "familia": "Acabamento",
+      "nome": "Acabamento Lateral Trapézio 40/1000 p/ Telha PIR 30mm — Branco",
+      "descricao_completa": "152327 - ACABAMENTO LATERAL TRAPÉZIO 40/1000 TELHA PIR 30mm RAL 9003 BRANCO - Barras C/ 3mts",
+      "imagem": null,
+      "tipo": "acabamento", "venda_por": "barra", "comprimento_barra_m": 3.0,
+      "unidade": "PC", "preco": 56.03,
+      "aplica_em": "lateral", "ativo": true
+    },
+    {
+      "id": "P148384", "codigo": "148384", "familia": "Acabamento",
+      "nome": "Cumeeira Galvalume Trapézio 40/1000 — Galvalume ZCL 0,43mm",
+      "descricao_completa": "148384 - CUMEEIRA GALVALUME TRAPEZIO 40/1000 GALVALUME ZCL 0,43mm",
+      "imagem": null,
+      "tipo": "acabamento", "venda_por": "barra", "comprimento_barra_m": 3.0,
+      "unidade": "PC", "preco": 46.09,
+      "aplica_em": "cumeeira", "ativo": true
+    },
+    {
+      "id": "P148474", "codigo": "148474", "familia": "Acabamento",
+      "nome": "Cumeeira Galvalume Trapézio 40/1000 — Branco RAL 9003",
+      "descricao_completa": "148474 - CUMEEIRA GALVALUME TRAPEZIO 40/1000 RAL 9003 BRANCO",
+      "imagem": null,
+      "tipo": "acabamento", "venda_por": "barra", "comprimento_barra_m": 3.0,
+      "unidade": "PC", "preco": 53.88,
+      "aplica_em": "cumeeira", "ativo": true
+    },
+    {
+      "id": "P142962", "codigo": "142962", "familia": "Acabamento",
+      "nome": "Acabamento Interno Branco RAL 9003 — 3mts",
+      "descricao_completa": "142962 - ACABAMENTO INTERNO RAL 9003 BRANCO INTERNO - 3mts",
+      "imagem": null,
+      "tipo": "acabamento", "venda_por": "barra", "comprimento_barra_m": 3.0,
+      "unidade": "PC", "preco": 47.95,
+      "aplica_em": "interno", "ativo": true
+    },
+    {
+      "id": "P6391P4", "codigo": "6391P4", "familia": "Fixação",
+      "nome": "Parafuso Fixação Rosca Inteira c/ Vedação 4\" 12x4 — Aço Anticorrosão",
+      "descricao_completa": "6391P4 - PARAFUSO FIXAÇÃO ROSCA INTEIRA C/ VEDAÇÃO 4\" 12x4 P/ AÇO ANTI CORROSÃO",
+      "imagem": null,
+      "tipo": "fixacao", "venda_por": "unidade",
+      "unidade": "UN", "preco": 1.25,
+      "consumo_por_m2": 6, "ativo": true
+    },
+    {
+      "id": "PPA-101", "codigo": "PA-101", "familia": "Fixação",
+      "nome": "Parafuso Costura 12x7/8 — Anticorrosão",
+      "descricao_completa": "PA-101 - PARAFUSO COSTURA 12x 7/8 ANTI CORROSÃO",
+      "imagem": null,
+      "tipo": "fixacao", "venda_por": "unidade",
+      "unidade": "UN", "preco": 0.45,
+      "consumo_por_m2": 2, "ativo": true
+    }
   ],
+
+  "perfis": [],
+
+  "unidades": [
+    { "nome": "Est. 101", "cep": "75132-105", "cidade": "Anápolis", "uf": "GO", "endereco": "Qd. 08 Módulo 14/16 - DAIA", "cnpj": "00.289.348/0001-40", "ativa": true, "produtos": [] },
+    { "nome": "Est. 103", "cep": "78134-302", "cidade": "Várzea Grande", "uf": "MT", "endereco": "Av. das Palmeiras, Lote C Industrial - Capão do Pequi", "cnpj": "00.289.348/0006-55", "ativa": true, "produtos": [] },
+    { "nome": "Est. 104", "cep": "55613-010", "cidade": "Vitória de Santo Antão", "uf": "PE", "endereco": "Rodovia Luiz Gonzaga BR-232 Km 51,8 - Distrito Industrial", "cnpj": "00.289.348/0005-74", "ativa": true, "produtos": [] },
+    { "nome": "Est. 105", "cep": "37600-000", "cidade": "Cambuí", "uf": "MG", "endereco": "Avenida dos Nascimento, 354 - Congonhal", "cnpj": "00.289.348/0007-36", "ativa": true, "produtos": [] },
+    { "nome": "Est. 106", "cep": "89245-000", "cidade": "Araquari", "uf": "SC", "endereco": "Rodovia BR-101, 17175 - Corveta", "cnpj": "00.289.348/0008-17", "ativa": true, "produtos": [] },
+    { "nome": "Est. 107", "cep": "37600-000", "cidade": "Cambuí", "uf": "MG", "endereco": "Avenida dos Nascimento, 354 Galpão 02 - Congonhal", "cnpj": "00.289.348/0009-06", "ativa": true, "produtos": [] },
+    { "nome": "Est. 1101", "cep": "89245-000", "cidade": "Araquari", "uf": "SC", "endereco": "Rodovia BR-101, 17175 Galpão 03 - Corveta", "cnpj": "37.076.760/0001-92", "ativa": true, "produtos": [] }
+  ],
+
+  "fretes": {
+    "modo": "embutido",
+    "_como_funciona": "O frete JÁ ESTÁ no preço por metro das faixas (por isso o preço cai com o volume). Duas exceções cadastradas abaixo: pedidos pequenos e destinos distantes.",
+
+    "raio_maximo_km": 600,
+    "raio_medido_de": "unidade_mais_proxima",
+    "_raio_nota": "600 km contados DA FÁBRICA (unidade mais próxima da obra), não da matriz em Cedral. Acima disso o sistema NÃO conclui o orçamento: registra o pedido, gera protocolo e encaminha para a 4A formalizar a proposta, porque o frete varia por localidade.",
+    "mensagem_fora_do_raio": "Sua obra está fora da nossa área de entrega automática. Já registramos todo o seu pedido e nossa equipe vai formalizar a proposta com o frete correto para a sua região — em breve entramos em contato.",
+
+    "metragem_minima_m2": 40,
+    "frete_abaixo_do_minimo": 400.00,
+    "_minimo_nota": "Abaixo de 40 m² a carga não fecha: cobra-se R$ 400 de frete, DILUÍDO no preço por metro (o cliente continua vendo 'frete incluso').",
+
+    "tabela": []
+  },
 
   "regras": {
+    "faixa_preco_por": "produto",
+    "_faixa_preco_por_opcoes": "'produto' = a faixa vale pela metragem daquele produto · 'pedido' = pela metragem total. CONFIRMAR COM A 4A.",
     "metragem_maxima_autoatendimento_m": 400,
     "quantidade_maxima_pecas": 200,
-    "observacao_pdf": "Orçamento gerado automaticamente. Sujeito a conferência das medidas informadas pelo cliente."
+    "observacao_pdf": "Orçamento gerado automaticamente. Sujeito a conferência das medidas informadas pelo cliente. Frete incluso no valor dos produtos."
   },
 
   "textos_pdf": {
-    "frete": "FRETE COMPARTILHADO",
-    "pagamento_observacao": "FRETE GRÁTIS - VALOR JÁ ENTREGUE NA OBRA",
-    "transportadora": "A L DE LIMA REPRESENTACAO MATERIAIS DE CONSTRUCAO",
-    "_unidades_nota": "Sem telefone por unidade: o contato é do representante e já aparece no cabeçalho. Estes textos são só reserva — quando 3-unidades.csv for importado, o PDF passa a usar o cadastro.",
-    "unidades": [
-      "UNIDADE 1 | Rod SP308 (Açúcar) S/N KM 159 | Dois Córregos | Piracicaba - SP | CEP 13419-150",
-      "UNIDADE 2 | Av. Litério Grecco, 456 | Fernandópolis - SP | CEP 15600-000",
-      "UNIDADE 3 | Rua Osvaldo Almeida de Souza, 32 | Distrito Industrial | Sertãozinho - SP | CEP 14176-122",
-      "UNIDADE 4 | Dos Nascimento, 354 | Congonhal | Cambuí - MG | CEP 37600-000",
-      "UNIDADE 5 | Rodovia BR 101, nº 17175 Km 63,5 | Araquari - SC | CEP 89245-000",
-      "UNIDADE 6 | Av. das Palmeiras, Lote C Industrial | Capão do Pequi | Várzea Grande - MT | CEP 78134-302",
-      "UNIDADE 7 | Rua VP-5D Qd.08 Módulos 06/08 e 10/21 | DAIA | Anápolis - GO | CEP 75132-120",
-      "UNIDADE 8 | Rodovia Luiz Gonzaga BR 232 Km 51,8 | Distrito Industrial | Vitória de Santo Antão - PE | CEP 55613-010"
-    ],
+    "frete": "FRETE INCLUSO NO VALOR DOS PRODUTOS",
+    "pagamento_observacao": "FRETE INCLUSO - ENTREGUE NA OBRA",
+    "transportadora": "",
+    "_unidades_nota": "Sem telefone por unidade: o contato é do representante e já aparece no cabeçalho.",
+    "unidades": [],
     "atencao": [
       "A 4A não envia e-mails ofertando vantagens financeiras na liquidação de boletos. Confira sempre o favorecido durante o pagamento!",
       "Favor conferir todas as informações constantes no pedido."

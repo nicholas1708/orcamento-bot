@@ -24,6 +24,51 @@ async function calcularFrete(destino, pedido, catalogo) {
   const tabela = catalogo.fretes?.tabela || [];
   const unidades = catalogo.unidades || [];
 
+  // ── MODO EMBUTIDO ──────────────────────────────────────────────────
+  // O frete já está dentro do preço por metro (por isso o preço cai com o
+  // volume). Duas exceções: raio de entrega e pedido mínimo.
+  if (catalogo.fretes?.modo === 'embutido') {
+    const cfg = catalogo.fretes;
+    const proxima = await unidadeMaisProxima(destino, unidades, pedido.codigos || []);
+
+    if (!proxima) {
+      return { valor: 0, embutido: true, km: null, unidade: null,
+        descricao: 'Frete incluso no valor dos produtos',
+        aviso: 'Não consegui identificar a unidade de origem pelo endereço — o vendedor confirma o prazo de entrega.' };
+    }
+
+    const { unidade, km } = proxima;
+
+    // FORA DO RAIO: não conclui sozinho — a 4A formaliza a proposta
+    if (cfg.raio_maximo_km && km > cfg.raio_maximo_km) {
+      return {
+        valor: null, embutido: true, km, unidade,
+        foraDoRaio: true,
+        descricao: `Fora da área de entrega automática (${km} km da unidade de ${unidade.cidade}/${unidade.uf})`,
+        mensagemCliente: cfg.mensagem_fora_do_raio,
+        aviso: `Destino a ${km} km — acima do raio de ${cfg.raio_maximo_km} km. Proposta precisa ser formalizada pela equipe.`,
+      };
+    }
+
+    // PEDIDO PEQUENO: R$ X de frete, DILUÍDO no preço por metro
+    const metragem = Number(pedido.metragemTotal) || 0;
+    if (cfg.metragem_minima_m2 && metragem > 0 && metragem < cfg.metragem_minima_m2) {
+      return {
+        valor: 0, embutido: true, km, unidade,
+        diluir: money(cfg.frete_abaixo_do_minimo || 0),
+        descricao: `Frete incluso — sai de ${unidade.cidade}/${unidade.uf} (${km} km)`,
+        aviso: `Pedido abaixo de ${cfg.metragem_minima_m2} m²: frete de R$ ${(cfg.frete_abaixo_do_minimo || 0).toFixed(2).replace('.', ',')} diluído no valor dos produtos.`,
+      };
+    }
+
+    return {
+      valor: 0, embutido: true, km, unidade,
+      descricao: `Frete incluso — material sai de ${unidade.cidade}/${unidade.uf} (${km} km)`,
+      aviso: null,
+    };
+  }
+
+  // ── MODO TABELA (frete cobrado à parte) ────────────────────────────
   if (!tabela.length || !unidades.length) {
     return { valor: null, km: null, unidade: null, descricao: 'Frete a confirmar',
       aviso: 'Tabela de frete ou unidades não cadastradas — frete a confirmar pelo vendedor.' };

@@ -105,6 +105,88 @@ app.post('/api/painel/importar', exigirSenha, async (req, res) => {
   }
 });
 
+// ── PAINEL › CADASTRO DE PRODUTOS (formulário) ────────────────────────
+const fsp = require('fs');
+const ARQ_CAT = path.join(__dirname, 'catalogo.json');
+const lerCat = () => JSON.parse(fsp.readFileSync(ARQ_CAT, 'utf8'));
+const gravarCat = (c) => {
+  fsp.writeFileSync(path.join(__dirname, 'catalogo.backup.json'), fsp.readFileSync(ARQ_CAT));
+  fsp.writeFileSync(ARQ_CAT, JSON.stringify(c, null, 2));
+  limparCacheCatalogo();
+};
+
+app.get('/painel/produtos', exigirSenha, (_req, res) => res.sendFile(path.join(__dirname, 'painel-produtos.html')));
+
+app.get('/api/painel/produtos', exigirSenha, (_req, res) => {
+  const c = lerCat();
+  res.json({ produtos: c.telhas || [], familias: [...new Set((c.telhas || []).map((t) => t.familia))] });
+});
+
+/** Sugere os campos a partir da descrição do ERP (o usuário confirma). */
+app.post('/api/painel/desmembrar', exigirSenha, (req, res) => {
+  const { desmembrar } = require('./parser-produto');
+  res.json(desmembrar(req.body?.descricao || ''));
+});
+
+app.post('/api/painel/produto', exigirSenha, (req, res) => {
+  try {
+    const p = req.body || {};
+    if (!p.nome) return res.status(400).json({ error: 'Informe o nome do produto.' });
+    if (!(Number(p.largura_util_m) > 0)) return res.status(400).json({ error: 'Largura útil é obrigatória — sem ela não dá pra calcular a quantidade de peças.' });
+    if (!(Number(p.comprimento_maximo_m) > 0)) return res.status(400).json({ error: 'Informe o comprimento máximo de fabricação.' });
+
+    const faixas = (p.faixas_preco || [])
+      .map((f) => ({ ate_m2: f.ate_m2 === '' || f.ate_m2 == null ? null : Number(f.ate_m2), preco: Number(f.preco) }))
+      .filter((f) => Number.isFinite(f.preco) && f.preco > 0);
+    if (!faixas.length) return res.status(400).json({ error: 'Informe ao menos um preço.' });
+
+    const c = lerCat();
+    c.telhas = c.telhas || [];
+    const id = p.id || (p.codigo ? 'P' + String(p.codigo).toUpperCase().replace(/[^A-Z0-9]/g, '') : 'P' + Date.now().toString(36).toUpperCase());
+
+    const registro = {
+      id,
+      codigo: p.codigo || null,
+      gc_id: p.gc_id || null,
+      familia: p.familia || 'Outros',
+      nome: p.nome,
+      descricao_completa: p.descricao_completa || null,
+      atributos: p.atributos || {},
+      unidade: 'M²',
+      preco: faixas[0].preco,          // compatibilidade / preço de referência
+      faixas_preco: faixas,
+      largura_util_m: Number(p.largura_util_m),
+      comprimento_maximo_m: Number(p.comprimento_maximo_m),
+      comprimento_minimo_m: Number(p.comprimento_minimo_m) || 0.5,
+      transpasse_m: Number(p.transpasse_m) || null,
+      vao_maximo_m: Number(p.vao_maximo_m) || 1.8,
+      inclinacao_minima_pct: Number(p.inclinacao_minima_pct) || 10,
+      forro_integrado: !!p.forro_integrado,
+      imagem: p.imagem || null,
+      ativo: p.ativo !== false,
+      observacao: p.observacao || null,
+    };
+
+    const i = c.telhas.findIndex((t) => t.id === id);
+    if (i >= 0) c.telhas[i] = { ...c.telhas[i], ...registro };
+    else c.telhas.push(registro);
+
+    gravarCat(c);
+    res.json({ ok: true, produto: registro });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/painel/produto/:id', exigirSenha, (req, res) => {
+  try {
+    const c = lerCat();
+    const antes = (c.telhas || []).length;
+    c.telhas = (c.telhas || []).filter((t) => t.id !== req.params.id);
+    if (c.telhas.length === antes) return res.status(404).json({ error: 'Produto não encontrado.' });
+    gravarCat(c);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/painel/status', exigirSenha, (req, res) => {
   const { numero, status, nota } = req.body || {};
   const r = orcamentosDb.atualizarStatus(numero, status, nota);
@@ -195,7 +277,9 @@ app.post('/api/orcamento', async (req, res) => {
 
     // frete é cobrado À PARTE: calculado aqui e somado como linha própria
     const { calcularFrete } = require('./frete');
-    const previa = calcularOrcamento({ grupos, perfis: pedido.perfis || [] }, catalogo);
+    const previa = calcularOrcamento({
+      grupos, perfis: pedido.perfis || [], complementos: pedido.complementos || [],
+    }, catalogo);
     const frete = await calcularFrete(
       { cep: cliente.cep, cidade: cliente.cidade, uf: cliente.estado },
       {
@@ -205,7 +289,31 @@ app.post('/api/orcamento', async (req, res) => {
       },
       catalogo
     );
-    const orcamento = calcularOrcamento({ grupos, perfis: pedido.perfis || [], frete }, catalogo);
+    // Fora do raio de entrega: NÃO conclui — registra e encaminha à equipe
+    if (frete.foraDoRaio) {
+      const numeroP = 'PROP-' + Date.now().toString(36).toUpperCase();
+      orcamentosDb.salvar({
+        numero: numeroP, canal: 'web',
+        origem: req.body?.vendedor ? 'vendedor' : 'cliente',
+        vendedor: req.body?.vendedor || null,
+        cliente, orcamento: { ...previa, frete, escalarParaVendedor: true },
+        grupos, pdfPath: null,
+      });
+      require('./clientes').salvar(cliente);
+      console.log(`[WEB] ⚠️ Fora do raio (${frete.km} km) — ${numeroP} — ${cliente.nome} (${cliente.telefone})`);
+      return res.json({
+        foraDoRaio: true, numero: numeroP, km: frete.km,
+        mensagem: frete.mensagemCliente,
+        resumo: {
+          metragemTotal: previa.metragemTotal, totalPecas: previa.totalPecas,
+          produtos: previa.resumoPorProduto,
+        },
+      });
+    }
+
+    const orcamento = calcularOrcamento({
+      grupos, perfis: pedido.perfis || [], complementos: pedido.complementos || [], frete,
+    }, catalogo);
 
     const numero = 'WEB-' + Date.now().toString(36).toUpperCase();
     // token aleatório no nome: deixa o link do PDF impossível de adivinhar

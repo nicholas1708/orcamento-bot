@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cadastro de Produtos — 4A</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif}
+  body{background:#f1f5f9;color:#0f172a;padding:20px}
+  .wrap{max-width:1100px;margin:0 auto}
+  header{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+  header h1{font-size:22px}header .sp{flex:1}
+  .btn{background:#0ea5e9;color:#fff;border:none;padding:10px 16px;border-radius:9px;font-size:13.5px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn:hover{background:#0284c7}
+  .btn.g{background:#fff;color:#334155;border:1px solid #cbd5e1}
+  .btn.r{background:#fff;color:#b91c1c;border:1px solid #fca5a5}
+  .btn.ok{background:#16a34a}
+  .card{background:#fff;border:1px solid #e2e8f0;border-radius:13px;padding:18px;margin-bottom:14px}
+  .card h2{font-size:16px;margin-bottom:10px}
+  .card p.d{color:#64748b;font-size:13.5px;margin-bottom:12px;line-height:1.5}
+  /* colar descrição */
+  .colar textarea{width:100%;min-height:70px;padding:11px 13px;border:2px solid #e2e8f0;border-radius:10px;font-size:13.5px;outline:none;resize:vertical;font-family:inherit}
+  .colar textarea:focus{border-color:#0ea5e9}
+  .achou{background:#f0fdf4;border:1px solid #86efac;color:#166534;border-radius:9px;padding:10px 12px;font-size:12.5px;margin-top:10px;display:none}
+  /* formulário */
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:11px}
+  .f label{display:block;font-size:12px;font-weight:600;color:#334155;margin-bottom:4px}
+  .f label i{color:#dc2626;font-style:normal}
+  .f input,.f select{width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:9px;font-size:13.5px;outline:none;background:#fff}
+  .f input:focus,.f select:focus{border-color:#0ea5e9}
+  .f small{display:block;color:#94a3b8;font-size:11px;margin-top:3px;line-height:1.35}
+  .sec{font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.4px;margin:18px 0 9px;padding-top:14px;border-top:1px solid #f1f5f9}
+  .sec:first-of-type{border-top:none;padding-top:0;margin-top:14px}
+  /* faixas */
+  .fx{display:grid;grid-template-columns:1fr 1fr auto;gap:9px;align-items:end;margin-bottom:8px}
+  .fx button{background:#fee2e2;color:#b91c1c;border:none;width:38px;height:38px;border-radius:9px;cursor:pointer}
+  .add{background:#e0f2fe;color:#0369a1;border:none;padding:9px;border-radius:9px;width:100%;cursor:pointer;font-weight:600;font-size:13px}
+  .dica{background:#f8fafc;border-left:3px solid #0ea5e9;padding:10px 13px;border-radius:0 8px 8px 0;font-size:12.5px;color:#475569;line-height:1.55;margin-top:10px}
+  /* lista */
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{background:#f8fafc;text-align:left;padding:9px 11px;font-size:11px;color:#64748b;text-transform:uppercase;border-bottom:1px solid #e2e8f0}
+  td{padding:10px 11px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+  tr:hover{background:#f8fafc}
+  .fam{font-size:11px;background:#f1f5f9;color:#475569;padding:2px 8px;border-radius:20px;display:inline-block}
+  .mut{color:#94a3b8;font-size:11.5px}
+  .erro{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;border-radius:9px;padding:10px 13px;font-size:13px;margin-top:10px;display:none}
+  .ok{background:#f0fdf4;color:#166534;border:1px solid #86efac;border-radius:9px;padding:10px 13px;font-size:13px;margin-top:10px;display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🧱 Cadastro de Produtos</h1><span class="sp"></span>
+    <a class="btn g" href="/painel/dados">Importar planilha</a>
+    <a class="btn g" href="/painel">← Painel</a>
+  </header>
+
+  <!-- COLAR DESCRIÇÃO DO ERP -->
+  <div class="card colar">
+    <h2>⚡ Atalho: cole a descrição do sistema</h2>
+    <p class="d">Cole o nome completo do produto como vem do ERP da fábrica. Eu separo as
+      informações e preencho o formulário abaixo — depois é só conferir e completar.</p>
+    <textarea id="desc" placeholder="Ex: 358769 - CONFORT PIR 30mm TRAPÉZIO 40/1000 ZCL 0,43mm GALVALUME Superior - FORRO RAL 9003 BRANCO SLIM Inferior - NCM: 73089090"></textarea>
+    <div style="margin-top:10px"><button class="btn" onclick="desmembrar()">Separar informações</button></div>
+    <div class="achou" id="achou"></div>
+  </div>
+
+  <!-- FORMULÁRIO -->
+  <div class="card f">
+    <h2 id="tituloForm">Novo produto</h2>
+
+    <div class="sec">Identificação</div>
+    <div class="grid">
+      <div><label>Código no sistema</label><input id="codigo" placeholder="358769"><small>o mesmo código do ERP</small></div>
+      <div><label>Nome exibido ao cliente <i>*</i></label><input id="nome" placeholder="Confort PIR 30mm Trapézio 40/1000"><small>curto e claro — é o que aparece no orçamento</small></div>
+      <div><label>Família <i>*</i></label><input id="familia" list="familias" placeholder="Telha Termoisolante PIR"><small>agrupa os produtos na escolha</small>
+        <datalist id="familias"></datalist></div>
+      <div><label>Cor / acabamento</label><input id="cor" placeholder="Galvalume / Branco"></div>
+    </div>
+
+    <div class="sec">Preço por faixa de metragem</div>
+    <p class="d">Quanto maior o pedido, menor o preço por metro. Preencha as faixas conforme a
+      tabela da fábrica. Deixe o "até" da última faixa <b>em branco</b> — ela vale daí pra cima.</p>
+    <div id="faixas"></div>
+    <button class="add" onclick="addFaixa()">+ Adicionar faixa</button>
+
+    <div class="sec">Medidas de fabricação</div>
+    <div class="grid">
+      <div><label>Largura útil (m) <i>*</i></label><input id="largura_util_m" type="number" step="0.001" placeholder="1,00">
+        <small>⚠️ a que <b>cobre</b>, sem o recobrimento. No perfil 40/<b>1000</b> = 1,00 m</small></div>
+      <div><label>Comprimento máximo (m) <i>*</i></label><input id="comprimento_maximo_m" type="number" step="0.01" placeholder="12"><small>maior peça que a fábrica corta</small></div>
+      <div><label>Comprimento mínimo (m)</label><input id="comprimento_minimo_m" type="number" step="0.01" placeholder="0,50"></div>
+      <div><label>Transpasse na emenda (m)</label><input id="transpasse_m" type="number" step="0.01" placeholder="0,20"><small>sobreposição entre duas peças</small></div>
+    </div>
+
+    <div class="sec">Aplicação no telhado</div>
+    <div class="grid">
+      <div><label>Vão máximo entre terças (m)</label><input id="vao_maximo_m" type="number" step="0.01" placeholder="1,80"></div>
+      <div><label>Inclinação mínima (%)</label><input id="inclinacao_minima_pct" type="number" step="1" placeholder="10"></div>
+      <div><label>Já vem com forro/isolamento?</label><select id="forro_integrado"><option value="nao">Não</option><option value="sim">Sim</option></select></div>
+      <div><label>Produto ativo?</label><select id="ativo"><option value="sim">Sim</option><option value="nao">Não</option></select></div>
+    </div>
+
+    <div class="sec">Extras</div>
+    <div class="grid">
+      <div><label>Link da foto</label><input id="imagem" placeholder="https://..."></div>
+      <div><label>Observação interna</label><input id="observacao" placeholder="não aparece pro cliente"></div>
+    </div>
+
+    <div class="dica">Campos com <i style="color:#dc2626">*</i> são obrigatórios. Sem a <b>largura útil</b>
+      o sistema não consegue calcular quantas telhas o telhado precisa — é o dado mais importante do cadastro.</div>
+
+    <div class="erro" id="erro"></div><div class="ok" id="okmsg"></div>
+    <div style="margin-top:14px;display:flex;gap:9px">
+      <button class="btn ok" onclick="salvar()">Salvar produto</button>
+      <button class="btn g" onclick="limpar()">Limpar formulário</button>
+    </div>
+  </div>
+
+  <!-- LISTA -->
+  <div class="card">
+    <h2>Produtos cadastrados (<span id="qtd">0</span>)</h2>
+    <table><thead><tr><th>Código</th><th>Produto</th><th>Família</th><th>Preços</th><th>Largura útil</th><th></th></tr></thead>
+      <tbody id="lista"></tbody></table>
+  </div>
+</div>
+
+<script>
+let produtos=[];
+let editandoId=null;
+const g=id=>document.getElementById(id);
+const v=id=>g(id).value.trim();
+const nu=s=>{const n=parseFloat(String(s).replace(',','.'));return Number.isFinite(n)?n:null;};
+const BRL=x=>Number(x||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const msg=(el,t)=>{const e=g(el);e.textContent=t||'';e.style.display=t?'block':'none';};
+
+// ── faixas de preço ──
+let faixas=[{ate_m2:50,preco:''},{ate_m2:100,preco:''},{ate_m2:200,preco:''},{ate_m2:'',preco:''}];
+function pintarFaixas(){
+  g('faixas').innerHTML=faixas.map((f,i)=>`<div class="fx">
+    <div><label>Até quantos m²</label><input type="number" step="0.01" value="${f.ate_m2??''}"
+      placeholder="${i===faixas.length-1?'em branco = daí pra cima':'50'}" oninput="faixas[${i}].ate_m2=this.value"></div>
+    <div><label>Preço por metro (R$)</label><input type="number" step="0.01" value="${f.preco??''}"
+      placeholder="129,50" oninput="faixas[${i}].preco=this.value"></div>
+    <button onclick="delFaixa(${i})" ${faixas.length===1?'disabled style="opacity:.3"':''}>✕</button>
+  </div>`).join('');
+}
+function addFaixa(){faixas.push({ate_m2:'',preco:''});pintarFaixas();}
+function delFaixa(i){if(faixas.length>1){faixas.splice(i,1);pintarFaixas();}}
+
+// ── desmembrar descrição do ERP ──
+async function desmembrar(){
+  const d=v('desc');if(!d)return;
+  const r=await fetch('/api/painel/desmembrar',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({descricao:d})}).then(x=>x.json()).catch(()=>null);
+  if(!r)return;
+  if(r.codigo)g('codigo').value=r.codigo;
+  if(r.nome_curto)g('nome').value=r.nome_curto;
+  if(r.largura_util_m)g('largura_util_m').value=r.largura_util_m;
+  const cor=[r.face_superior,r.face_inferior].filter(Boolean).join(' / ');
+  if(cor)g('cor').value=cor;
+  if(r.tipo==='telha'&&r.nucleo)g('familia').value='Telha Termoisolante '+r.nucleo;
+  if(r.tipo==='acabamento')g('familia').value='Acabamento';
+  if(r.tipo==='fixacao')g('familia').value='Fixação';
+  if(r.nucleo)g('forro_integrado').value='sim';
+
+  const enc=r.confianca||[];
+  msg('achou',enc.length?`✅ Identifiquei: ${enc.join(', ')}. Confira os campos abaixo e complete o que faltar.`
+    :'Não consegui identificar automaticamente — preencha os campos manualmente.');
+  g('achou').style.display='block';
+  window.scrollTo({top:g('tituloForm').offsetTop-20,behavior:'smooth'});
+}
+
+// ── salvar ──
+async function salvar(){
+  msg('erro','');msg('okmsg','');
+  const fx=faixas.map(f=>({ate_m2:f.ate_m2===''?null:nu(f.ate_m2),preco:nu(f.preco)})).filter(f=>f.preco>0);
+  if(!v('nome'))return msg('erro','Informe o nome do produto.');
+  if(!nu(v('largura_util_m')))return msg('erro','Largura útil é obrigatória.');
+  if(!nu(v('comprimento_maximo_m')))return msg('erro','Informe o comprimento máximo de fabricação.');
+  if(!fx.length)return msg('erro','Informe ao menos um preço.');
+
+  const body={id:editandoId,codigo:v('codigo'),nome:v('nome'),familia:v('familia')||'Outros',
+    atributos:v('cor')?{cor:v('cor')}:{},descricao_completa:v('desc')||null,faixas_preco:fx,
+    largura_util_m:nu(v('largura_util_m')),comprimento_maximo_m:nu(v('comprimento_maximo_m')),
+    comprimento_minimo_m:nu(v('comprimento_minimo_m')),transpasse_m:nu(v('transpasse_m')),
+    vao_maximo_m:nu(v('vao_maximo_m')),inclinacao_minima_pct:nu(v('inclinacao_minima_pct')),
+    forro_integrado:g('forro_integrado').value==='sim',ativo:g('ativo').value==='sim',
+    imagem:v('imagem')||null,observacao:v('observacao')||null};
+
+  const r=await fetch('/api/painel/produto',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)}).then(x=>x.json()).catch(()=>({error:'Falha de conexão.'}));
+  if(r.error)return msg('erro',r.error);
+  msg('okmsg','✅ Produto salvo! Já está disponível no orçamento.');
+  limpar();carregar();
+}
+
+function limpar(){
+  editandoId=null;
+  ['desc','codigo','nome','familia','cor','largura_util_m','comprimento_maximo_m','comprimento_minimo_m',
+   'transpasse_m','vao_maximo_m','inclinacao_minima_pct','imagem','observacao'].forEach(i=>g(i).value='');
+  g('forro_integrado').value='nao';g('ativo').value='sim';
+  faixas=[{ate_m2:50,preco:''},{ate_m2:100,preco:''},{ate_m2:200,preco:''},{ate_m2:'',preco:''}];
+  pintarFaixas();g('tituloForm').textContent='Novo produto';g('achou').style.display='none';
+}
+
+function editar(id){
+  const p=produtos.find(x=>x.id===id);if(!p)return;
+  editandoId=id;
+  g('codigo').value=p.codigo||'';g('nome').value=p.nome||'';g('familia').value=p.familia||'';
+  g('cor').value=p.atributos?.cor||'';g('desc').value=p.descricao_completa||'';
+  g('largura_util_m').value=p.largura_util_m||'';g('comprimento_maximo_m').value=p.comprimento_maximo_m||'';
+  g('comprimento_minimo_m').value=p.comprimento_minimo_m||'';g('transpasse_m').value=p.transpasse_m||'';
+  g('vao_maximo_m').value=p.vao_maximo_m||'';g('inclinacao_minima_pct').value=p.inclinacao_minima_pct||'';
+  g('forro_integrado').value=p.forro_integrado?'sim':'nao';g('ativo').value=p.ativo===false?'nao':'sim';
+  g('imagem').value=p.imagem||'';g('observacao').value=p.observacao||'';
+  faixas=(p.faixas_preco?.length?p.faixas_preco:[{ate_m2:'',preco:p.preco}])
+    .map(f=>({ate_m2:f.ate_m2??'',preco:f.preco}));
+  pintarFaixas();
+  g('tituloForm').textContent='Editando: '+p.nome;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+async function excluir(id,nome){
+  if(!confirm('Excluir "'+nome+'"?'))return;
+  await fetch('/api/painel/produto/'+encodeURIComponent(id),{method:'DELETE'});
+  carregar();
+}
+
+async function carregar(){
+  const r=await fetch('/api/painel/produtos').then(x=>x.json()).catch(()=>null);
+  if(!r)return;
+  produtos=r.produtos;
+  g('qtd').textContent=produtos.length;
+  g('familias').innerHTML=r.familias.map(f=>`<option value="${f}">`).join('');
+  g('lista').innerHTML=produtos.map(p=>{
+    const fx=(p.faixas_preco?.length?p.faixas_preco:[{ate_m2:null,preco:p.preco}]);
+    return `<tr>
+      <td>${p.codigo||'<span class="mut">—</span>'}</td>
+      <td><b>${p.nome}</b>${p.atributos?.cor?`<div class="mut">${p.atributos.cor}</div>`:''}
+        ${p.ativo===false?'<div class="mut">⏸ inativo</div>':''}</td>
+      <td><span class="fam">${p.familia}</span></td>
+      <td>${fx.map(f=>`<div class="mut">${f.ate_m2?'até '+f.ate_m2+'m²':'acima'}: <b style="color:#0284c7">R$ ${BRL(f.preco)}</b></div>`).join('')}</td>
+      <td>${p.largura_util_m} m</td>
+      <td style="white-space:nowrap">
+        <button class="btn g" onclick="editar('${p.id}')">Editar</button>
+        <button class="btn r" onclick="excluir('${p.id}','${(p.nome||'').replace(/'/g,'')}')">Excluir</button></td>
+    </tr>`;
+  }).join('')||'<tr><td colspan="6" class="mut" style="padding:24px;text-align:center">Nenhum produto cadastrado ainda.</td></tr>';
+}
+
+pintarFaixas();carregar();
+</script>
+</body>
+</html>

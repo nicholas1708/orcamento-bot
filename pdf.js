@@ -206,9 +206,11 @@ async function gerarPDF({ cliente, pedido, orcamento, catalogo }, destino) {
 
   const fr = orcamento.frete;
   if (fr) {
-    const linhaFrete = !Number.isFinite(fr.valor)
-      ? 'FRETE: a confirmar pelo vendedor'
-      : fr.valor === 0 ? 'FRETE: GRÁTIS' : `FRETE: ${BRL(fr.valor)}`;
+    const linhaFrete = fr.embutido
+      ? 'FRETE: INCLUSO NO VALOR'
+      : !Number.isFinite(fr.valor)
+        ? 'FRETE: a confirmar pelo vendedor'
+        : fr.valor === 0 ? 'FRETE: GRÁTIS' : `FRETE: ${BRL(fr.valor)}`;
     doc.fontSize(8.5).text(linhaFrete, M, doc.y + 1, { width: W - 4, align: 'right' });
     if (fr.descricao) {
       doc.font('Helvetica').fontSize(6.8).fillColor('#555')
@@ -219,7 +221,7 @@ async function gerarPDF({ cliente, pedido, orcamento, catalogo }, destino) {
 
   doc.fontSize(10)
     .text(`TOTAL: R$ ${BRL(orcamento.totalAvista)}`, M, doc.y + 3, { width: W - 4, align: 'right' });
-  if (fr && !Number.isFinite(fr.valor)) {
+  if (fr && !fr.embutido && !Number.isFinite(fr.valor)) {
     doc.font('Helvetica-Oblique').fontSize(6.8).fillColor('#7a5b00')
       .text('Total sem o frete — o vendedor confirma o valor da entrega.', M, doc.y + 1, { width: W - 4, align: 'right' });
     doc.fillColor('#000');
