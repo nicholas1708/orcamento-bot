@@ -23,7 +23,7 @@
   .op .ico{font-size:28px;flex-shrink:0}
   .op b{display:block;font-size:15px;margin-bottom:2px}
   .op small{color:#64748b;font-size:12.5px;line-height:1.45;display:block}
-  .op img{width:64px;height:50px;object-fit:cover;border-radius:9px;flex-shrink:0;background:#f1f5f9}
+  .op img{width:64px;height:50px;object-fit:contain;border-radius:9px;flex-shrink:0;background:#f8fafc;padding:3px}
   .chip{display:inline-block;background:#f1f5f9;color:#475569;font-size:10.5px;padding:2px 7px;border-radius:20px;margin:3px 3px 0 0}
   /* campos */
   .campo{margin-bottom:14px}
@@ -86,10 +86,12 @@
    B) "Já sei o que quero" → adiciona itens → dados → PDF
    Nada de mostrar materiais ou descontos na tela: isso é do PDF.
    ══════════════════════════════════════════════════════════════════ */
-let cat=null, modo=null, passo=0;
+// Abre direto no "já sei o que quero"; o cálculo automático fica lá dentro.
+let cat=null, modo='B', passo=0;
 const hist=[];
+// Acabamentos e estrutura entram por PADRÃO — o cliente remove se não quiser.
 const A={telhaId:null,cg:'',lg:'',quedas:2,famAberta:null,busca:'',
-         querAcabamento:null,querEstrutura:null,calc:null};   // modo A
+         querAcabamento:true,querEstrutura:true,perfilId:null,trocandoPerfil:false};
 const B={itens:[],busca:''};                                   // modo B
 const cliente={nome:'',telefone:'',cidade:'',endereco:''};
 
@@ -99,7 +101,7 @@ const el=h=>{T.innerHTML=h;window.scrollTo(0,0);};
 const err=m=>{const x=g('e');x.textContent=m||'';x.style.display=m?'block':'none';};
 const BRL=v=>Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const telhaA=()=>cat.telhas.find(x=>x.id===A.telhaId);
-const totalPassos=()=>modo==='B'?4:6;
+const totalPassos=()=>modo==='B'?3:6;
 
 function ocupado(on,txt){
   let o=g('load');
@@ -114,11 +116,28 @@ function ocupado(on,txt){
   }else if(o)o.remove();
 }
 function ir(n){hist.push(passo);passo=n;err('');render();}
-function voltar(){if(hist.length){passo=hist.pop();err('');render();}}
+function voltar(){
+  if(!hist.length)return;
+  passo=hist.pop();
+  if(passo===0)modo='B';      // a tela inicial é sempre a de montar o pedido
+  err('');render();
+}
 function barra(){
   g('pg').style.width=((passo+1)/totalPassos()*100)+'%';
   g('bv').className='voltar'+(passo>0?' on':'');
 }
+/** Todos os itens vendáveis, com a mesma foto usada nos dois caminhos. */
+function itensDoCatalogo(){
+  return [
+    ...cat.telhas.map(t=>({...t,_tipo:'telha'})),
+    ...(cat.complementos||[]).map(c=>({...c,_tipo:c.venda_por==='barra'?'barra':'unidade'})),
+    ...(cat.perfis||[]).filter(p=>p.ativo!==false).map(p=>({...p,_tipo:'metro'})),
+  ];
+}
+const rotuloUnidade=t=>t==='telha'?'informe quantidade e comprimento'
+  :t==='barra'?'vendido por barra':t==='metro'?'vendido por metro':'vendido por peça';
+const iconePor=t=>t==='telha'?'🏠':t==='barra'?'📏':t==='metro'?'🔩':'🔧';
+
 const chips=t=>{const a=t.atributos||{},c=[];
   if(a.nucleo)c.push(`${a.nucleo}${a.espessura_isolamento_mm?' '+a.espessura_isolamento_mm+'mm':''}`);
   if(a.perfil)c.push(a.perfil);
@@ -194,18 +213,43 @@ function render(){
 function desenhar(){
   barra();
 
-  /* 0 — escolher o caminho */
+  /* 0 — MONTAR O PEDIDO (tela inicial) */
   if(passo===0){
-    el(`<h1>Vamos montar seu orçamento</h1>
-      <p class="sub">Como você prefere começar?</p>
-      <button class="op" onclick="modo='A';ir(1)"><span class="ico">📐</span>
-        <span><b>Calcular pra mim</b><small>Eu informo as medidas do telhado e o sistema monta a lista completa
-          de material — telhas, acabamentos e estrutura.</small></span></button>
-      <button class="op" onclick="modo='B';ir(1)"><span class="ico">📝</span>
-        <span><b>Já sei o que quero</b><small>Vou informar os itens e as quantidades direto.</small></span></button>`);
+    const q=B.busca.toLowerCase();
+    const todos=itensDoCatalogo();
+    const lista=q?todos.filter(x=>(x.nome+' '+(x.codigo||'')).toLowerCase().includes(q)):todos;
+    el(`<h1>Monte seu orçamento</h1>
+      <p class="sub">Escolha os itens e informe as quantidades.</p>
+
+      <button class="op" style="background:#f0f9ff;border-color:#bae6fd" onclick="modo='A';ir(1)">
+        <span class="ico">📐</span><span><b>Não sei as quantidades</b>
+        <small>Me diga as medidas do telhado que eu calculo tudo — telhas, acabamentos e estrutura.</small></span></button>
+
+      ${B.itens.length?`<div class="cab" style="margin-top:16px"><span>Item</span><span>Qtd</span><span>Compr.</span><span></span></div>
+        ${B.itens.map((it,i)=>{
+          const p=todos.find(x=>x.id===it.id)||{};
+          return `<div class="linha">
+            <span><b>${p.nome||it.id}</b><small>${p.codigo?p.codigo+' · ':''}${rotuloUnidade(it.tipo)}</small></span>
+            <input type="number" value="${it.qtd}" placeholder="qtd" oninput="B.itens[${i}].qtd=this.value">
+            ${it.tipo==='telha'
+              ?`<input type="number" step="0.01" value="${it.comp||''}" placeholder="m" oninput="B.itens[${i}].comp=this.value">`
+              :'<span style="text-align:center;color:#cbd5e1">—</span>'}
+            <button class="x" onclick="B.itens.splice(${i},1);render()">✕</button></div>`;
+        }).join('')}`:''}
+
+      <input class="busca" style="margin-top:16px" placeholder="🔎 Buscar telha, acabamento ou parafuso"
+        value="${B.busca}" oninput="B.busca=this.value;render();document.querySelector('.busca').focus()">
+      ${lista.slice(0,q?24:10).map(x=>`<button class="op" style="padding:10px 12px" onclick="addItem('${x.id}','${x._tipo}')">
+        ${x.imagem
+          ?`<img src="${x.imagem}" loading="lazy" style="width:56px;height:44px">`
+          :`<span class="ico" style="font-size:20px">${iconePor(x._tipo)}</span>`}
+        <span><b style="font-size:13.5px">${x.nome}</b><small>${x.codigo?x.codigo+' · ':''}${rotuloUnidade(x._tipo)}</small></span>
+      </button>`).join('')}
+      ${!q&&todos.length>10?'<p class="dica" style="margin-top:8px">Use a busca para ver todos os itens.</p>':''}
+      ${B.itens.length?'<button class="btn" onclick="okItens()">Continuar →</button>':''}`);
   }
 
-  /* ═══════ CAMINHO A ═══════ */
+  /* ═══════ CAMINHO A — calcular pra mim ═══════ */
   /* 1 — telha */
   if(passo===1&&modo==='A'){
     const q=A.busca.toLowerCase();
@@ -214,7 +258,7 @@ function desenhar(){
       ${cat.telhas.length>6?`<input class="busca" placeholder="🔎 Buscar" value="${A.busca}"
         oninput="A.busca=this.value;render();document.querySelector('.busca').focus()">`:''}
       ${lista.map(t=>`<button class="op" onclick="A.telhaId='${t.id}';ir(2)">
-        ${t.imagem?`<img src="${t.imagem}" loading="lazy">`:'<span class="ico">🏠</span>'}
+        ${t.imagem?`<img src="${t.imagem}" loading="lazy" style="width:56px;height:44px">`:'<span class="ico">🏠</span>'}
         <span><b>${t.nome}</b><span>${chips(t)}</span></span></button>`).join('')
       ||'<p class="sub">Nenhuma telha encontrada.</p>'}`);
   }
@@ -238,55 +282,47 @@ function desenhar(){
     atualizaMaquete();
   }
 
-  /* 3 — as duas únicas perguntas */
+  /* 3 — o que vai junto (tudo já incluído por padrão) */
   if(passo===3&&modo==='A'){
-    el(`<h1>Mais duas perguntas</h1><p class="sub">Depois disso o orçamento está pronto.</p>
-      <label style="display:block;font-size:14px;font-weight:600;margin-bottom:8px">Vai precisar de acabamentos?</label>
-      <p class="dica" style="margin-top:-4px">Cumeeira e arremates das bordas. Eu calculo as quantidades.</p>
-      <button class="op ${A.querAcabamento===true?'on':''}" onclick="A.querAcabamento=true;render()">
-        <span class="ico">✅</span><span><b>Sim, incluir acabamentos</b></span></button>
-      <button class="op ${A.querAcabamento===false?'on':''}" onclick="A.querAcabamento=false;render()">
-        <span class="ico">➖</span><span><b>Não, só as telhas</b></span></button>
+    const tercas=(cat.perfis||[]).filter(p=>p.tipo==='terca'&&p.ativo!==false);
+    const escolhida=tercas.find(p=>p.id===A.perfilId)||tercas[0];
+    el(`<h1>O que vai junto</h1>
+      <p class="sub">Já incluí o necessário no seu orçamento. Ajuste se quiser.</p>
 
-      <label style="display:block;font-size:14px;font-weight:600;margin:20px 0 8px">Vai precisar de estrutura?</label>
-      <p class="dica" style="margin-top:-4px">As terças galvanizadas que sustentam as telhas.</p>
-      <button class="op ${A.querEstrutura===true?'on':''}" onclick="A.querEstrutura=true;render()">
-        <span class="ico">🔩</span><span><b>Sim, incluir as terças</b></span></button>
-      <button class="op ${A.querEstrutura===false?'on':''}" onclick="A.querEstrutura=false;render()">
-        <span class="ico">➖</span><span><b>Não, já tenho estrutura</b></span></button>
-      <button class="btn" onclick="okPerguntas()">Continuar →</button>`);
-  }
+      <div class="caixa" style="border-color:${A.querAcabamento!==false?'#6ee7b7':'#e2e8f0'};
+        background:${A.querAcabamento!==false?'#f0fdf4':'#fff'}">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+          <span><b style="font-size:14px">${A.querAcabamento!==false?'✅':'➖'} Acabamentos</b>
+            <div style="font-size:12.5px;color:#64748b;margin-top:2px">Cumeeira e arremates das bordas —
+              quantidades calculadas pelo seu telhado</div></span>
+          <button onclick="A.querAcabamento=(A.querAcabamento===false);render()"
+            style="background:none;border:1px solid #cbd5e1;border-radius:8px;padding:7px 12px;font-size:12.5px;
+            cursor:pointer;white-space:nowrap;color:#475569">${A.querAcabamento!==false?'Remover':'Incluir'}</button>
+        </div></div>
 
-  /* ═══════ CAMINHO B ═══════ */
-  /* 1 — montar o pedido */
-  if(passo===1&&modo==='B'){
-    const q=B.busca.toLowerCase();
-    const todos=[...cat.telhas.map(t=>({...t,_tipo:'telha'})),
-                 ...(cat.complementos||[]).map(c=>({...c,_tipo:c.venda_por==='barra'?'barra':'unidade'})),
-                 ...(cat.perfis||[]).map(p=>({...p,_tipo:'metro'}))];
-    const lista=q?todos.filter(x=>(x.nome+' '+(x.codigo||'')).toLowerCase().includes(q)):todos;
-    el(`<h1>Monte seu pedido</h1><p class="sub">Adicione os itens e as quantidades.</p>
-      ${B.itens.length?`<div class="cab"><span>Item</span><span>Qtd</span><span>Compr.</span><span></span></div>
-        ${B.itens.map((it,i)=>{
-          const p=todos.find(x=>x.id===it.id)||{};
-          return `<div class="linha">
-            <span><b>${p.nome||it.id}</b><small>${p.codigo?p.codigo+' · ':''}${
-              it.tipo==='telha'?'por metro':it.tipo==='barra'?'por barra':it.tipo==='metro'?'em metros':'por peça'}</small></span>
-            <input type="number" value="${it.qtd}" placeholder="qtd" oninput="B.itens[${i}].qtd=this.value">
-            ${it.tipo==='telha'
-              ?`<input type="number" step="0.01" value="${it.comp||''}" placeholder="m" oninput="B.itens[${i}].comp=this.value">`
-              :'<span style="text-align:center;color:#cbd5e1">—</span>'}
-            <button class="x" onclick="B.itens.splice(${i},1);render()">✕</button></div>`;
-        }).join('')}`:''}
-      <input class="busca" style="margin-top:${B.itens.length?'14':'0'}px" placeholder="🔎 Buscar item para adicionar"
-        value="${B.busca}" oninput="B.busca=this.value;render();document.querySelector('.busca').focus()">
-      ${lista.slice(0,q?20:8).map(x=>`<button class="op" style="padding:11px 13px" onclick="addItem('${x.id}','${x._tipo}')">
-        <span class="ico" style="font-size:20px">${x._tipo==='telha'?'🏠':x._tipo==='barra'?'📏':x._tipo==='metro'?'🔩':'🔧'}</span>
-        <span><b style="font-size:13.5px">${x.nome}</b><small>${x.codigo?x.codigo+' · ':''}${
-          x._tipo==='telha'?'informe quantidade e comprimento':x._tipo==='barra'?'vendido por barra':
-          x._tipo==='metro'?'vendido por metro':'vendido por peça'}</small></span></button>`).join('')}
-      ${!q&&todos.length>8?'<p class="dica">Use a busca para ver todos os itens.</p>':''}
-      <button class="btn" onclick="okItens()">Continuar →</button>`);
+      <div class="caixa" style="border-color:${A.querEstrutura!==false?'#6ee7b7':'#e2e8f0'};
+        background:${A.querEstrutura!==false?'#f0fdf4':'#fff'}">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+          <span><b style="font-size:14px">${A.querEstrutura!==false?'✅':'➖'} Estrutura</b>
+            <div style="font-size:12.5px;color:#64748b;margin-top:2px">
+              ${A.querEstrutura!==false&&escolhida?escolhida.nome:'As terças que sustentam as telhas'}</div></span>
+          <button onclick="A.querEstrutura=(A.querEstrutura===false);render()"
+            style="background:none;border:1px solid #cbd5e1;border-radius:8px;padding:7px 12px;font-size:12.5px;
+            cursor:pointer;white-space:nowrap;color:#475569">${A.querEstrutura!==false?'Remover':'Incluir'}</button>
+        </div>
+        ${A.querEstrutura!==false&&tercas.length>1?`
+          <button onclick="A.trocandoPerfil=!A.trocandoPerfil;render()"
+            style="background:none;border:none;color:#0369a1;font-size:12.5px;text-decoration:underline;
+            cursor:pointer;padding:8px 0 0">${A.trocandoPerfil?'fechar':'trocar o perfil'}</button>
+          ${A.trocandoPerfil?tercas.map(p=>`
+            <button class="op" style="margin:8px 0 0;padding:11px 13px;background:${p.id===escolhida?.id?'#e0f2fe':'#fff'}"
+              onclick="A.perfilId='${p.id}';A.trocandoPerfil=false;render()">
+              <span class="ico" style="font-size:19px">🔩</span>
+              <span><b style="font-size:13px">${p.nome}</b><small>vence até ${p.vao_maximo_m}m entre apoios</small></span>
+            </button>`).join(''):''}`:''}
+      </div>
+
+      <button class="btn" onclick="ir(4)">Continuar →</button>`);
   }
 
   /* ═══════ COMUM ═══════ */
@@ -329,11 +365,6 @@ function okMedidas(){
   if(!c||!l||c<=0||l<=0)return err('Preencha comprimento e largura em metros.');
   ir(3);
 }
-function okPerguntas(){
-  if(A.querAcabamento===null)return err('Responda se vai precisar de acabamentos.');
-  if(A.querEstrutura===null)return err('Responda se vai precisar de estrutura.');
-  ir(4);
-}
 function addItem(id,tipo){
   if(B.itens.some(x=>x.id===id))return err('Esse item já está na lista.');
   B.itens.push({id,tipo,qtd:'',comp:''});B.busca='';err('');render();
@@ -363,8 +394,9 @@ async function gerar(){
       comprimentoGalpaoM:parseFloat(String(A.cg).replace(',','.')),
       larguraGalpaoM:parseFloat(String(A.lg).replace(',','.')),
       quedas:A.quedas,
-      querAcabamento:A.querAcabamento,
-      querEstrutura:A.querEstrutura};
+      querAcabamento:A.querAcabamento!==false,
+      querEstrutura:A.querEstrutura!==false,
+      perfilId:A.perfilId||null};
   }else{
     corpo={modo:'itens',itens:B.itens.map(x=>({id:x.id,tipo:x.tipo,qtd:+x.qtd,comp:+x.comp||null}))};
   }
@@ -378,8 +410,30 @@ async function gerar(){
 }
 
 try{const s=localStorage.getItem('cliente4a');if(s)Object.assign(cliente,JSON.parse(s));}catch(e){}
-fetch('/api/catalogo').then(r=>r.json()).then(c=>{cat=c;render();})
-  .catch(()=>{T.innerHTML='<h1>Ops!</h1><p class="sub">Não consegui carregar o catálogo.</p>';});
+
+// Veio do visualizador 3D? Retoma o que foi montado lá e pula para os dados.
+let _de3d=null;
+try{
+  const p=sessionStorage.getItem('pedido3d');
+  if(p&&new URLSearchParams(location.search).get('de')==='3d'){
+    _de3d=JSON.parse(p);sessionStorage.removeItem('pedido3d');
+  }
+}catch(e){}
+fetch('/api/catalogo').then(r=>r.json()).then(c=>{
+  cat=c;
+  if(_de3d){                                   // monta a ficha vinda do 3D
+    if(_de3d.modo==='auto'){
+      modo='A';A.telhaId=_de3d.telhaId;A.cg=_de3d.comprimentoGalpaoM;A.lg=_de3d.larguraGalpaoM;
+      A.quedas=_de3d.quedas;A.querAcabamento=_de3d.querAcabamento;A.querEstrutura=_de3d.querEstrutura;
+      passo=4;                                 // vai direto para os dados
+    }else{
+      modo='B';B.itens=_de3d.itens.map(i=>({id:i.id,tipo:i.tipo,qtd:i.qtd,comp:i.comp||''}));
+      passo=2;
+    }
+    hist.push(0);
+  }
+  render();
+}).catch(()=>{T.innerHTML='<h1>Ops!</h1><p class="sub">Não consegui carregar o catálogo.</p>';});
 </script>
 </body>
 </html>

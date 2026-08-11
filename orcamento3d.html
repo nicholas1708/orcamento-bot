@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<title>Orçamento 3D — 4A</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden;background:#0f172a;color:#e2e8f0}
+  #cena{position:fixed;inset:0}
+  /* topo */
+  .topo{position:fixed;top:0;left:0;right:0;padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;
+        background:linear-gradient(#0f172acc,#0f172a00);display:flex;align-items:center;gap:10px;z-index:5}
+  .topo b{font-size:15px}
+  .topo .sp{flex:1}
+  .pill{background:#1e293bcc;border:1px solid #334155;border-radius:20px;padding:6px 12px;font-size:12px;color:#94a3b8}
+  /* abas */
+  .abas{position:fixed;top:calc(env(safe-area-inset-top) + 52px);left:50%;transform:translateX(-50%);
+        display:flex;gap:4px;background:#1e293bcc;border:1px solid #334155;border-radius:22px;padding:4px;z-index:5;backdrop-filter:blur(8px)}
+  .abas button{background:none;border:none;color:#94a3b8;font-size:12.5px;font-weight:600;padding:7px 15px;border-radius:18px;cursor:pointer}
+  .abas button.on{background:#0ea5e9;color:#fff}
+  /* painel inferior */
+  .sheet{position:fixed;left:0;right:0;bottom:0;background:#0f172af2;backdrop-filter:blur(14px);
+         border-top:1px solid #1e293b;border-radius:20px 20px 0 0;z-index:6;transition:transform .28s;
+         padding-bottom:env(safe-area-inset-bottom);max-height:78vh;overflow-y:auto}
+  .sheet.min{transform:translateY(calc(100% - 116px - env(safe-area-inset-bottom)))}
+  .puxador{width:38px;height:4px;background:#475569;border-radius:2px;margin:9px auto 4px;cursor:pointer}
+  .resumo{display:flex;align-items:center;gap:12px;padding:6px 18px 12px;cursor:pointer}
+  .resumo .v{font-size:23px;font-weight:800;color:#38bdf8;line-height:1.1}
+  .resumo .d{font-size:11.5px;color:#94a3b8;margin-top:2px}
+  .resumo .sp{flex:1}
+  .resumo .seta{color:#64748b;font-size:13px}
+  .corpo{padding:0 18px 18px}
+  .lb{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.4px;font-weight:700;margin:14px 0 7px}
+  /* sliders */
+  .sl{margin-bottom:14px}
+  .sl .cab{display:flex;justify-content:space-between;font-size:13px;margin-bottom:7px}
+  .sl .cab b{color:#e2e8f0}.sl .cab span{color:#38bdf8;font-weight:700}
+  input[type=range]{width:100%;height:32px;-webkit-appearance:none;background:none}
+  input[type=range]::-webkit-slider-runnable-track{height:5px;background:#1e293b;border-radius:3px}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;background:#0ea5e9;
+    border-radius:50%;margin-top:-10px;border:3px solid #0f172a;box-shadow:0 2px 6px #0006}
+  input[type=range]::-moz-range-track{height:5px;background:#1e293b;border-radius:3px}
+  input[type=range]::-moz-range-thumb{width:22px;height:22px;background:#0ea5e9;border:3px solid #0f172a;border-radius:50%}
+  /* chips de opção */
+  .ops{display:flex;gap:7px;flex-wrap:wrap}
+  .ops button{flex:1;min-width:82px;background:#1e293b;border:1px solid #334155;color:#cbd5e1;
+    border-radius:11px;padding:11px 8px;font-size:12.5px;font-weight:600;cursor:pointer;display:flex;
+    flex-direction:column;align-items:center;gap:3px}
+  .ops button.on{background:#0c4a6e;border-color:#0ea5e9;color:#e0f2fe}
+  .ops button small{font-size:10px;font-weight:400;color:#64748b}
+  .ops button.on small{color:#7dd3fc}
+  /* telhas */
+  .telhas{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+  .telhas button{flex:0 0 128px;background:#1e293b;border:1px solid #334155;border-radius:12px;
+    padding:0;overflow:hidden;cursor:pointer;text-align:left}
+  .telhas button.on{border-color:#0ea5e9}
+  .telhas img{width:100%;height:60px;object-fit:cover;display:block;background:#0f172a}
+  .telhas .n{padding:7px 9px;font-size:11px;color:#cbd5e1;line-height:1.3}
+  /* lista de itens (aba 2) */
+  .item{display:flex;gap:10px;align-items:center;background:#1e293b;border:1px solid #334155;
+        border-radius:12px;padding:10px;margin-bottom:8px}
+  .item img{width:44px;height:36px;object-fit:contain;background:#0f172a;border-radius:7px;flex-shrink:0}
+  .item .n{flex:1;font-size:12.5px;line-height:1.35}
+  .item .n small{color:#64748b;display:block;font-size:10.5px}
+  .item input{width:56px;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:8px;
+    padding:8px;text-align:center;font-size:13px;outline:none}
+  .item input:focus{border-color:#0ea5e9}
+  .item .x{background:#7f1d1d;color:#fecaca;border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;flex-shrink:0}
+  .add{width:100%;background:#1e293b;border:1px dashed #475569;color:#94a3b8;border-radius:12px;
+       padding:12px;font-size:13px;cursor:pointer;margin-top:4px}
+  .busca{width:100%;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:11px;
+         padding:12px 14px;font-size:13.5px;outline:none;margin-bottom:9px}
+  .busca:focus{border-color:#0ea5e9}
+  .btn{width:100%;background:#0ea5e9;color:#fff;border:none;border-radius:13px;padding:15px;
+       font-size:15.5px;font-weight:700;cursor:pointer;margin-top:14px}
+  .btn:active{background:#0284c7}
+  .nota{font-size:11px;color:#64748b;text-align:center;margin-top:9px;line-height:1.5}
+  .carregando{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    background:#0f172a;z-index:20;color:#38bdf8;font-size:14px;flex-direction:column;gap:14px}
+  .sp3{width:36px;height:36px;border:3px solid #1e293b;border-top-color:#0ea5e9;border-radius:50%;animation:g .8s linear infinite}
+  @keyframes g{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="cena"></div>
+
+<div class="topo">
+  <b>Orçamento 3D</b><span class="pill" id="dica">arraste para girar</span>
+  <span class="sp"></span>
+  <a href="/orcamento" class="pill" style="text-decoration:none">versão simples</a>
+</div>
+
+<div class="abas">
+  <button id="ab1" class="on" onclick="setAba('calc')">Calcular</button>
+  <button id="ab2" onclick="setAba('itens')">Meus itens</button>
+</div>
+
+<div class="sheet min" id="sheet">
+  <div class="puxador" onclick="toggleSheet()"></div>
+  <div class="resumo" onclick="toggleSheet()">
+    <div>
+      <div class="v" id="vTotal">R$ 0,00</div>
+      <div class="d" id="vDet">informe as medidas</div>
+    </div>
+    <span class="sp"></span>
+    <span class="seta" id="seta">▲</span>
+  </div>
+  <div class="corpo" id="corpo"></div>
+</div>
+
+<div class="carregando" id="load"><div class="sp3"></div>montando o 3D...</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   VISUALIZADOR 3D EM TEMPO REAL
+   Canal separado (/orcamento3d) — não substitui o wizard simples.
+   Duas abas: "Calcular" (monta o telhado) e "Meus itens" (lista solta).
+   ═══════════════════════════════════════════════════════════════════ */
+let cat=null, aba='calc', aberto=false;
+const S={comp:20,larg:10,quedas:2,telhaId:null,acabamento:true,estrutura:true};
+const ITENS=[];
+let busca='';
+
+/* ── Three.js ─────────────────────────────────────────────────────── */
+let renderer,scene,camera,grupo;
+let girX=0.62, girY=0.7, dist=1, alvoDist=1;
+
+function initTres(){
+  const el=document.getElementById('cena');
+  scene=new THREE.Scene();
+  scene.background=new THREE.Color(0x0f172a);
+  scene.fog=new THREE.Fog(0x0f172a,60,190);
+
+  camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,.1,600);
+  renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.setSize(innerWidth,innerHeight);
+  renderer.shadowMap.enabled=true;
+  renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  el.appendChild(renderer.domElement);
+
+  scene.add(new THREE.HemisphereLight(0xbfdbfe,0x0f172a,.85));
+  const sol=new THREE.DirectionalLight(0xffffff,.95);
+  sol.position.set(28,42,20);sol.castShadow=true;
+  sol.shadow.mapSize.set(1024,1024);
+  const d=45;Object.assign(sol.shadow.camera,{left:-d,right:d,top:d,bottom:-d,near:1,far:140});
+  scene.add(sol);
+
+  // chão
+  const chao=new THREE.Mesh(new THREE.CircleGeometry(90,48),
+    new THREE.MeshStandardMaterial({color:0x1e293b,roughness:1}));
+  chao.rotation.x=-Math.PI/2;chao.position.y=-.02;chao.receiveShadow=true;
+  scene.add(chao);
+  const grade=new THREE.GridHelper(180,90,0x334155,0x1e293b);
+  grade.material.opacity=.35;grade.material.transparent=true;
+  scene.add(grade);
+
+  grupo=new THREE.Group();scene.add(grupo);
+  eventos();animar();
+}
+
+/* órbita por toque/mouse */
+function eventos(){
+  const c=renderer.domElement;
+  let arrastando=false,px=0,py=0,pinch=0;
+  const inicio=(x,y)=>{arrastando=true;px=x;py=y;};
+  const mover=(x,y)=>{
+    if(!arrastando)return;
+    girY+=(x-px)*.008; girX=Math.max(.12,Math.min(1.35,girX+(y-py)*.006));
+    px=x;py=y;
+  };
+  c.addEventListener('mousedown',e=>inicio(e.clientX,e.clientY));
+  addEventListener('mousemove',e=>mover(e.clientX,e.clientY));
+  addEventListener('mouseup',()=>arrastando=false);
+  c.addEventListener('touchstart',e=>{
+    if(e.touches.length===1)inicio(e.touches[0].clientX,e.touches[0].clientY);
+    else if(e.touches.length===2)pinch=dist2(e.touches);
+  },{passive:true});
+  c.addEventListener('touchmove',e=>{
+    if(e.touches.length===1)mover(e.touches[0].clientX,e.touches[0].clientY);
+    else if(e.touches.length===2&&pinch){
+      const d=dist2(e.touches);alvoDist=Math.max(.55,Math.min(2.2,alvoDist*(pinch/d)));pinch=d;
+    }
+  },{passive:true});
+  c.addEventListener('touchend',()=>{arrastando=false;pinch=0;});
+  c.addEventListener('wheel',e=>{alvoDist=Math.max(.55,Math.min(2.2,alvoDist+e.deltaY*.0011));},{passive:true});
+  addEventListener('resize',()=>{
+    camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth,innerHeight);
+  });
+}
+const dist2=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+
+function animar(){
+  requestAnimationFrame(animar);
+  dist+=(alvoDist-dist)*.12;
+  const raio=Math.max(S.comp,S.larg)*1.65*dist+14;
+  camera.position.set(
+    Math.sin(girY)*Math.cos(girX)*raio,
+    Math.sin(girX)*raio+3,
+    Math.cos(girY)*Math.cos(girX)*raio);
+  camera.lookAt(0,Math.min(S.larg,S.comp)*0.12+2,0);
+  renderer.render(scene,camera);
+}
+
+/* ── Constrói o telhado ───────────────────────────────────────────── */
+function construir(){
+  while(grupo.children.length)grupo.remove(grupo.children[0]);
+  if(aba!=='calc'){construirItens();return;}
+
+  const t=cat.telhas.find(x=>x.id===S.telhaId)||cat.telhas[0];
+  const L=S.comp, W=S.larg, q=S.quedas;
+  const lu=t.largura_util_m||1;
+  const incl=(t.inclinacao_minima_pct||10)/100;
+  const ang=Math.atan(incl);
+  const hPar=Math.max(2.6,Math.min(L,W)*.14);
+  const proj=q===2?W/2:W;
+  const compTelha=proj/Math.cos(ang)+0.10;
+  const alturaCume=proj*incl;
+
+  const matParede=new THREE.MeshStandardMaterial({color:0xcbd5e1,roughness:.92});
+  const cor=corDaTelha(t);
+  const matTelha=new THREE.MeshStandardMaterial({color:cor,roughness:.42,metalness:.55});
+  const matCume=new THREE.MeshStandardMaterial({color:0xf59e0b,roughness:.5,metalness:.4});
+  const matTerca=new THREE.MeshStandardMaterial({color:0x64748b,roughness:.7,metalness:.5});
+
+  // paredes
+  const paredes=new THREE.Mesh(new THREE.BoxGeometry(L,hPar,W),matParede);
+  paredes.position.y=hPar/2;paredes.castShadow=true;paredes.receiveShadow=true;
+  grupo.add(paredes);
+
+  // telhas, uma a uma
+  const n=Math.ceil(L/lu);
+  const espessura=(t.atributos?.espessura_isolamento_mm||30)/1000*1.6;
+  const aguas=q===2?[1,-1]:[1];
+  for(const s of aguas){
+    for(let i=0;i<n;i++){
+      const larg=Math.min(lu,L-i*lu)*.985;
+      if(larg<=0.02)continue;
+      const g=new THREE.BoxGeometry(larg,espessura,compTelha);
+      const m=new THREE.Mesh(g,matTelha);
+      m.position.x=-L/2+i*lu+larg/2;
+      m.position.y=hPar+alturaCume/2+espessura/2;
+      m.position.z=s*(proj/2)*(q===2?1:0)+(q===1?0:0);
+      if(q===1){m.position.z=0;m.position.y=hPar+alturaCume/2+espessura/2;}
+      m.rotation.x=s*ang*(q===2?1:1)*(q===1?1:1);
+      if(q===2)m.position.z=s*proj/2;
+      m.rotation.x=-s*ang;
+      m.castShadow=true;m.receiveShadow=true;
+      grupo.add(m);
+    }
+  }
+
+  // cumeeira
+  if(q===2&&S.acabamento){
+    const c=new THREE.Mesh(new THREE.BoxGeometry(L+.3,.16,.55),matCume);
+    c.position.set(0,hPar+alturaCume+.16,0);c.castShadow=true;grupo.add(c);
+  }
+  // arremates das bordas
+  if(S.acabamento){
+    for(const s of aguas){
+      for(const lado of [-1,1]){
+        const b=new THREE.Mesh(new THREE.BoxGeometry(.16,.2,compTelha),matCume);
+        b.position.set(lado*L/2,hPar+alturaCume/2+.1,q===2?s*proj/2:0);
+        b.rotation.x=-s*ang;grupo.add(b);
+      }
+    }
+  }
+
+  // terças
+  if(S.estrutura){
+    const perfil=(cat.perfis||[]).find(p=>p.tipo==='terca'&&p.ativo!==false);
+    const vao=perfil?.vao_maximo_m||1.8;
+    const nT=Math.ceil(compTelha/vao)+1;
+    for(const s of aguas){
+      for(let j=0;j<nT;j++){
+        const along=-compTelha/2+j*(compTelha/(nT-1||1));
+        const g=new THREE.BoxGeometry(L,.16,.09);
+        const m=new THREE.Mesh(g,matTerca);
+        const zBase=q===2?s*proj/2:0;
+        m.position.set(0, hPar+alturaCume/2-Math.sin(-s*ang)*along-.16, zBase+Math.cos(ang)*along*(s>0?1:1));
+        m.position.y=hPar+alturaCume/2+along*Math.sin(s*ang)-.15;
+        m.position.z=zBase+along*Math.cos(ang);
+        m.castShadow=true;grupo.add(m);
+      }
+    }
+  }
+  atualizarPreco();
+}
+
+/* aba "meus itens": mostra as peças cortadas lado a lado */
+function construirItens(){
+  const validos=ITENS.filter(i=>+i.qtd>0);
+  if(!validos.length)return;
+  const matPeca=new THREE.MeshStandardMaterial({color:0x38bdf8,roughness:.45,metalness:.5});
+  let x=0;
+  const total=validos.reduce((s,i)=>s+Math.min(+i.qtd,40),0);
+  const larg=.9;
+  x=-(total*larg)/2;
+  for(const it of validos){
+    const p=itens().find(y=>y.id===it.id);
+    const comp=it.tipo==='telha'?(+it.comp||3):(p?.barra_m||p?.comprimento_barra_m||3);
+    const cor=it.tipo==='telha'?corDaTelha(p||{}):0x94a3b8;
+    const mat=new THREE.MeshStandardMaterial({color:cor,roughness:.45,metalness:.5});
+    const qt=Math.min(+it.qtd,40);
+    for(let i=0;i<qt;i++){
+      const m=new THREE.Mesh(new THREE.BoxGeometry(larg*.86,.06,comp),mat);
+      m.position.set(x,.06+ (i%3)*.07,0);
+      m.rotation.y=.02;
+      m.castShadow=true;m.receiveShadow=true;
+      grupo.add(m);x+=larg;
+    }
+  }
+  atualizarPreco();
+}
+
+const corDaTelha=t=>{
+  const c=(t.atributos?.cor||t.atributos?.face_superior||t.nome||'').toLowerCase();
+  if(c.includes('branco'))return 0xf1f5f9;
+  if(c.includes('terracota'))return 0xc2643a;
+  if(c.includes('cinza'))return 0x64748b;
+  if(c.includes('marfim'))return 0xe7dfc6;
+  return 0xdbe3ea;                       // galvalume
+};
+
+/* ── Preço ao vivo ────────────────────────────────────────────────── */
+const faixas=t=>t.faixas_preco?.length?[...t.faixas_preco].sort((a,b)=>(a.ate_m2??1e9)-(b.ate_m2??1e9)):[{ate_m2:null,preco:t.preco}];
+function precoFaixa(t,m){
+  const f=faixas(t);let i=f.findIndex(x=>x.ate_m2==null||m<=x.ate_m2);if(i<0)i=f.length-1;
+  let a=f[i];const tol=Number(cat.regras?.faixa_tolerancia_pct)||0;
+  if(tol>0&&a.ate_m2!=null){const p=f[i+1];if(p&&p.preco<a.preco&&m>=a.ate_m2*(1-tol/100))a=p;}
+  return a.preco;
+}
+const BRL=v=>Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+function atualizarPreco(){
+  let total=0,det='';
+  if(aba==='calc'){
+    const t=cat.telhas.find(x=>x.id===S.telhaId)||cat.telhas[0];
+    const lu=t.largura_util_m||1, incl=(t.inclinacao_minima_pct||10)/100;
+    const proj=S.quedas===2?S.larg/2:S.larg;
+    const comp=proj*Math.sqrt(1+incl*incl)+0.10;
+    const pecas=Math.ceil(S.comp/lu)*S.quedas;
+    const m=pecas*comp;
+    total=m*precoFaixa(t,m);
+    if(S.acabamento)total*=1.06;      // estimativa visual; o valor exato sai no orçamento
+    if(S.estrutura){
+      const pf=(cat.perfis||[]).find(p=>p.tipo==='terca'&&p.ativo!==false);
+      if(pf){const nT=Math.ceil(comp/(pf.vao_maximo_m||1.8))+1;total+=nT*S.quedas*S.comp*pf.preco;}
+    }
+    det=`${pecas} telhas · ${m.toFixed(1)} mts · ${(S.comp*S.larg).toFixed(0)} m² de área`;
+  }else{
+    for(const it of ITENS){
+      const p=itens().find(y=>y.id===it.id);if(!p||!(+it.qtd>0))continue;
+      if(it.tipo==='telha'){const m=(+it.qtd)*(+it.comp||0);total+=m*precoFaixa(p,m);}
+      else total+=(+it.qtd)*p.preco;
+    }
+    const n=ITENS.filter(i=>+i.qtd>0).length;
+    det=n?`${n} ite${n>1?'ns':'m'} na lista`:'adicione itens';
+  }
+  document.getElementById('vTotal').textContent='R$ '+BRL(total);
+  document.getElementById('vDet').textContent=det+' · estimativa';
+}
+
+/* ── Interface ────────────────────────────────────────────────────── */
+function setAba(a){
+  aba=a;
+  document.getElementById('ab1').className=a==='calc'?'on':'';
+  document.getElementById('ab2').className=a==='itens'?'on':'';
+  if(!aberto)toggleSheet();
+  painel();construir();
+}
+function toggleSheet(){
+  aberto=!aberto;
+  document.getElementById('sheet').className='sheet'+(aberto?'':' min');
+  document.getElementById('seta').textContent=aberto?'▼':'▲';
+}
+const itens=()=>[
+  ...cat.telhas.map(t=>({...t,_tipo:'telha'})),
+  ...(cat.complementos||[]).map(c=>({...c,_tipo:c.venda_por==='barra'?'barra':'unidade'})),
+  ...(cat.perfis||[]).filter(p=>p.ativo!==false).map(p=>({...p,_tipo:'metro'}))];
+
+function painel(){
+  const c=document.getElementById('corpo');
+  if(aba==='calc'){
+    const t=cat.telhas.find(x=>x.id===S.telhaId)||cat.telhas[0];
+    c.innerHTML=`
+      <div class="lb">Telha</div>
+      <div class="telhas">${cat.telhas.map(x=>`
+        <button class="${x.id===t.id?'on':''}" onclick="S.telhaId='${x.id}';painel();construir()">
+          ${x.imagem?`<img src="${x.imagem}">`:'<div style="height:60px;display:flex;align-items:center;justify-content:center;font-size:22px">🏠</div>'}
+          <div class="n">${x.nome.length>34?x.nome.slice(0,34)+'…':x.nome}</div></button>`).join('')}</div>
+
+      <div class="lb">Medidas</div>
+      <div class="sl"><div class="cab"><b>Comprimento</b><span>${S.comp} m</span></div>
+        <input type="range" min="3" max="60" step="1" value="${S.comp}"
+          oninput="S.comp=+this.value;this.previousElementSibling.querySelector('span').textContent=this.value+' m';construir()"></div>
+      <div class="sl"><div class="cab"><b>Largura</b><span>${S.larg} m</span></div>
+        <input type="range" min="3" max="40" step="1" value="${S.larg}"
+          oninput="S.larg=+this.value;this.previousElementSibling.querySelector('span').textContent=this.value+' m';construir()"></div>
+
+      <div class="lb">Tipo de telhado</div>
+      <div class="ops">
+        <button class="${S.quedas===1?'on':''}" onclick="S.quedas=1;painel();construir()">1 água<small>caída única</small></button>
+        <button class="${S.quedas===2?'on':''}" onclick="S.quedas=2;painel();construir()">2 águas<small>com cumeeira</small></button>
+      </div>
+
+      <div class="lb">Vai junto</div>
+      <div class="ops">
+        <button class="${S.acabamento?'on':''}" onclick="S.acabamento=!S.acabamento;painel();construir()">
+          ${S.acabamento?'✅':'➖'} Acabamentos<small>cumeeira e bordas</small></button>
+        <button class="${S.estrutura?'on':''}" onclick="S.estrutura=!S.estrutura;painel();construir()">
+          ${S.estrutura?'✅':'➖'} Estrutura<small>terças</small></button>
+      </div>
+
+      <button class="btn" onclick="finalizar()">Gerar orçamento →</button>
+      <div class="nota">Valor estimado. O orçamento final sai em PDF com todos os itens detalhados.</div>`;
+  }else{
+    const q=busca.toLowerCase();
+    const lista=q?itens().filter(x=>(x.nome+' '+(x.codigo||'')).toLowerCase().includes(q)):itens().slice(0,6);
+    c.innerHTML=`
+      ${ITENS.map((it,i)=>{
+        const p=itens().find(y=>y.id===it.id)||{};
+        return `<div class="item">
+          ${p.imagem?`<img src="${p.imagem}">`:'<div style="width:44px;height:36px;display:flex;align-items:center;justify-content:center;font-size:17px">📦</div>'}
+          <div class="n">${p.nome||it.id}<small>${it.tipo==='telha'?'qtd × comprimento':'quantidade'}</small></div>
+          <input type="number" value="${it.qtd}" placeholder="qtd" oninput="ITENS[${i}].qtd=this.value;construir()">
+          ${it.tipo==='telha'?`<input type="number" step="0.01" value="${it.comp||''}" placeholder="m"
+            oninput="ITENS[${i}].comp=this.value;construir()">`:''}
+          <button class="x" onclick="ITENS.splice(${i},1);painel();construir()">✕</button></div>`;
+      }).join('')}
+      <input class="busca" placeholder="🔎 Buscar telha, acabamento ou parafuso" value="${busca}"
+        oninput="busca=this.value;painel();document.querySelector('.busca').focus()">
+      ${lista.map(x=>`<button class="add" style="text-align:left;display:flex;gap:9px;align-items:center"
+        onclick="addItem('${x.id}','${x._tipo}')">
+        ${x.imagem?`<img src="${x.imagem}" style="width:36px;height:28px;object-fit:contain;background:#0f172a;border-radius:6px">`:'<span>➕</span>'}
+        <span style="flex:1;color:#cbd5e1;font-size:12.5px">${x.nome}</span></button>`).join('')}
+      ${ITENS.length?'<button class="btn" onclick="finalizar()">Gerar orçamento →</button>':''}
+      <div class="nota">Adicione os itens que você já sabe que precisa.</div>`;
+  }
+}
+function addItem(id,tipo){
+  if(ITENS.some(x=>x.id===id))return;
+  ITENS.push({id,tipo,qtd:'',comp:''});busca='';painel();construir();
+}
+
+/** Leva o que está montado para o fluxo de finalização (dados + PDF). */
+function finalizar(){
+  const dados=aba==='calc'
+    ? {modo:'auto',telhaId:(cat.telhas.find(x=>x.id===S.telhaId)||cat.telhas[0]).id,
+       comprimentoGalpaoM:S.comp,larguraGalpaoM:S.larg,quedas:S.quedas,
+       querAcabamento:S.acabamento,querEstrutura:S.estrutura}
+    : {modo:'itens',itens:ITENS.filter(i=>+i.qtd>0).map(i=>({id:i.id,tipo:i.tipo,qtd:+i.qtd,comp:+i.comp||null}))};
+  try{sessionStorage.setItem('pedido3d',JSON.stringify(dados));}catch(e){}
+  location.href='/orcamento?de=3d';
+}
+
+/* ── boot ─────────────────────────────────────────────────────────── */
+fetch('/api/catalogo').then(r=>r.json()).then(c=>{
+  cat=c;S.telhaId=c.telhas[0]?.id;
+  initTres();painel();construir();
+  document.getElementById('load').remove();
+  setTimeout(()=>{const d=document.getElementById('dica');if(d)d.style.opacity='0';},4000);
+}).catch(()=>{
+  document.getElementById('load').innerHTML='Não consegui carregar o catálogo.';
+});
+</script>
+</body>
+</html>

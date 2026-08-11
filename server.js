@@ -248,6 +248,8 @@ const { calcularRomaneio, opcoesDeCorte, corteComTamanho } = require('./romaneio
 const { gerarPDF } = require('./pdf');
 
 app.get('/orcamento', (_req, res) => res.sendFile(path.join(__dirname, 'orcamento.html')));
+// canal experimental com visualização 3D — não substitui o wizard simples
+app.get('/orcamento3d', (_req, res) => res.sendFile(path.join(__dirname, 'orcamento3d.html')));
 
 app.get('/api/catalogo', async (_req, res) => {
   try {
@@ -384,7 +386,13 @@ app.post('/api/orcamento', async (req, res) => {
           }
         }
       }
-      if (pedido.querEstrutura) perfis = rom.perfis || [];
+      if (pedido.querEstrutura) {
+        // perfil escolhido pelo cliente (ou o padrão do catálogo)
+        const { calcularEstruturaPerfis } = require('./romaneio');
+        const maior = Math.max(...rom.cortes.map((c) => c.comprimentoM));
+        const est = calcularEstruturaPerfis(maior, pedido.comprimentoGalpaoM, [telha], catalogo, pedido.perfilId);
+        perfis = est.perfis || [];
+      }
 
     } else if (pedido?.modo === 'itens') {
       // O cliente já sabe o que quer: cada item vem com sua quantidade.

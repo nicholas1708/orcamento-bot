@@ -156,7 +156,7 @@
       "id": "P6391P4", "codigo": "6391P4", "familia": "Fixação",
       "nome": "Parafuso Fixação Rosca Inteira c/ Vedação 4\" 12x4 — Aço Anticorrosão",
       "descricao_completa": "6391P4 - PARAFUSO FIXAÇÃO ROSCA INTEIRA C/ VEDAÇÃO 4\" 12x4 P/ AÇO ANTI CORROSÃO",
-      "imagem": null,
+      "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/parafuso-fixacao-4-auto-broca-20240626195102.png",
       "tipo": "fixacao", "venda_por": "unidade",
       "unidade": "UN", "preco": 1.25,
       "consumo_por_m2": 6, "ativo": true
@@ -165,7 +165,7 @@
       "id": "PPA-101", "codigo": "PA-101", "familia": "Fixação",
       "nome": "Parafuso Costura 12x7/8 — Anticorrosão",
       "descricao_completa": "PA-101 - PARAFUSO COSTURA 12x 7/8 ANTI CORROSÃO",
-      "imagem": null,
+      "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/parafuso-costura-auto-brocante-20240626195627.png",
       "tipo": "fixacao", "venda_por": "unidade",
       "unidade": "UN", "preco": 0.45,
       "consumo_por_m2": 2, "ativo": true
