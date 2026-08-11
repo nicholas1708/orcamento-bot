@@ -13,6 +13,15 @@
 const { unidadeMaisProxima } = require('./distancia');
 
 const money = (v) => Math.round(v * 100) / 100;
+const TIMEOUT_MS = Number(process.env.FRETE_TIMEOUT_MS || 8000);
+
+/** Nunca deixa a geração do orçamento travar por causa de consulta externa. */
+function comLimiteDeTempo(promessa, ms = TIMEOUT_MS) {
+  return Promise.race([
+    promessa,
+    new Promise((r) => setTimeout(() => r(null), ms)),
+  ]);
+}
 
 /**
  * @param {object} destino  { cep?, cidade?, uf? }
@@ -29,7 +38,7 @@ async function calcularFrete(destino, pedido, catalogo) {
   // volume). Duas exceções: raio de entrega e pedido mínimo.
   if (catalogo.fretes?.modo === 'embutido') {
     const cfg = catalogo.fretes;
-    const proxima = await unidadeMaisProxima(destino, unidades, pedido.codigos || []);
+    const proxima = await comLimiteDeTempo(unidadeMaisProxima(destino, unidades, pedido.codigos || []));
 
     if (!proxima) {
       return { valor: 0, embutido: true, km: null, unidade: null,

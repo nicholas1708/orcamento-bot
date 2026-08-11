@@ -154,6 +154,96 @@ const ART={
   </svg>`,
 };
 
+/**
+ * MAQUETE 3D (isométrica) — desenha o galpão conforme o cliente digita.
+ * Mostra as telhas uma a uma, a cumeeira e as medidas. Puro SVG: sem
+ * biblioteca, sem internet, e nítido em qualquer tela.
+ */
+function maquete3D(L,W,quedas,larguraUtil,compTelha){
+  if(!(L>0)||!(W>0))return `<div style="height:210px;display:flex;align-items:center;justify-content:center;
+    color:#94a3b8;font-size:13px;text-align:center">Digite as medidas<br>para ver seu telhado</div>`;
+
+  const q=quedas===1?1:2;
+  const hParede=Math.max(2.2,Math.min(L,W)*0.16);        // altura visual da parede
+  const hTelhado=(q===2?W/2:W)*0.30;                     // caimento exagerado p/ leitura
+  const cos30=Math.cos(Math.PI/6), sin30=Math.sin(Math.PI/6);
+  const P=(x,y,z)=>[(x-y)*cos30,(x+y)*sin30-z];
+
+  // pontos base
+  const pts=[];
+  const add=(...ps)=>{ps.forEach(p=>pts.push(p));return ps;};
+  const b=[P(0,0,0),P(L,0,0),P(L,W,0),P(0,W,0)];
+  const t=[P(0,0,hParede),P(L,0,hParede),P(L,W,hParede),P(0,W,hParede)];
+  add(...b,...t);
+  let cume=[];
+  if(q===2){cume=[P(0,W/2,hParede+hTelhado),P(L,W/2,hParede+hTelhado)];add(...cume);}
+  else{cume=[P(0,0,hParede+hTelhado),P(L,0,hParede+hTelhado)];add(...cume);}
+
+  // escala para caber na área
+  const VW=360,VH=210,M=26;
+  const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);
+  const bw=Math.max(...xs)-Math.min(...xs),bh=Math.max(...ys)-Math.min(...ys);
+  const s=Math.min((VW-M*2)/bw,(VH-M*2)/bh);
+  const ox=M-Math.min(...xs)*s, oy=M-Math.min(...ys)*s;
+  const T=p=>[(p[0]*s+ox).toFixed(1),(p[1]*s+oy).toFixed(1)];
+  const poly=arr=>arr.map(p=>T(p).join(',')).join(' ');
+
+  // telhas: uma faixa a cada largura útil, no sentido do comprimento
+  const nTelhas=Math.ceil(L/(larguraUtil||1));
+  const ripas=[];
+  for(let i=1;i<nTelhas;i++){
+    const x=Math.min(i*(larguraUtil||1),L);
+    if(q===2){
+      ripas.push([P(x,0,hParede),P(x,W/2,hParede+hTelhado)]);
+      ripas.push([P(x,W,hParede),P(x,W/2,hParede+hTelhado)]);
+    }else{
+      ripas.push([P(x,W,hParede),P(x,0,hParede+hTelhado)]);
+    }
+  }
+
+  const agua1=q===2?[b[0],b[1],[0,0]]:null; // placeholder p/ clareza
+  const face1=q===2?[t[0],t[1],cume[1],cume[0]]:[t[3],t[2],cume[1],cume[0]];
+  const face2=q===2?[t[3],t[2],cume[1],cume[0]]:null;
+
+  return `<svg viewBox="0 0 ${VW} ${VH}" width="100%" height="210" style="display:block">
+    <!-- paredes -->
+    <polygon points="${poly([b[0],b[1],t[1],t[0]])}" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1"/>
+    <polygon points="${poly([b[1],b[2],t[2],t[1]])}" fill="#eef2f7" stroke="#cbd5e1" stroke-width="1"/>
+    <!-- águas -->
+    <polygon points="${poly(face1)}" fill="#38bdf8" stroke="#0284c7" stroke-width="1.4"/>
+    ${face2?`<polygon points="${poly(face2)}" fill="#0ea5e9" stroke="#0284c7" stroke-width="1.4"/>`:''}
+    <!-- telhas -->
+    ${ripas.map(r=>`<line x1="${T(r[0])[0]}" y1="${T(r[0])[1]}" x2="${T(r[1])[0]}" y2="${T(r[1])[1]}"
+      stroke="#0369a1" stroke-width="0.7" opacity=".45"/>`).join('')}
+    <!-- cumeeira -->
+    ${q===2?`<line x1="${T(cume[0])[0]}" y1="${T(cume[0])[1]}" x2="${T(cume[1])[0]}" y2="${T(cume[1])[1]}"
+      stroke="#f59e0b" stroke-width="3.5" stroke-linecap="round"/>
+      <text x="${(+T(cume[0])[0]+ +T(cume[1])[0])/2}" y="${(+T(cume[0])[1]+ +T(cume[1])[1])/2-7}"
+        font-size="9" fill="#b45309" text-anchor="middle" font-weight="600">cumeeira</text>`:''}
+    <!-- medidas -->
+    <text x="${(+T(b[0])[0]+ +T(b[1])[0])/2}" y="${(+T(b[0])[1]+ +T(b[1])[1])/2+15}"
+      font-size="10" fill="#0f172a" text-anchor="middle" font-weight="600">${L} m</text>
+    <text x="${(+T(b[1])[0]+ +T(b[2])[0])/2+22}" y="${(+T(b[1])[1]+ +T(b[2])[1])/2+10}"
+      font-size="10" fill="#0f172a" text-anchor="middle" font-weight="600">${W} m</text>
+  </svg>
+  <div style="text-align:center;font-size:12px;color:#64748b;padding:2px 0 6px">
+    <b style="color:#0284c7">${nTelhas*q} telhas</b> de <b style="color:#0284c7">${compTelha} m</b>
+    · ${(L*W).toFixed(1)} m² de área${q===2?' · 2 águas':' · 1 água'}
+  </div>`;
+}
+
+/** Recalcula só a maquete, sem redesenhar a tela (não perde o foco do campo). */
+function atualiza3D(){
+  const box=document.getElementById('maquete');if(!box||!atual.telhaId)return;
+  const t=telha();
+  const L=parseFloat(String(atual.cg).replace(',','.'))||0;
+  const W=parseFloat(String(atual.lg).replace(',','.'))||0;
+  const q=atual.quedas===1?1:2;
+  const proj=q===2?W/2:W;
+  const comp=proj>0?(proj*1.005+0.10).toFixed(2):0;      // mesma conta do servidor
+  box.innerHTML=maquete3D(L,W,q,t.largura_util_m,comp);
+}
+
 let cat=null;
 const grupos=[];
 let atual={telhaId:null,modo:'cortes',cortes:[{q:'',c:''}],cg:'',lg:'',quedas:2,famAberta:null,busca:''};
@@ -166,6 +256,23 @@ const PASSOS=['Produto','Medidas','Complementos','Seus dados','Resumo'];
 const T=document.getElementById('t');
 const el=h=>{T.innerHTML=h;window.scrollTo(0,0);};
 const err=m=>{const x=document.getElementById('e');x.textContent=m||'';x.style.display=m?'block':'none';};
+
+/** Overlay de "processando" — evita a sensação de tela travada. */
+function ocupado(ligar,texto){
+  let o=document.getElementById('carregando');
+  if(ligar){
+    if(!o){
+      o=document.createElement('div');o.id='carregando';
+      o.style.cssText='position:fixed;inset:0;background:rgba(241,245,249,.88);display:flex;'+
+        'align-items:center;justify-content:center;z-index:99;font-size:15px;color:#0369a1;font-weight:600';
+      document.body.appendChild(o);
+    }
+    o.innerHTML=`<div style="text-align:center">
+      <div style="width:34px;height:34px;border:3px solid #bae6fd;border-top-color:#0ea5e9;border-radius:50%;
+        margin:0 auto 10px;animation:gira .8s linear infinite"></div>${texto||'Processando...'}</div>
+      <style>@keyframes gira{to{transform:rotate(360deg)}}</style>`;
+  } else if(o) o.remove();
+}
 const BRL=v=>Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const metG=g=>g.cortes.reduce((s,c)=>s+c.quantidade*c.comprimentoM,0);
 const metTot=()=>grupos.reduce((s,g)=>s+metG(g),0);
@@ -240,20 +347,20 @@ function render(){
         <button class="btn" onclick="okCortes()">Adicionar ao orçamento →</button>`
       :`
         <div class="l2">
-          <div class="campo"><label>Comprimento (m)</label><input id="mc" type="number" inputmode="decimal" placeholder="20" value="${atual.cg}" oninput="atual.cg=this.value"></div>
-          <div class="campo"><label>Largura (m)</label><input id="ml" type="number" inputmode="decimal" placeholder="10" value="${atual.lg}" oninput="atual.lg=this.value"></div>
+          <div class="campo"><label>Comprimento (m)</label><input id="mc" type="number" inputmode="decimal" placeholder="20" value="${atual.cg}" oninput="atual.cg=this.value;atualiza3D()"></div>
+          <div class="campo"><label>Largura (m)</label><input id="ml" type="number" inputmode="decimal" placeholder="10" value="${atual.lg}" oninput="atual.lg=this.value;atualiza3D()"></div>
         </div>
         <p class="dica" style="margin-bottom:12px">Comprimento = lado da cumeeira · largura = lado onde a água escorre.</p>
-        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:11px;padding:10px 12px;margin-bottom:12px">${ART.medidas}</div>
+        <div id="maquete" style="background:#fff;border:1px solid #e2e8f0;border-radius:11px;padding:6px 8px;margin-bottom:12px"></div>
         <label style="display:block;font-size:13px;font-weight:600;color:#334155;margin-bottom:6px">Quantas quedas?</label>
         <button class="opt ${atual.quedas===1?'on':''}" onclick="atual.quedas=1;render()"><span class="r"></span>
-          <span style="flex:1"><b>1 queda</b><small>Caída única — água escorre pra um lado</small>
-            <span style="display:block;max-width:130px;margin-top:5px">${ART.umaQueda}</span></span></button>
+          <span style="flex:1"><b>1 queda</b><small>Caída única — água escorre pra um lado</small></span>
+          <span style="width:96px;flex-shrink:0">${ART.umaQueda}</span></button>
         <button class="opt ${atual.quedas===2?'on':''}" onclick="atual.quedas=2;render()"><span class="r"></span>
-          <span style="flex:1"><b>2 quedas</b><small>Duas caídas com cumeeira no topo</small>
-            <span style="display:block;max-width:130px;margin-top:5px">${ART.duasQuedas}</span></span></button>
+          <span style="flex:1"><b>2 quedas</b><small>Duas caídas com cumeeira no topo</small></span>
+          <span style="width:96px;flex-shrink:0">${ART.duasQuedas}</span></button>
         <button class="btn" onclick="okAmbiente()">Calcular e adicionar →</button>`}`);
-    if(atual.modo==='cortes')tot();
+    if(atual.modo==='cortes')tot(); else atualiza3D();
   }
   // ── 2 COMPLEMENTOS: emenda (se houver) + estrutura + mais telhas ──
   if(passo===2){
@@ -552,9 +659,11 @@ async function okCortes(){
 async function okAmbiente(){
   const c=parseFloat(String(atual.cg).replace(',','.')),l=parseFloat(String(atual.lg).replace(',','.'));
   if(!c||!l||c<=0||l<=0)return err('Preencha comprimento e largura em metros.');
+  ocupado(true,'Calculando...');
   const d=await fetch('/api/romaneio',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({telhaId:atual.telhaId,comprimentoGalpaoM:c,larguraGalpaoM:l,quedas:atual.quedas,comEstrutura:false})})
     .then(r=>r.json()).catch(()=>({error:'falha'}));
+  ocupado(false);
   if(d.error)return err(d.error);
   const t=telha();
   if(d.precisaEscolher){
@@ -618,6 +727,7 @@ function okDados(){
 }
 async function gerar(){
   const b=document.getElementById('bg');b.disabled=true;b.textContent='Gerando...';
+  ocupado(true,'Montando seu orçamento e calculando a entrega...');
   const d=await fetch('/api/orcamento',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({pedido:{
         grupos:grupos.map(g=>({telhaId:g.telhaId,cortes:g.cortes})),
@@ -626,6 +736,7 @@ async function gerar(){
       },
       cliente,vendedor:new URLSearchParams(location.search).get('vendedor')||null})})
     .then(r=>r.json()).catch(()=>({error:'Falha ao gerar — tente de novo.'}));
+  ocupado(false);
   if(d.error){err(d.error);b.disabled=false;b.textContent='Gerar orçamento 📄';return;}
   window._res=d;ir(5);
 }

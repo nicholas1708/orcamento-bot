@@ -173,14 +173,15 @@
 
   "perfis": [],
 
+  "_unidades_nota": "lat/lon já preenchidos: sem eles o sistema faria 14 consultas externas a cada orçamento (uma por unidade), o que travava a geração por dezenas de segundos. Com as coordenadas fixas, só o endereço do cliente precisa ser consultado.",
   "unidades": [
-    { "nome": "Est. 101", "cep": "75132-105", "cidade": "Anápolis", "uf": "GO", "endereco": "Qd. 08 Módulo 14/16 - DAIA", "cnpj": "00.289.348/0001-40", "ativa": true, "produtos": [] },
-    { "nome": "Est. 103", "cep": "78134-302", "cidade": "Várzea Grande", "uf": "MT", "endereco": "Av. das Palmeiras, Lote C Industrial - Capão do Pequi", "cnpj": "00.289.348/0006-55", "ativa": true, "produtos": [] },
-    { "nome": "Est. 104", "cep": "55613-010", "cidade": "Vitória de Santo Antão", "uf": "PE", "endereco": "Rodovia Luiz Gonzaga BR-232 Km 51,8 - Distrito Industrial", "cnpj": "00.289.348/0005-74", "ativa": true, "produtos": [] },
-    { "nome": "Est. 105", "cep": "37600-000", "cidade": "Cambuí", "uf": "MG", "endereco": "Avenida dos Nascimento, 354 - Congonhal", "cnpj": "00.289.348/0007-36", "ativa": true, "produtos": [] },
-    { "nome": "Est. 106", "cep": "89245-000", "cidade": "Araquari", "uf": "SC", "endereco": "Rodovia BR-101, 17175 - Corveta", "cnpj": "00.289.348/0008-17", "ativa": true, "produtos": [] },
-    { "nome": "Est. 107", "cep": "37600-000", "cidade": "Cambuí", "uf": "MG", "endereco": "Avenida dos Nascimento, 354 Galpão 02 - Congonhal", "cnpj": "00.289.348/0009-06", "ativa": true, "produtos": [] },
-    { "nome": "Est. 1101", "cep": "89245-000", "cidade": "Araquari", "uf": "SC", "endereco": "Rodovia BR-101, 17175 Galpão 03 - Corveta", "cnpj": "37.076.760/0001-92", "ativa": true, "produtos": [] }
+    { "nome": "Est. 101", "cep": "75132-105", "cidade": "Anápolis", "uf": "GO", "lat": -16.3332828, "lon": -48.9525756, "endereco": "Qd. 08 Módulo 14/16 - DAIA", "cnpj": "00.289.348/0001-40", "ativa": true, "produtos": [] },
+    { "nome": "Est. 103", "cep": "78134-302", "cidade": "Várzea Grande", "uf": "MT", "lat": -15.6458160, "lon": -56.1322180, "endereco": "Av. das Palmeiras, Lote C Industrial - Capão do Pequi", "cnpj": "00.289.348/0006-55", "ativa": true, "produtos": [] },
+    { "nome": "Est. 104", "cep": "55613-010", "cidade": "Vitória de Santo Antão", "uf": "PE", "lat": -8.1209019, "lon": -35.2944858, "endereco": "Rodovia Luiz Gonzaga BR-232 Km 51,8 - Distrito Industrial", "cnpj": "00.289.348/0005-74", "ativa": true, "produtos": [] },
+    { "nome": "Est. 105", "cep": "37600-000", "cidade": "Cambuí", "uf": "MG", "lat": -22.6122501, "lon": -46.0572137, "endereco": "Avenida dos Nascimento, 354 - Congonhal", "cnpj": "00.289.348/0007-36", "ativa": true, "produtos": [] },
+    { "nome": "Est. 106", "cep": "89245-000", "cidade": "Araquari", "uf": "SC", "lat": -26.3703324, "lon": -48.7210994, "endereco": "Rodovia BR-101, 17175 - Corveta", "cnpj": "00.289.348/0008-17", "ativa": true, "produtos": [] },
+    { "nome": "Est. 107", "cep": "37600-000", "cidade": "Cambuí", "uf": "MG", "lat": -22.6122501, "lon": -46.0572137, "endereco": "Avenida dos Nascimento, 354 Galpão 02 - Congonhal", "cnpj": "00.289.348/0009-06", "ativa": true, "produtos": [] },
+    { "nome": "Est. 1101", "cep": "89245-000", "cidade": "Araquari", "uf": "SC", "lat": -26.3703324, "lon": -48.7210994, "endereco": "Rodovia BR-101, 17175 Galpão 03 - Corveta", "cnpj": "37.076.760/0001-92", "ativa": true, "produtos": [] }
   ],
 
   "fretes": {

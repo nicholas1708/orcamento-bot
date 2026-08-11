@@ -93,7 +93,9 @@ function haversine(a, b) {
 }
 
 /** Coordenadas de um local informado por CEP e/ou cidade. */
-async function localizar({ cep, cidade, uf }) {
+async function localizar({ cep, cidade, uf, lat, lon }) {
+  // já cadastradas (caso das unidades): nada de consulta externa
+  if (Number.isFinite(lat) && Number.isFinite(lon)) return { lat, lon, cidade, uf };
   if (cep) {
     const info = await cidadeDoCep(cep);
     if (info) {
@@ -121,21 +123,26 @@ async function distanciaKm(origem, destino) {
  * @returns {{unidade, km}|null}
  */
 async function unidadeMaisProxima(destino, unidades, codigosNecessarios = []) {
+  // UMA consulta externa só: a do endereço do cliente.
+  // As unidades têm lat/lon no catálogo — se faltar em alguma, ela é ignorada
+  // com aviso, em vez de disparar dezenas de chamadas e travar a geração.
   const b = await localizar(destino);
   if (!b) return null;
 
   let melhor = null;
+  const semCoordenada = [];
   for (const u of unidades) {
     if (u.ativa === false) continue;
-    // unidade precisa ter todos os produtos do pedido
     if (Array.isArray(u.produtos) && u.produtos.length && codigosNecessarios.length) {
       const temTudo = codigosNecessarios.every((c) => u.produtos.includes(String(c)));
       if (!temTudo) continue;
     }
-    const a = await localizar({ cep: u.cep, cidade: u.cidade, uf: u.uf });
-    if (!a) continue;
-    const km = Math.round(haversine(a, b) * FATOR_RODOVIARIO);
+    if (!Number.isFinite(u.lat) || !Number.isFinite(u.lon)) { semCoordenada.push(u.nome); continue; }
+    const km = Math.round(haversine({ lat: u.lat, lon: u.lon }, b) * FATOR_RODOVIARIO);
     if (!melhor || km < melhor.km) melhor = { unidade: u, km };
+  }
+  if (semCoordenada.length) {
+    console.warn(`[distancia] unidades sem lat/lon no catálogo (ignoradas): ${semCoordenada.join(', ')}`);
   }
   return melhor;
 }
