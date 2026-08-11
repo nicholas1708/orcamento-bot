@@ -240,26 +240,8 @@ function calcularRomaneio(ambiente, telha, catalogo) {
   }
 
   // ── Acabamentos pelo PERÍMETRO do telhado ─────────────────────────
-  // frontal  = beiral de cada água       → L x nº de águas
-  // lateral  = as duas bordas de cada água → compTelha x 2 x nº de águas
-  // cumeeira = encontro das águas no topo  → L (só em 2 águas)
-  const complementos = [];
-  const perimetro = {
-    frontalM: round(L * quedas, 2),
-    lateralM: round(compTelha * 2 * quedas, 2),
-    cumeeiraM: quedas === 2 ? round(L, 2) : 0,
-  };
+  const { complementos, perimetro } = complementosPorPerimetro(L, compTelha, quedas, catalogo);
   memoria.push(`Perímetro: frontal ${perimetro.frontalM}m · lateral ${perimetro.lateralM}m · cumeeira ${perimetro.cumeeiraM}m`);
-
-  for (const item of (catalogo.complementos || [])) {
-    if (item.ativo === false) continue;
-    let metros = 0;
-    if (item.aplica_em === 'frontal') metros = perimetro.frontalM;
-    else if (item.aplica_em === 'lateral') metros = perimetro.lateralM;
-    else if (item.aplica_em === 'cumeeira') metros = perimetro.cumeeiraM;
-    else continue;                                    // 'interno' e outros: sob demanda
-    if (metros > 0) complementos.push({ produtoId: item.id, metros, nome: item.nome, sugerido: true });
-  }
 
   return {
     cortes, perfis, complementos, perimetro, memoria, avisos, escalarParaVendedor,
@@ -267,6 +249,56 @@ function calcularRomaneio(ambiente, telha, catalogo) {
     opcoes,                                   // planos de divisão disponíveis
     opcaoAplicada: escolhida ? escolhida.id : null,
     precisaEscolher: opcoes.length > 1,       // front pode oferecer a escolha
+  };
+}
+
+/**
+ * ACABAMENTOS PELO PERÍMETRO — serve para os dois caminhos: quando o sistema
+ * calculou o romaneio, e quando o cliente trouxe a lista de cortes pronta e
+ * depois informou as medidas do galpão.
+ *
+ *   frontal  = beiral de cada água         → L x nº de águas
+ *   lateral  = as duas bordas de cada água → comprimento da telha x 2 x nº de águas
+ *   cumeeira = encontro das águas no topo  → L (só em 2 águas)
+ */
+function complementosPorPerimetro(comprimentoGalpaoM, compTelhaM, quedas, catalogo) {
+  const L = Number(comprimentoGalpaoM) || 0;
+  const c = Number(compTelhaM) || 0;
+  const q = Number(quedas) === 2 ? 2 : 1;
+
+  const perimetro = {
+    frontalM: round(L * q, 2),
+    lateralM: round(c * 2 * q, 2),
+    cumeeiraM: q === 2 ? round(L, 2) : 0,
+  };
+
+  const complementos = [];
+  for (const item of (catalogo.complementos || [])) {
+    if (item.ativo === false) continue;
+    let metros = 0;
+    if (item.aplica_em === 'frontal') metros = perimetro.frontalM;
+    else if (item.aplica_em === 'lateral') metros = perimetro.lateralM;
+    else if (item.aplica_em === 'cumeeira') metros = perimetro.cumeeiraM;
+    else continue;                                  // 'interno' e outros: sob demanda
+    if (metros > 0) complementos.push({ produtoId: item.id, metros, nome: item.nome, sugerido: true });
+  }
+  return { complementos, perimetro };
+}
+
+/**
+ * ESTRUTURA (terças) a partir do maior corte e do comprimento do galpão.
+ * Mesma regra do WhatsApp: nº de terças = maior corte ÷ vão máximo + 1.
+ */
+function calcularEstruturaPerfis(maiorCorteM, comprimentoGalpaoM, telhas, catalogo) {
+  const perfil = (catalogo.perfis || []).find((p) => p.tipo === 'terca');
+  if (!perfil) return { perfis: [], descricao: 'Perfil de terça não cadastrado — estrutura não incluída.' };
+
+  const vaoMax = Math.min(...telhas.map((t) => t.vao_maximo_m || catalogo.engenharia.vao_maximo_terca_padrao_m));
+  const tercas = Math.ceil(Number(maiorCorteM) / vaoMax) + 1;
+  const metros = round(tercas * Number(comprimentoGalpaoM), 2);
+  return {
+    perfis: [{ perfilId: perfil.id, metros }],
+    descricao: `${tercas} terças de ${comprimentoGalpaoM}m → ${metros}m de ${perfil.nome}`,
   };
 }
 
@@ -288,4 +320,7 @@ function parseCortes(texto) {
   return out;
 }
 
-module.exports = { calcularRomaneio, parseCortes, opcoesDeCorte, corteComTamanho };
+module.exports = {
+  calcularRomaneio, parseCortes, opcoesDeCorte, corteComTamanho,
+  complementosPorPerimetro, calcularEstruturaPerfis,
+};

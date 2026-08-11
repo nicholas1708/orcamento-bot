@@ -214,6 +214,11 @@ app.get('/api/catalogo', async (_req, res) => {
         largura_util_m: t.largura_util_m, comprimento_maximo_m: t.comprimento_maximo_m,
         forro_integrado: t.forro_integrado,
       })),
+      complementos: (c.complementos || []).filter((x) => x.ativo !== false).map((x) => ({
+        id: x.id, codigo: x.codigo, nome: x.nome, familia: x.familia, tipo: x.tipo,
+        preco: x.preco, venda_por: x.venda_por, comprimento_barra_m: x.comprimento_barra_m || null,
+        consumo_por_m2: x.consumo_por_m2 || null, aplica_em: x.aplica_em || null, imagem: x.imagem || null,
+      })),
       temEstrutura: (c.perfis || []).some((p) => p.tipo === 'terca'),
       engenharia: {
         comprimento_minimo_fabricacao_m: c.engenharia.comprimento_minimo_fabricacao_m,
@@ -234,6 +239,30 @@ app.post('/api/romaneio', async (req, res) => {
       { comprimentoGalpaoM, larguraGalpaoM, quedas, comEstrutura, opcaoCorte, tamanhoPreferidoM }, telha, catalogo
     );
     res.json(rom);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+/**
+ * Sugestões para quem trouxe a LISTA DE CORTES pronta: informando o comprimento
+ * do galpão e as quedas, calculamos acabamentos (perímetro) e estrutura.
+ */
+app.post('/api/sugestoes', async (req, res) => {
+  try {
+    const { telhaIds, comprimentoGalpaoM, quedas, maiorCorteM, comEstrutura } = req.body || {};
+    const catalogo = await getCatalogo();
+    const telhas = (telhaIds || []).map((id) => catalogo.telhas.find((t) => t.id === id)).filter(Boolean);
+    if (!telhas.length) return res.status(400).json({ error: 'Informe ao menos um produto.' });
+    const L = Number(comprimentoGalpaoM);
+    const maior = Number(maiorCorteM);
+    if (!(L > 0)) return res.status(400).json({ error: 'Informe o comprimento do galpão.' });
+
+    const { complementosPorPerimetro, calcularEstruturaPerfis } = require('./romaneio');
+    const { complementos, perimetro } = complementosPorPerimetro(L, maior, quedas, catalogo);
+    const estrutura = comEstrutura
+      ? calcularEstruturaPerfis(maior, L, telhas, catalogo)
+      : { perfis: [], descricao: null };
+
+    res.json({ complementos, perimetro, perfis: estrutura.perfis, estruturaDescricao: estrutura.descricao });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 

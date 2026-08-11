@@ -157,7 +157,7 @@ const ART={
 let cat=null;
 const grupos=[];
 let atual={telhaId:null,modo:'cortes',cortes:[{q:'',c:''}],cg:'',lg:'',quedas:2,famAberta:null,busca:''};
-const pedido={comEstrutura:false,perfis:[]};
+const pedido={comEstrutura:false,perfis:[],complementos:{}}; // complementos: {id:{on,metros,qtd}}
 const cliente={nome:'',telefone:'',cidade:'',endereco:''};
 let split=null, passo=0;
 const hist=[];
@@ -280,11 +280,7 @@ function render(){
           </div>
         </div>
         <div style="height:10px"></div>`:''}
-      <label style="display:block;font-size:13px;font-weight:600;color:#334155;margin-bottom:6px">Precisa de estrutura?</label>
-      <button class="opt ${!pedido.comEstrutura?'on':''}" onclick="pedido.comEstrutura=false;render()"><span class="r"></span>
-        <span><b>Só as telhas</b><small>Já tenho a estrutura</small></span></button>
-      <button class="opt ${pedido.comEstrutura?'on':''}" onclick="pedido.comEstrutura=true;render()"><span class="r"></span>
-        <span><b>Telhas + estrutura</b><small>Incluir vigas e terças galvanizadas</small></span></button>
+      ${blocoAcabamentos()}
       <button class="btn" onclick="okComplementos()">Continuar →</button>
       <button class="btn sec" onclick="novoProduto()">+ Adicionar outro tipo de telha</button>`);
   }
@@ -304,8 +300,14 @@ function render(){
     el(`<h1>Confere tudo?</h1><p class="sub">Revise antes de gerar o PDF.</p>
       <div class="res">
         ${grupos.map(g=>`<h3>${g.nome}</h3><div class="cut">${g.cortes.map(c=>c.quantidade+' x '+c.comprimentoM+'m').join(' · ')}</div>`).join('')}
+        ${(()=>{const cs=complementosEscolhidos();if(!cs.length)return'';
+          return `<h3>Acabamentos e fixação</h3><div class="cut">${cs.map(x=>{
+            const c=cat.complementos.find(y=>y.id===x.produtoId);
+            if(x.metros){const b=Math.ceil(x.metros/(c.comprimento_barra_m||3));
+              return `${c.nome}: ${b} barra${b>1?'s':''} (${x.metros}m)`;}
+            return `${c.nome}: ${x.quantidade} un`;}).join('<br>')}</div>`;})()}
         <div class="li"><span>Metragem total</span><span>${metTot().toFixed(3)} mts</span></div>
-        <div class="li"><span>Estrutura</span><span>${pedido.comEstrutura?'Sim':'Não'}</span></div>
+        <div class="li"><span>Estrutura</span><span>${pedido.comEstrutura?(pedido.estruturaDescricao||'Sim'):'Não'}</span></div>
         <div class="li"><span>Cliente</span><span>${cliente.nome} — ${cliente.telefone}</span></div>
         <div class="li"><span>Entrega</span><span>${cliente.endereco}, ${cliente.cidade}</span></div>
       </div>
@@ -361,6 +363,167 @@ async function calcCustom(){
 }
 function usarCustom(){if(split.custom){split.sel=-1;render();}else{calcCustom();}}
 
+/** Soma as sugestões de perímetro vindas do cálculo (quando o cliente deu as medidas). */
+function sugestoes(){
+  const s={};
+  for(const g of grupos) for(const c of (g.complementosSugeridos||[]))
+    s[c.produtoId]=(s[c.produtoId]||0)+c.metros;
+  return s;
+}
+const metTotalPedido=()=>grupos.reduce((s,g)=>s+metrosDe(g.cortes),0);
+
+/** Tela de acabamentos, fixação e estrutura. */
+function blocoAcabamentos(){
+  const sug=sugestoes();
+  const acab=(cat.complementos||[]).filter(c=>c.tipo==='acabamento');
+  const fix=(cat.complementos||[]).filter(c=>c.tipo==='fixacao');
+
+  const linhaAcab=c=>{
+    const st=pedido.complementos[c.id]||{};
+    const m=st.metros!==undefined?st.metros:(sug[c.id]||'');
+    const barra=c.comprimento_barra_m||3;
+    const barras=m?Math.ceil(m/barra):0;
+    return `<div class="opt ${st.on?'on':''}" style="display:block;cursor:default">
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span class="r" style="cursor:pointer" onclick="togComp('${c.id}')"></span>
+        <span style="flex:1">
+          <b>${c.nome}</b>
+          <small>R$ ${BRL(c.preco)} por barra de ${barra}m${sug[c.id]?` · sugerido ${sug[c.id].toFixed(2)}m pelo seu telhado`:''}</small>
+          ${st.on?`<div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+            <input type="number" step="0.01" value="${m}" placeholder="metros"
+              oninput="setComp('${c.id}','metros',this.value)"
+              style="width:110px;padding:8px 10px;border:2px solid #e2e8f0;border-radius:8px;font-size:13.5px;outline:none">
+            <span style="font-size:12.5px;color:#0284c7;font-weight:600">
+              ${barras?`= ${barras} barra${barras>1?'s':''} · R$ ${BRL(barras*c.preco)}`:'informe os metros'}</span>
+          </div>`:''}
+        </span></div></div>`;
+  };
+
+  const linhaFix=c=>{
+    const st=pedido.complementos[c.id]||{};
+    const auto=Math.ceil((c.consumo_por_m2||0)*metTotalPedido());
+    const q=st.qtd!==undefined&&st.qtd!==''?Number(st.qtd):auto;
+    return `<div class="opt ${st.on?'on':''}" style="display:block;cursor:default">
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span class="r" style="cursor:pointer" onclick="togComp('${c.id}')"></span>
+        <span style="flex:1">
+          <b>${c.nome}</b>
+          <small>R$ ${BRL(c.preco)} cada${c.consumo_por_m2?` · ${c.consumo_por_m2} por m² → ${auto} un`:''}</small>
+          ${st.on?`<div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+            <input type="number" value="${st.qtd!==undefined?st.qtd:auto}" placeholder="qtd"
+              oninput="setComp('${c.id}','qtd',this.value)"
+              style="width:110px;padding:8px 10px;border:2px solid #e2e8f0;border-radius:8px;font-size:13.5px;outline:none">
+            <span style="font-size:12.5px;color:#0284c7;font-weight:600">= R$ ${BRL(q*c.preco)}</span>
+          </div>`:''}
+        </span></div></div>`;
+  };
+
+  // Veio só a lista de cortes? Pedimos as medidas do galpão para poder sugerir.
+  const semGeometria=!grupos.some(g=>g.ambiente)&&!pedido.geoManual;
+  const blocoGeo=semGeometria?`
+    <div class="caixa" style="background:#f0f9ff;border:1px solid #bae6fd">
+      <b style="color:#0369a1">Quer que eu calcule as quantidades?</b>
+      <div style="color:#475569;margin:4px 0 10px">Como você já trouxe as medidas das telhas, preciso só
+        do tamanho do galpão para calcular acabamentos e estrutura.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end">
+        <div><label style="display:block;font-size:12px;font-weight:600;color:#334155;margin-bottom:4px">Comprimento do galpão (m)</label>
+          <input id="geoL" type="number" step="0.01" placeholder="20" value="${pedido.geoL||''}"
+            style="width:100%;padding:9px 11px;border:2px solid #e2e8f0;border-radius:9px;font-size:13.5px;outline:none"></div>
+        <div><label style="display:block;font-size:12px;font-weight:600;color:#334155;margin-bottom:4px">Quedas</label>
+          <select id="geoQ" style="width:100%;padding:9px 11px;border:2px solid #e2e8f0;border-radius:9px;font-size:13.5px;outline:none">
+            <option value="1" ${pedido.geoQ==1?'selected':''}>1 queda</option>
+            <option value="2" ${pedido.geoQ!=1?'selected':''}>2 quedas</option></select></div>
+        <button class="btn" style="margin:0;padding:10px 14px" onclick="calcSugestoes()">Calcular</button>
+      </div>
+    </div>`:'';
+
+  return `
+    ${blocoGeo}
+    ${acab.length?`<label style="display:block;font-size:13px;font-weight:600;color:#334155;margin:4px 0 6px">
+      Acabamentos <span style="font-weight:400;color:#94a3b8">— vendidos em barras fechadas</span></label>
+      ${acab.map(linhaAcab).join('')}`:''}
+    ${fix.length?`<label style="display:block;font-size:13px;font-weight:600;color:#334155;margin:16px 0 6px">Fixação</label>
+      ${fix.map(linhaFix).join('')}`:''}
+    <label style="display:block;font-size:13px;font-weight:600;color:#334155;margin:16px 0 6px">Precisa de estrutura?</label>
+    <button class="opt ${!pedido.comEstrutura?'on':''}" onclick="pedido.comEstrutura=false;render()"><span class="r"></span>
+      <span><b>Só as telhas</b><small>Já tenho a estrutura</small></span></button>
+    <button class="opt ${pedido.comEstrutura?'on':''}" onclick="setEstrutura(true)"><span class="r"></span>
+      <span style="flex:1"><b>Telhas + estrutura</b><small>Incluir vigas e terças galvanizadas</small>
+        ${pedido.estruturaDescricao?`<span class="m" style="display:block;margin-top:4px">✅ ${pedido.estruturaDescricao}</span>`:''}
+        ${pedido.comEstrutura&&!pedido.estruturaDescricao?`<span style="display:block;margin-top:4px;font-size:12px;color:#b45309">
+          Informe o comprimento do galpão acima para eu calcular as terças.</span>`:''}</span></button>`;
+}
+
+/** Só os complementos marcados, no formato que o motor espera. */
+function complementosEscolhidos(){
+  const out=[];
+  for(const [id,st] of Object.entries(pedido.complementos)){
+    if(!st.on)continue;
+    const c=(cat.complementos||[]).find(x=>x.id===id);
+    if(!c)continue;
+    if(c.venda_por==='barra'){
+      const m=parseFloat(String(st.metros).replace(',','.'));
+      if(m>0)out.push({produtoId:id,metros:m});
+    }else{
+      const q=st.qtd===''||st.qtd===undefined
+        ? Math.ceil((c.consumo_por_m2||0)*metTotalPedido())
+        : Math.ceil(Number(st.qtd));
+      if(q>0)out.push({produtoId:id,quantidade:q});
+    }
+  }
+  return out;
+}
+
+/** Calcula acabamentos e estrutura para quem trouxe só a lista de cortes. */
+async function calcSugestoes(){
+  const L=parseFloat(String(g('geoL').value).replace(',','.'));
+  const q=Number(g('geoQ').value)||2;
+  if(!L||L<=0)return err('Informe o comprimento do galpão em metros.');
+  const maior=Math.max(0,...grupos.flatMap(gr=>gr.cortes.map(c=>c.comprimentoM)));
+  const d=await fetch('/api/sugestoes',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({telhaIds:[...new Set(grupos.map(x=>x.telhaId))],
+      comprimentoGalpaoM:L,quedas:q,maiorCorteM:maior,comEstrutura:pedido.comEstrutura})})
+    .then(r=>r.json()).catch(()=>({error:'falha'}));
+  if(d.error)return err(d.error);
+
+  pedido.geoManual=true;pedido.geoL=L;pedido.geoQ=q;
+  // guarda as sugestões no primeiro grupo, para o cálculo de metros
+  if(grupos[0])grupos[0].complementosSugeridos=d.complementos||[];
+  // já marca os acabamentos sugeridos, com a metragem preenchida
+  for(const c of (d.complementos||[]))
+    pedido.complementos[c.produtoId]={on:true,metros:c.metros};
+  if(pedido.comEstrutura){pedido.perfis=d.perfis||[];pedido.estruturaDescricao=d.estruturaDescricao||null;}
+  err('');render();
+}
+
+/** Marcar "com estrutura" recalcula as terças se já soubermos a geometria. */
+async function setEstrutura(v){
+  pedido.comEstrutura=v;
+  if(!v){pedido.perfis=[];pedido.estruturaDescricao=null;return render();}
+  const amb=grupos.find(x=>x.ambiente);
+  const L=amb?amb.ambiente.comprimentoGalpaoM:pedido.geoL;
+  if(!L)return render();                    // sem geometria: pede acima
+  const maior=Math.max(0,...grupos.flatMap(gr=>gr.cortes.map(c=>c.comprimentoM)));
+  const d=await fetch('/api/sugestoes',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({telhaIds:[...new Set(grupos.map(x=>x.telhaId))],
+      comprimentoGalpaoM:L,quedas:amb?amb.ambiente.quedas:(pedido.geoQ||2),
+      maiorCorteM:maior,comEstrutura:true})}).then(r=>r.json()).catch(()=>({}));
+  pedido.perfis=d.perfis||[];pedido.estruturaDescricao=d.estruturaDescricao||null;
+  render();
+}
+
+function togComp(id){
+  const st=pedido.complementos[id]||{};
+  const sug=sugestoes();
+  pedido.complementos[id]={...st,on:!st.on,
+    metros:st.metros!==undefined?st.metros:(sug[id]||'')};
+  render();
+}
+function setComp(id,campo,valor){
+  pedido.complementos[id]={...(pedido.complementos[id]||{on:true}),[campo]:valor};
+  render();
+}
+
 function abrirFam(f){atual.famAberta=atual.famAberta===f?null:f;render();}
 function selTelha(id){atual.telhaId=id;atual.cortes=[{q:'',c:''}];atual.cg='';atual.lg='';ir(1);}
 function addC(){atual.cortes.push({q:'',c:''});render();}
@@ -398,7 +561,9 @@ async function okAmbiente(){
     split={comp:d.compTelha,max:t.comprimento_maximo_m,opcoes:d.opcoes,sel:0,origem:'ambiente'};
     return ir(2);
   }
-  grupos.push({telhaId:t.id,nome:t.nome,cortes:d.cortes,ambiente:{comprimentoGalpaoM:c,larguraGalpaoM:l,quedas:atual.quedas}});
+  grupos.push({telhaId:t.id,nome:t.nome,cortes:d.cortes,
+    ambiente:{comprimentoGalpaoM:c,larguraGalpaoM:l,quedas:atual.quedas},
+    complementosSugeridos:d.complementos||[]});
   window._av=d.avisos?.length?d.avisos:null;
   ir(2);
 }
@@ -421,21 +586,16 @@ async function okComplementos(){
       const d=await fetch('/api/romaneio',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify(amb)}).then(r=>r.json()).catch(()=>({error:'falha'}));
       if(d.error)return err(d.error);
-      grupos.push({telhaId:t.id,nome:t.nome,cortes:d.cortes,ambiente:{...amb,telhaId:undefined}});
+      grupos.push({telhaId:t.id,nome:t.nome,cortes:d.cortes,ambiente:{...amb,telhaId:undefined},
+        complementosSugeridos:d.complementos||[]});
       window._av=d.avisos?.length?d.avisos:null;
     }
     split=null;
   }
   if(!grupos.length)return err('Adicione ao menos uma telha.');
-  // estrutura
-  pedido.perfis=[];
-  if(pedido.comEstrutura){
-    const amb=grupos.find(g=>g.ambiente);
-    if(amb){
-      const d=await fetch('/api/romaneio',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({telhaId:amb.telhaId,...amb.ambiente,comEstrutura:true})}).then(r=>r.json()).catch(()=>({}));
-      if(d.perfis)pedido.perfis=d.perfis;
-    }
+  // estrutura já foi calculada em setEstrutura/calcSugestoes; só avisa se faltou
+  if(pedido.comEstrutura&&!pedido.perfis?.length){
+    return err('Informe o comprimento do galpão para eu calcular a estrutura — ou escolha "Só as telhas".');
   }
   ir(3);
 }
@@ -459,7 +619,11 @@ function okDados(){
 async function gerar(){
   const b=document.getElementById('bg');b.disabled=true;b.textContent='Gerando...';
   const d=await fetch('/api/orcamento',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({pedido:{grupos:grupos.map(g=>({telhaId:g.telhaId,cortes:g.cortes})),perfis:pedido.perfis},
+    body:JSON.stringify({pedido:{
+        grupos:grupos.map(g=>({telhaId:g.telhaId,cortes:g.cortes})),
+        perfis:pedido.perfis,
+        complementos:complementosEscolhidos(),
+      },
       cliente,vendedor:new URLSearchParams(location.search).get('vendedor')||null})})
     .then(r=>r.json()).catch(()=>({error:'Falha ao gerar — tente de novo.'}));
   if(d.error){err(d.error);b.disabled=false;b.textContent='Gerar orçamento 📄';return;}
