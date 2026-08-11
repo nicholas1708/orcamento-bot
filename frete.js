@@ -42,7 +42,7 @@ async function calcularFrete(destino, pedido, catalogo) {
 
     if (!proxima) {
       return { valor: 0, embutido: true, km: null, unidade: null,
-        descricao: 'Frete incluso no valor dos produtos',
+        descricao: 'Frete grátis',
         aviso: 'Não consegui identificar a unidade de origem pelo endereço — o vendedor confirma o prazo de entrega.' };
     }
 
@@ -65,14 +65,14 @@ async function calcularFrete(destino, pedido, catalogo) {
       return {
         valor: 0, embutido: true, km, unidade,
         diluir: money(cfg.frete_abaixo_do_minimo || 0),
-        descricao: `Frete incluso — sai de ${unidade.cidade}/${unidade.uf} (${km} km)`,
+        descricao: `Frete grátis — sai de ${unidade.cidade}/${unidade.uf} (${km} km)`,
         aviso: `Pedido abaixo de ${cfg.metragem_minima_m2} m²: frete de R$ ${(cfg.frete_abaixo_do_minimo || 0).toFixed(2).replace('.', ',')} diluído no valor dos produtos.`,
       };
     }
 
     return {
       valor: 0, embutido: true, km, unidade,
-      descricao: `Frete incluso — material sai de ${unidade.cidade}/${unidade.uf} (${km} km)`,
+      descricao: `Frete grátis — material sai de ${unidade.cidade}/${unidade.uf} (${km} km)`,
       aviso: null,
     };
   }

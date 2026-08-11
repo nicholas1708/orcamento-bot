@@ -10,6 +10,7 @@
     "endereco": "Rua Carolina Capuano Mantanhim, 329 (loja) - Recanto Antônio Silva Filho",
     "cidade": "Cedral/SP - CEP: 15895-314",
     "telefones": "(17)98168-2818 - (17)98173-4676",
+    "whatsapp": "5517981682818",
     "email": "contato@4arepresentacao.com.br",
     "site": "www.4arepresentacao.com.br",
     "vendedor_padrao": "André Luis"
@@ -171,7 +172,42 @@
     }
   ],
 
-  "perfis": [],
+  "_perfis_nota": "ESTRUTURA (terças/caibros). ⚠️ PREÇOS E MEDIDAS PROVISÓRIOS — a 4A ainda não enviou esta tabela. O sistema usa o perfil com tipo 'terca' para calcular a estrutura: nº de terças = maior corte ÷ vao_maximo_m + 1. Cadastre pelo painel ou substitua aqui.",
+  "perfis": [
+    {
+      "id": "PF-TERCA-C150", "codigo": null, "gc_id": null,
+      "tipo": "terca",
+      "nome": "Terça Galvanizada Perfil C 150x60x20 #1,55mm",
+      "unidade": "M", "preco": 48.00,
+      "barra_m": 6.0,
+      "vao_maximo_m": 6.0,
+      "peso_kg_m": 4.2,
+      "ativo": true,
+      "_confirmar": true
+    },
+    {
+      "id": "PF-TERCA-C100", "codigo": null, "gc_id": null,
+      "tipo": "terca",
+      "nome": "Terça Galvanizada Perfil C 100x50x17 #1,55mm",
+      "unidade": "M", "preco": 34.00,
+      "barra_m": 6.0,
+      "vao_maximo_m": 4.0,
+      "peso_kg_m": 2.9,
+      "ativo": true,
+      "_confirmar": true
+    },
+    {
+      "id": "PF-VIGA-U200", "codigo": null, "gc_id": null,
+      "tipo": "viga",
+      "nome": "Viga Galvanizada Perfil U 200x75 #2,00mm",
+      "unidade": "M", "preco": 92.00,
+      "barra_m": 6.0,
+      "vao_maximo_m": 8.0,
+      "peso_kg_m": 7.6,
+      "ativo": true,
+      "_confirmar": true
+    }
+  ],
 
   "_unidades_nota": "lat/lon já preenchidos: sem eles o sistema faria 14 consultas externas a cada orçamento (uma por unidade), o que travava a geração por dezenas de segundos. Com as coordenadas fixas, só o endereço do cliente precisa ser consultado.",
   "unidades": [
@@ -202,15 +238,24 @@
 
   "regras": {
     "faixa_preco_por": "produto",
+    "faixa_tolerancia_pct": 5,
+    "_faixa_tolerancia_nota": "Se o cliente chegar a até 5% abaixo do limite da faixa, o desconto da faixa seguinte já é concedido (ex: faixa de 50 m² vale a partir de 47,5 m²). Coloque 0 para exigir que ultrapasse o limite.",
     "_faixa_preco_por_opcoes": "'produto' = a faixa vale pela metragem daquele produto · 'pedido' = pela metragem total. CONFIRMAR COM A 4A.",
-    "metragem_maxima_autoatendimento_m": 400,
+    "metragem_maxima_autoatendimento_m": 150,
+    "_metragem_maxima_nota": "Acima disto o orçamento É GERADO e fica no painel, mas o valor NÃO é mostrado ao cliente: ele é direcionado ao comercial pelo WhatsApp. Mesma regra vale para obras além do raio de 600 km da fábrica.",
     "quantidade_maxima_pecas": 200,
-    "observacao_pdf": "Orçamento gerado automaticamente. Sujeito a conferência das medidas informadas pelo cliente. Frete incluso no valor dos produtos."
+    "observacao_pdf": "Orçamento gerado automaticamente. Sujeito a conferência das medidas informadas pelo cliente. Frete grátis para o endereço informado."
+  },
+
+  "ilustracoes": {
+    "_nota": "Fotos reais usadas na escolha do tipo de telhado. Deixe vazio para usar o desenho padrão. Sugestão: uma foto de obra com caída única e outra com duas águas/cumeeira aparente — a galeria de vocês tem várias em /galeria-de-fotos/telhados-pir/8",
+    "uma_queda": null,
+    "duas_aguas": null
   },
 
   "textos_pdf": {
-    "frete": "FRETE INCLUSO NO VALOR DOS PRODUTOS",
-    "pagamento_observacao": "FRETE INCLUSO - ENTREGUE NA OBRA",
+    "frete": "FRETE GRÁTIS",
+    "pagamento_observacao": "FRETE GRÁTIS - ENTREGUE NA OBRA",
     "transportadora": "",
     "_unidades_nota": "Sem telefone por unidade: o contato é do representante e já aparece no cabeçalho.",
     "unidades": [],

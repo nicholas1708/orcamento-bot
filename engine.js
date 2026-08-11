@@ -23,12 +23,29 @@ const m3 = (v) => Math.round(v * 1000) / 1000;
  *   "produto" (padrão) — vale a metragem daquele produto no orçamento
  *   "pedido"           — vale a metragem total do orçamento
  */
-function precoDaFaixa(produto, metragemBase) {
+function precoDaFaixa(produto, metragemBase, catalogo) {
   const faixas = produto.faixas_preco;
   if (!Array.isArray(faixas) || !faixas.length) return { preco: produto.preco, faixa: null };
   const ordenadas = [...faixas].sort((a, b) => (a.ate_m2 ?? Infinity) - (b.ate_m2 ?? Infinity));
-  const f = ordenadas.find((x) => x.ate_m2 == null || metragemBase <= x.ate_m2) || ordenadas[ordenadas.length - 1];
-  return { preco: f.preco, faixa: f };
+
+  let i = ordenadas.findIndex((x) => x.ate_m2 == null || metragemBase <= x.ate_m2);
+  if (i < 0) i = ordenadas.length - 1;
+  let f = ordenadas[i];
+  let porProximidade = false;
+
+  // TOLERÂNCIA: quase batendo a próxima faixa? Já concede o desconto.
+  // Evita a situação chata de perder 5% por causa de 2 m².
+  const tolPct = Number(catalogo?.regras?.faixa_tolerancia_pct);
+  const limite = f.ate_m2;
+  if (tolPct > 0 && limite != null) {
+    const prox = ordenadas[i + 1];
+    const minimoParaValer = limite * (1 - tolPct / 100);
+    if (prox && prox.preco < f.preco && metragemBase >= minimoParaValer) {
+      f = prox;
+      porProximidade = true;
+    }
+  }
+  return { preco: f.preco, faixa: f, porProximidade };
 }
 
 const rotuloFaixa = (f) => {
@@ -83,9 +100,12 @@ function calcularOrcamento(pedido, catalogo) {
   // ── 1) Telhas sob medida — um bloco de linhas por produto ─────────
   for (const { telha, cortes, metros: metrosDoProduto } of medidas) {
     // preço unitário conforme a faixa de metragem (desconto por volume)
-    const { preco: precoUnit, faixa } = precoDaFaixa(
-      telha, baseFaixa === 'pedido' ? metragemPedido : metrosDoProduto
+    const { preco: precoUnit, faixa, porProximidade } = precoDaFaixa(
+      telha, baseFaixa === 'pedido' ? metragemPedido : metrosDoProduto, catalogo
     );
+    if (porProximidade) {
+      avisos.push(`${telha.nome}: desconto da faixa seguinte concedido por proximidade (faltava pouco para atingi-la).`);
+    }
     if (!Number.isFinite(precoUnit) || precoUnit <= 0) {
       throw new Error(`Preço não cadastrado para ${telha.nome}.`);
     }
@@ -134,12 +154,22 @@ function calcularOrcamento(pedido, catalogo) {
 
     metragemTotal = m3(metragemTotal + metrosProduto);
     totalPecas += pecasProduto;
+    // desconto por volume, para aparecer no PDF (não na tela do cliente)
+    const precoBase = Array.isArray(telha.faixas_preco) && telha.faixas_preco.length
+      ? [...telha.faixas_preco].sort((a, b) => (a.ate_m2 ?? Infinity) - (b.ate_m2 ?? Infinity))[0].preco
+      : telha.preco;
+    const descontoPct = precoBase > 0
+      ? Math.round((1 - precoUnit / precoBase) * 1000) / 10 : 0;
+
     resumoPorProduto.push({
       telhaId: telha.id,
       nome: telha.nome,
       pecas: pecasProduto,
       metros: metrosProduto,
       precoUnit: money(precoUnit),
+      precoBase: money(precoBase),
+      descontoPct,
+      economia: money(metrosProduto * (precoBase - precoUnit)),
       faixa: rotuloFaixa(faixa),
       subtotal: money(metrosProduto * precoUnit),
     });
@@ -233,7 +263,7 @@ function calcularOrcamento(pedido, catalogo) {
 
   if (pedido.frete) {
     // Pedido pequeno: o frete é DILUÍDO no preço por metro das telhas.
-    // O cliente continua vendo "frete incluso" — só o preço/m sobe.
+    // O cliente continua vendo "frete grátis" — só o preço/m sobe.
     if (pedido.frete.diluir > 0 && metragemTotal > 0) {
       freteDiluido = money(pedido.frete.diluir);
       const acrescimoPorMetro = freteDiluido / metragemTotal;
@@ -281,9 +311,11 @@ function calcularOrcamento(pedido, catalogo) {
     };
   });
 
+  const economiaTotal = money(resumoPorProduto.reduce((s, p) => s + (p.economia || 0), 0));
+
   return {
     itens, metragemTotal, totalPecas,
-    totalProdutos, totalFrete, freteDiluido, totalAvista,
+    totalProdutos, totalFrete, freteDiluido, totalAvista, economiaTotal,
     frete: pedido.frete || null,
     foraDoRaio: !!pedido.frete?.foraDoRaio,
     foraDaPromocao,

@@ -117,6 +117,30 @@
     </div>
   </div>
 
+  <!-- ESTRUTURA -->
+  <div class="card f">
+    <h2>🔩 Estrutura — terças e vigas</h2>
+    <p class="d">É a partir do <b>vão máximo</b> da terça que o sistema calcula quantas peças o telhado precisa.
+      Sem pelo menos uma terça cadastrada, a opção "telhas + estrutura" não gera nada.</p>
+    <div class="grid">
+      <div><label>Nome <i>*</i></label><input id="pf_nome" placeholder="Terça Galvanizada Perfil C 150x60x20 #1,55mm"></div>
+      <div><label>Tipo</label><select id="pf_tipo"><option value="terca">Terça</option><option value="viga">Viga</option>
+        <option value="ripa">Ripa</option><option value="cantoneira">Cantoneira</option></select></div>
+      <div><label>Preço por metro (R$) <i>*</i></label><input id="pf_preco" type="number" step="0.01" placeholder="48,00"></div>
+      <div><label>Vão máximo (m) <i>*</i></label><input id="pf_vao" type="number" step="0.01" placeholder="6"><small>distância que a peça vence entre apoios</small></div>
+      <div><label>Barra de (m)</label><input id="pf_barra" type="number" step="0.01" placeholder="6"><small>o sistema arredonda para barras inteiras</small></div>
+      <div><label>Peso (kg/m)</label><input id="pf_peso" type="number" step="0.01" placeholder="4,2"><small>opcional</small></div>
+      <div><label>Código no sistema</label><input id="pf_codigo" placeholder="opcional"></div>
+    </div>
+    <div class="erro" id="pf_erro"></div><div class="ok" id="pf_ok"></div>
+    <div style="margin-top:12px;display:flex;gap:9px">
+      <button class="btn ok" onclick="salvarPerfil()">Salvar perfil</button>
+      <button class="btn g" onclick="limparPerfil()">Limpar</button>
+    </div>
+    <table style="margin-top:16px"><thead><tr><th>Perfil</th><th>Tipo</th><th>Preço/m</th><th>Vão máx.</th><th>Barra</th><th></th></tr></thead>
+      <tbody id="listaPerfis"></tbody></table>
+  </div>
+
   <!-- LISTA -->
   <div class="card">
     <h2>Produtos cadastrados (<span id="qtd">0</span>)</h2>
@@ -227,10 +251,56 @@ async function excluir(id,nome){
   carregar();
 }
 
+// ── Perfis de estrutura ──────────────────────────────────────────────
+let perfis=[],editandoPerfil=null;
+async function salvarPerfil(){
+  msg('pf_erro','');msg('pf_ok','');
+  const body={id:editandoPerfil,nome:v('pf_nome'),tipo:g('pf_tipo').value,
+    preco:nu(v('pf_preco')),vao_maximo_m:nu(v('pf_vao')),
+    barra_m:nu(v('pf_barra'))||6,peso_kg_m:nu(v('pf_peso')),codigo:v('pf_codigo')};
+  if(!body.nome)return msg('pf_erro','Informe o nome do perfil.');
+  if(!body.preco)return msg('pf_erro','Informe o preço por metro.');
+  if(!body.vao_maximo_m)return msg('pf_erro','Informe o vão máximo — é ele que define a quantidade de terças.');
+  const r=await fetch('/api/painel/perfil',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)}).then(x=>x.json()).catch(()=>({error:'Falha de conexão.'}));
+  if(r.error)return msg('pf_erro',r.error);
+  msg('pf_ok','✅ Perfil salvo!');limparPerfil();carregar();
+}
+function limparPerfil(){
+  editandoPerfil=null;
+  ['pf_nome','pf_preco','pf_vao','pf_barra','pf_peso','pf_codigo'].forEach(i=>g(i).value='');
+  g('pf_tipo').value='terca';
+}
+function editarPerfil(id){
+  const p=perfis.find(x=>x.id===id);if(!p)return;
+  editandoPerfil=id;
+  g('pf_nome').value=p.nome||'';g('pf_tipo').value=p.tipo||'terca';
+  g('pf_preco').value=p.preco||'';g('pf_vao').value=p.vao_maximo_m||'';
+  g('pf_barra').value=p.barra_m||'';g('pf_peso').value=p.peso_kg_m||'';
+  g('pf_codigo').value=p.codigo||'';
+  g('pf_nome').scrollIntoView({behavior:'smooth',block:'center'});
+}
+async function excluirPerfil(id,nome){
+  if(!confirm('Excluir "'+nome+'"?'))return;
+  await fetch('/api/painel/perfil/'+encodeURIComponent(id),{method:'DELETE'});
+  carregar();
+}
+
 async function carregar(){
   const r=await fetch('/api/painel/produtos').then(x=>x.json()).catch(()=>null);
   if(!r)return;
   produtos=r.produtos;
+  perfis=r.perfis||[];
+  g('listaPerfis').innerHTML=perfis.map(p=>`<tr>
+      <td><b>${p.nome}</b>${p._confirmar?'<div class="mut">⚠️ valores provisórios — confirmar</div>':''}</td>
+      <td><span class="fam">${p.tipo}</span></td>
+      <td><b style="color:#0284c7">R$ ${BRL(p.preco)}</b></td>
+      <td>${p.vao_maximo_m} m</td>
+      <td>${p.barra_m||6} m</td>
+      <td style="white-space:nowrap">
+        <button class="btn g" onclick="editarPerfil('${p.id}')">Editar</button>
+        <button class="btn r" onclick="excluirPerfil('${p.id}','${(p.nome||'').replace(/'/g,'')}')">Excluir</button></td>
+    </tr>`).join('')||'<tr><td colspan="6" class="mut" style="padding:20px;text-align:center">Nenhum perfil cadastrado — a opção de estrutura não vai funcionar.</td></tr>';
   g('qtd').textContent=produtos.length;
   g('familias').innerHTML=r.familias.map(f=>`<option value="${f}">`).join('');
   g('lista').innerHTML=produtos.map(p=>{

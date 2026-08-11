@@ -119,7 +119,53 @@ app.get('/painel/produtos', exigirSenha, (_req, res) => res.sendFile(path.join(_
 
 app.get('/api/painel/produtos', exigirSenha, (_req, res) => {
   const c = lerCat();
-  res.json({ produtos: c.telhas || [], familias: [...new Set((c.telhas || []).map((t) => t.familia))] });
+  res.json({
+    produtos: c.telhas || [],
+    familias: [...new Set((c.telhas || []).map((t) => t.familia))],
+    complementos: c.complementos || [],
+    perfis: c.perfis || [],
+  });
+});
+
+/** Cadastro de perfis de estrutura (terças, vigas). */
+app.post('/api/painel/perfil', exigirSenha, (req, res) => {
+  try {
+    const p = req.body || {};
+    if (!p.nome) return res.status(400).json({ error: 'Informe o nome do perfil.' });
+    if (!(Number(p.preco) > 0)) return res.status(400).json({ error: 'Informe o preço por metro.' });
+    if (!(Number(p.vao_maximo_m) > 0)) return res.status(400).json({ error: 'Informe o vão máximo — é ele que define quantas terças o telhado precisa.' });
+
+    const c = lerCat();
+    c.perfis = c.perfis || [];
+    const id = p.id || 'PF-' + Date.now().toString(36).toUpperCase();
+    const registro = {
+      id, codigo: p.codigo || null, gc_id: null,
+      tipo: p.tipo || 'terca',
+      nome: p.nome,
+      unidade: 'M',
+      preco: Number(p.preco),
+      barra_m: Number(p.barra_m) || 6,
+      vao_maximo_m: Number(p.vao_maximo_m),
+      peso_kg_m: Number(p.peso_kg_m) || null,
+      ativo: p.ativo !== false,
+    };
+    const i = c.perfis.findIndex((x) => x.id === id);
+    if (i >= 0) c.perfis[i] = { ...c.perfis[i], ...registro, _confirmar: false };
+    else c.perfis.push(registro);
+    gravarCat(c);
+    res.json({ ok: true, perfil: registro });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/painel/perfil/:id', exigirSenha, (req, res) => {
+  try {
+    const c = lerCat();
+    const antes = (c.perfis || []).length;
+    c.perfis = (c.perfis || []).filter((x) => x.id !== req.params.id);
+    if (c.perfis.length === antes) return res.status(404).json({ error: 'Perfil não encontrado.' });
+    gravarCat(c);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 /** Sugere os campos a partir da descrição do ERP (o usuário confirma). */
@@ -208,16 +254,29 @@ app.get('/api/catalogo', async (_req, res) => {
     const c = await getCatalogo();
     res.json({
       empresa: { razao_social: c.empresa.razao_social, site: c.empresa.site },
-      telhas: c.telhas.map((t) => ({
-        id: t.id, familia: t.familia, nome: t.nome, preco: t.preco,
+      ilustracoes: c.ilustracoes || {},
+      telhas: c.telhas.filter((t) => t.ativo !== false).map((t) => ({
+        id: t.id, codigo: t.codigo || null, familia: t.familia, nome: t.nome,
+        preco: t.preco, faixas_preco: t.faixas_preco || null,
         imagem: t.imagem || null, atributos: t.atributos || {},
-        largura_util_m: t.largura_util_m, comprimento_maximo_m: t.comprimento_maximo_m,
+        largura_util_m: t.largura_util_m,
+        comprimento_maximo_m: t.comprimento_maximo_m,
+        comprimento_minimo_m: t.comprimento_minimo_m,
+        promocao_ate_m: t.promocao_ate_m || null,
         forro_integrado: t.forro_integrado,
       })),
+      regras: {
+        faixa_preco_por: c.regras?.faixa_preco_por || 'produto',
+        faixa_tolerancia_pct: c.regras?.faixa_tolerancia_pct || 0,
+      },
       complementos: (c.complementos || []).filter((x) => x.ativo !== false).map((x) => ({
         id: x.id, codigo: x.codigo, nome: x.nome, familia: x.familia, tipo: x.tipo,
         preco: x.preco, venda_por: x.venda_por, comprimento_barra_m: x.comprimento_barra_m || null,
         consumo_por_m2: x.consumo_por_m2 || null, aplica_em: x.aplica_em || null, imagem: x.imagem || null,
+      })),
+      perfis: (c.perfis || []).map((p) => ({
+        id: p.id, nome: p.nome, tipo: p.tipo, preco: p.preco,
+        unidade: p.unidade, barra_m: p.barra_m || null,
       })),
       temEstrutura: (c.perfis || []).some((p) => p.tipo === 'terca'),
       engenharia: {
@@ -297,18 +356,73 @@ app.post('/api/orcamento', async (req, res) => {
       return res.status(400).json({ error: 'Informe um telefone/WhatsApp válido com DDD.' });
     }
     const catalogo = await getCatalogo();
-    const grupos = Array.isArray(pedido?.grupos) && pedido.grupos.length
-      ? pedido.grupos
-      : [{ telhaId: pedido?.telhaId, cortes: pedido?.cortes }];
+
+    // ── Traduz o que veio da tela para o formato do motor ─────────────
+    let grupos = [], complementos = [], perfis = [];
+
+    if (pedido?.modo === 'auto') {
+      // O cliente só deu as medidas: o sistema monta a lista inteira.
+      const telha = catalogo.telhas.find((t) => t.id === pedido.telhaId);
+      if (!telha) return res.status(400).json({ error: 'Telha inválida.' });
+
+      const rom = calcularRomaneio({
+        comprimentoGalpaoM: pedido.comprimentoGalpaoM,
+        larguraGalpaoM: pedido.larguraGalpaoM,
+        quedas: pedido.quedas,
+        comEstrutura: !!pedido.querEstrutura,
+      }, telha, catalogo);
+
+      grupos = [{ telhaId: telha.id, nome: telha.nome, cortes: rom.cortes,
+        ambiente: { comprimentoGalpaoM: pedido.comprimentoGalpaoM, larguraGalpaoM: pedido.larguraGalpaoM, quedas: pedido.quedas } }];
+
+      if (pedido.querAcabamento) {
+        complementos = (rom.complementos || []).map((c) => ({ produtoId: c.produtoId, metros: c.metros }));
+        // fixação entra junto: quantidade sai do consumo por m²
+        for (const c of (catalogo.complementos || [])) {
+          if (c.ativo !== false && c.tipo === 'fixacao' && c.consumo_por_m2) {
+            complementos.push({ produtoId: c.id });
+          }
+        }
+      }
+      if (pedido.querEstrutura) perfis = rom.perfis || [];
+
+    } else if (pedido?.modo === 'itens') {
+      // O cliente já sabe o que quer: cada item vem com sua quantidade.
+      const porTelha = new Map();
+      for (const it of (pedido.itens || [])) {
+        const qtd = Number(it.qtd);
+        if (!(qtd > 0)) continue;
+        const telha = catalogo.telhas.find((t) => t.id === it.id);
+        if (telha) {
+          const comp = Number(it.comp);
+          if (!(comp > 0)) continue;
+          if (!porTelha.has(telha.id)) porTelha.set(telha.id, { telhaId: telha.id, nome: telha.nome, cortes: [] });
+          porTelha.get(telha.id).cortes.push({ quantidade: Math.floor(qtd), comprimentoM: comp });
+          continue;
+        }
+        const comp2 = (catalogo.complementos || []).find((c) => c.id === it.id);
+        if (comp2) { complementos.push({ produtoId: comp2.id, quantidade: Math.ceil(qtd) }); continue; }
+        const perfil = (catalogo.perfis || []).find((p) => p.id === it.id);
+        if (perfil) perfis.push({ perfilId: perfil.id, metros: qtd });
+      }
+      grupos = [...porTelha.values()];
+      if (!grupos.length) return res.status(400).json({ error: 'Informe ao menos uma telha com quantidade e comprimento.' });
+
+    } else {
+      // formato antigo (grupos prontos)
+      grupos = Array.isArray(pedido?.grupos) && pedido.grupos.length
+        ? pedido.grupos : [{ telhaId: pedido?.telhaId, cortes: pedido?.cortes }];
+      complementos = pedido?.complementos || [];
+      perfis = pedido?.perfis || [];
+    }
+
     if (!grupos.length || grupos.some((g) => !catalogo.telhas.some((t) => t.id === g.telhaId))) {
       return res.status(400).json({ error: 'Produto inválido.' });
     }
 
     // frete é cobrado À PARTE: calculado aqui e somado como linha própria
     const { calcularFrete } = require('./frete');
-    const previa = calcularOrcamento({
-      grupos, perfis: pedido.perfis || [], complementos: pedido.complementos || [],
-    }, catalogo);
+    const previa = calcularOrcamento({ grupos, perfis, complementos }, catalogo);
     const frete = await calcularFrete(
       { cep: cliente.cep, cidade: cliente.cidade, uf: cliente.estado },
       {
@@ -318,33 +432,16 @@ app.post('/api/orcamento', async (req, res) => {
       },
       catalogo
     );
-    // Fora do raio de entrega: NÃO conclui — registra e encaminha à equipe
-    if (frete.foraDoRaio) {
-      const numeroP = 'PROP-' + Date.now().toString(36).toUpperCase();
-      orcamentosDb.salvar({
-        numero: numeroP, canal: 'web',
-        origem: req.body?.vendedor ? 'vendedor' : 'cliente',
-        vendedor: req.body?.vendedor || null,
-        cliente, orcamento: { ...previa, frete, escalarParaVendedor: true },
-        grupos, pdfPath: null,
-      });
-      require('./clientes').salvar(cliente);
-      console.log(`[WEB] ⚠️ Fora do raio (${frete.km} km) — ${numeroP} — ${cliente.nome} (${cliente.telefone})`);
-      return res.json({
-        foraDoRaio: true, numero: numeroP, km: frete.km,
-        mensagem: frete.mensagemCliente,
-        resumo: {
-          metragemTotal: previa.metragemTotal, totalPecas: previa.totalPecas,
-          produtos: previa.resumoPorProduto,
-        },
-      });
-    }
+    const orcamento = calcularOrcamento({ grupos, perfis, complementos, frete }, catalogo);
 
-    const orcamento = calcularOrcamento({
-      grupos, perfis: pedido.perfis || [], complementos: pedido.complementos || [], frete,
-    }, catalogo);
+    // ── QUANDO O VALOR NÃO É MOSTRADO AO CLIENTE ──────────────────────
+    // Obra além do raio da fábrica OU pedido grande: o orçamento é gerado
+    // e fica no painel, mas o cliente é direcionado ao comercial.
+    const limiteM2 = catalogo.regras?.metragem_maxima_autoatendimento_m || Infinity;
+    const grande = orcamento.metragemTotal > limiteM2;
+    const encaminhar = frete.foraDoRaio || grande;
 
-    const numero = 'WEB-' + Date.now().toString(36).toUpperCase();
+    const numero = (encaminhar ? 'PROP-' : 'WEB-') + Date.now().toString(36).toUpperCase();
     // token aleatório no nome: deixa o link do PDF impossível de adivinhar
     const token = require('crypto').randomBytes(8).toString('hex');
     const pdfPath = path.join(__dirname, 'out', `orcamento-${numero}-${token}.pdf`);
@@ -357,13 +454,51 @@ app.post('/api/orcamento', async (req, res) => {
     // grava o cadastro (mesma base do WhatsApp — chave é o telefone)
     require('./clientes').salvar(cliente);
 
-    // registra no histórico para o painel
+    // registra no histórico para o painel (com o motivo, quando encaminhado)
     orcamentosDb.salvar({
       numero, canal: 'web',
       origem: req.body?.vendedor ? 'vendedor' : 'cliente',
       vendedor: req.body?.vendedor || null,
-      cliente, orcamento, grupos, pdfPath,
+      cliente,
+      orcamento: {
+        ...orcamento,
+        escalarParaVendedor: orcamento.escalarParaVendedor || encaminhar,
+        avisos: encaminhar
+          ? [...orcamento.avisos, frete.foraDoRaio
+              ? `ENCAMINHADO AO COMERCIAL: obra a ${frete.km} km da fábrica (limite ${catalogo.fretes.raio_maximo_km} km). Valor não exibido ao cliente.`
+              : `ENCAMINHADO AO COMERCIAL: ${orcamento.metragemTotal} m² acima do limite de ${limiteM2} m². Valor não exibido ao cliente.`]
+          : orcamento.avisos,
+      },
+      grupos, pdfPath,
     });
+
+    if (encaminhar) {
+      const motivo = frete.foraDoRaio
+        ? `obra a ${frete.km} km da fábrica` : `${orcamento.metragemTotal} m² (acima de ${limiteM2})`;
+      console.log(`[WEB] 📞 Encaminhado ao comercial — ${numero} — ${motivo} — ${cliente.nome} (${cliente.telefone}) — valor interno R$ ${orcamento.totalAvista}`);
+
+      const zap = (catalogo.empresa.whatsapp || '').replace(/\D/g, '');
+      const texto = encodeURIComponent(
+        `Olá! Montei um pedido pelo site (protocolo ${numero}) e gostaria de receber a proposta.\n` +
+        `${orcamento.totalPecas} peças · ${orcamento.metragemTotal} mts\n${cliente.nome}`
+      );
+      // ⚠️ NÃO devolve valores: o cliente fala com o comercial
+      return res.json({
+        encaminhado: true,
+        motivo: frete.foraDoRaio ? 'distancia' : 'volume',
+        numero,
+        km: frete.km || null,
+        mensagem: frete.foraDoRaio
+          ? (frete.mensagemCliente || 'Sua obra está fora da nossa área de entrega automática.')
+          : 'Seu pedido tem um volume que rende condição especial — nosso comercial monta a melhor proposta pra você.',
+        whatsapp: zap ? `https://wa.me/${zap}?text=${texto}` : null,
+        resumo: {
+          metragemTotal: orcamento.metragemTotal,
+          totalPecas: orcamento.totalPecas,
+          produtos: orcamento.resumoPorProduto,
+        },
+      });
+    }
 
     console.log(`[WEB] Orçamento ${numero} — ${cliente.nome} (${cliente.telefone}) — ${orcamento.metragemTotal}mts — R$ ${orcamento.totalAvista}`);
     res.json({

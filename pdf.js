@@ -200,6 +200,27 @@ async function gerarPDF({ cliente, pedido, orcamento, catalogo }, destino) {
   doc.text(BRL(orcamento.totalAvista), col.sub, yTot + 4, { width: col.subW, align: 'right' });
   doc.y = yTot + 20;
 
+  // ── DESCONTO POR VOLUME — aparece SÓ aqui, no orçamento ───────────
+  const comDesc = (orcamento.resumoPorProduto || []).filter((p) => p.descontoPct > 0);
+  if (comDesc.length) {
+    doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#0a7a3d')
+      .text('DESCONTO POR VOLUME APLICADO', M, doc.y);
+    doc.font('Helvetica').fontSize(6.8).fillColor('#0a7a3d');
+    for (const p of comDesc) {
+      doc.text(
+        `${p.nome}: ${p.metros} mts · de ${BRL(p.precoBase)} por ${BRL(p.precoUnit)} o metro ` +
+        `(${String(p.descontoPct).replace('.', ',')}% — economia de R$ ${BRL(p.economia)})`,
+        M, doc.y, { width: W }
+      );
+    }
+    if (orcamento.economiaTotal > 0) {
+      doc.font('Helvetica-Bold').fontSize(7.5)
+        .text(`Economia total nesta compra: R$ ${BRL(orcamento.economiaTotal)}`, M, doc.y + 1, { width: W });
+    }
+    doc.fillColor('#000');
+    doc.y += 6;
+  }
+
   // ── TOTAIS: frete é cobrado À PARTE, em linha própria ─────────────
   doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000')
     .text(`PRODUTOS: ${BRL(orcamento.totalProdutos)}`, M, doc.y, { width: W - 4, align: 'right' });
@@ -207,7 +228,7 @@ async function gerarPDF({ cliente, pedido, orcamento, catalogo }, destino) {
   const fr = orcamento.frete;
   if (fr) {
     const linhaFrete = fr.embutido
-      ? 'FRETE: INCLUSO NO VALOR'
+      ? 'FRETE: GRÁTIS'
       : !Number.isFinite(fr.valor)
         ? 'FRETE: a confirmar pelo vendedor'
         : fr.valor === 0 ? 'FRETE: GRÁTIS' : `FRETE: ${BRL(fr.valor)}`;

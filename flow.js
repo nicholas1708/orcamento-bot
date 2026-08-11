@@ -419,7 +419,11 @@ async function processar(chatId, textoRaw) {
         { grupos: P.grupos, perfis: P.perfis || [], frete },
         catalogo
       );
-      const numero = 'WA-' + Date.now().toString(36).toUpperCase();
+      // Obra distante ou pedido grande: gera e guarda, mas NÃO mostra o valor
+      const limiteM2 = catalogo.regras?.metragem_maxima_autoatendimento_m || Infinity;
+      const encaminhar = frete.foraDoRaio || orcamento.metragemTotal > limiteM2;
+
+      const numero = (encaminhar ? 'PROP-' : 'WA-') + Date.now().toString(36).toUpperCase();
       // token aleatório no nome: o link do PDF não pode ser adivinhado
       const token = require('crypto').randomBytes(8).toString('hex');
       const pdfPath = path.join(__dirname, 'out', `orcamento-${numero}-${token}.pdf`);
@@ -432,15 +436,42 @@ async function processar(chatId, textoRaw) {
       // grava o cadastro — no próximo orçamento não perguntamos de novo
       clientes.salvar(ficha.cliente);
 
-      // registra no histórico para o painel da empresa
+      // registra no histórico para o painel da empresa (com o motivo, se encaminhado)
       require('./orcamentos').salvar({
         numero, canal: 'whatsapp', origem: 'cliente',
-        cliente: ficha.cliente, orcamento, grupos: P.grupos, pdfPath,
+        cliente: ficha.cliente,
+        orcamento: {
+          ...orcamento,
+          escalarParaVendedor: orcamento.escalarParaVendedor || encaminhar,
+          avisos: encaminhar
+            ? [...orcamento.avisos, frete.foraDoRaio
+                ? `ENCAMINHADO AO COMERCIAL: obra a ${frete.km} km da fábrica. Valor não exibido ao cliente.`
+                : `ENCAMINHADO AO COMERCIAL: ${orcamento.metragemTotal} m² acima do limite de ${limiteM2} m². Valor não exibido ao cliente.`]
+            : orcamento.avisos,
+        },
+        grupos: P.grupos, pdfPath,
       });
+
+      if (encaminhar) {
+        // valor NÃO vai para o cliente — só o protocolo e o convite ao comercial
+        const motivo = frete.foraDoRaio
+          ? `obra a ${frete.km} km da fábrica`
+          : `${orcamento.metragemTotal} m² acima do limite de ${limiteM2}`;
+        say(
+          (frete.foraDoRaio
+            ? `📬 *Pedido registrado!*\n\n${frete.mensagemCliente || 'Sua obra está fora da nossa área de entrega automática.'}`
+            : `🎯 *Seu pedido rende condição especial!*\n\nComo o volume é grande, nosso comercial monta a melhor proposta pra você.`) +
+          `\n\n*Protocolo:* ${numero}\n*Seu pedido:* ${orcamento.totalPecas} peças · ${orcamento.metragemTotal} mts\n\n` +
+          `Já guardamos tudo — um vendedor vai te chamar por aqui em instantes 👍`
+        );
+        acoes.push({ type: 'handoff', motivo: `Encaminhado ao comercial: ${motivo}` });
+        ficha.etapa = 'HUMANO';
+        break;
+      }
 
       const linhaFrete = !Number.isFinite(orcamento.totalFrete) || orcamento.frete?.valor === null
         ? ' (frete a confirmar)'
-        : orcamento.totalFrete > 0 ? ` + frete R$ ${BRL(orcamento.totalFrete)}` : ' · frete grátis';
+        : orcamento.totalFrete > 0 ? ` + frete R$ ${BRL(orcamento.totalFrete)}` : ' · *frete grátis*';
       acoes.push({
         type: 'pdf', filePath: pdfPath,
         caption: `📄 Orçamento ${numero} — ${orcamento.totalPecas} peças · ${orcamento.metragemTotal} mts\n` +

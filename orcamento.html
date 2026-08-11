@@ -3,99 +3,70 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Monte seu Orçamento</title>
+<title>Orçamento de Telhas</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif}
-  body{background:#f2f4f7;min-height:100vh;display:flex;justify-content:center;color:#0f172a}
-  .app{width:100%;max-width:580px;padding:16px 16px 48px}
-  .topo{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+  body{background:#f1f5f9;min-height:100vh;display:flex;justify-content:center;color:#0f172a}
+  .app{width:100%;max-width:560px;padding:16px 16px 48px}
+  .topo{display:flex;align-items:center;gap:10px;margin-bottom:18px}
   .voltar{background:none;border:none;font-size:22px;cursor:pointer;color:#64748b;padding:2px 6px;visibility:hidden}
   .voltar.on{visibility:visible}
   .barra{flex:1;height:6px;background:#e2e8f0;border-radius:99px;overflow:hidden}
   .barra i{display:block;height:100%;background:#0ea5e9;transition:width .35s}
-  .passo{font-size:12px;color:#94a3b8;white-space:nowrap}
-  h1{font-size:21px;margin-bottom:6px}
-  .sub{font-size:14px;color:#64748b;margin-bottom:16px;line-height:1.5}
-  /* carrinho */
-  .cart{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:14px}
-  .cart b{font-size:13px;color:#0f172a;display:block;margin-bottom:6px}
-  .cart .l{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:#475569;padding:3px 0}
-  .cart .l button{background:none;border:none;color:#dc2626;cursor:pointer;font-size:12px}
-  .cart .tot{border-top:1px dashed #e2e8f0;margin-top:6px;padding-top:6px;font-size:13px;color:#0284c7;font-weight:700;display:flex;justify-content:space-between}
-  /* busca */
-  .busca{width:100%;padding:12px 14px;border:2px solid #e2e8f0;border-radius:10px;font-size:14px;outline:none;margin-bottom:12px}
-  .busca:focus{border-color:#0ea5e9}
-  /* accordion de famílias */
-  .fam{background:#fff;border:2px solid #e2e8f0;border-radius:12px;margin-bottom:10px;overflow:hidden}
-  .fam.aberta{border-color:#0ea5e9}
-  .fam>.cab{display:flex;align-items:center;gap:12px;padding:10px 12px;cursor:pointer;width:100%;background:none;border:none;text-align:left}
-  .fam>.cab img{width:52px;height:40px;object-fit:cover;border-radius:7px;background:#f1f5f9;flex-shrink:0}
-  .fam>.cab .txt{flex:1}
-  .fam>.cab b{font-size:14px;display:block}
-  .fam>.cab small{font-size:12px;color:#64748b}
-  .fam>.cab .seta{color:#94a3b8;font-size:13px}
-  .mods{display:none;padding:0 10px 10px;grid-template-columns:1fr 1fr;gap:8px}
-  .fam.aberta .mods{display:grid}
-  .mod{background:#f8fafc;border:2px solid #e2e8f0;border-radius:10px;cursor:pointer;overflow:hidden;text-align:left;padding:0}
-  .mod:hover{border-color:#7dd3fc}
-  .mod img{width:100%;height:78px;object-fit:cover;display:block;background:#eef2f7}
-  .mod .ph{height:78px;display:flex;align-items:center;justify-content:center;font-size:28px;background:#eef2f7}
-  .mod .i{padding:7px 9px 9px}
-  .mod b{font-size:12.5px;line-height:1.3;display:block}
-  .mod .p{color:#0284c7;font-weight:700;font-size:12.5px;margin-top:3px;display:block}
-  /* abas */
-  .abas{display:flex;gap:8px;margin-bottom:14px}
-  .aba{flex:1;padding:11px;border:2px solid #e2e8f0;background:#fff;border-radius:10px;cursor:pointer;font-size:13.5px;font-weight:600;color:#64748b}
-  .aba.on{border-color:#0ea5e9;background:#f0f9ff;color:#0369a1}
+  h1{font-size:22px;margin-bottom:6px;line-height:1.25}
+  .sub{font-size:14px;color:#64748b;margin-bottom:18px;line-height:1.5}
+  /* cartões de escolha */
+  .op{display:flex;gap:12px;align-items:center;background:#fff;border:2px solid #e2e8f0;border-radius:14px;
+      padding:16px;cursor:pointer;width:100%;text-align:left;margin-bottom:11px;transition:.15s}
+  .op:hover{border-color:#7dd3fc;transform:translateY(-1px)}
+  .op.on{border-color:#0ea5e9;background:#f0f9ff}
+  .op .ico{font-size:28px;flex-shrink:0}
+  .op b{display:block;font-size:15px;margin-bottom:2px}
+  .op small{color:#64748b;font-size:12.5px;line-height:1.45;display:block}
+  .op img{width:64px;height:50px;object-fit:cover;border-radius:9px;flex-shrink:0;background:#f1f5f9}
+  .chip{display:inline-block;background:#f1f5f9;color:#475569;font-size:10.5px;padding:2px 7px;border-radius:20px;margin:3px 3px 0 0}
   /* campos */
-  .campo{margin-bottom:12px}
+  .campo{margin-bottom:14px}
   .campo label{display:block;font-size:13px;font-weight:600;color:#334155;margin-bottom:5px}
-  .campo input{width:100%;padding:12px 14px;border:2px solid #e2e8f0;border-radius:10px;font-size:15px;outline:none}
+  .campo input{width:100%;padding:13px 14px;border:2px solid #e2e8f0;border-radius:10px;font-size:15px;outline:none}
   .campo input:focus{border-color:#0ea5e9}
-  .l2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .dica{font-size:12px;color:#94a3b8;margin-top:4px}
-  .corte{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;margin-bottom:8px}
-  .corte input{padding:11px;border:2px solid #e2e8f0;border-radius:9px;font-size:14px;outline:none;width:100%}
-  .corte button{background:#fee2e2;color:#b91c1c;border:none;width:38px;height:38px;border-radius:9px;cursor:pointer}
-  .add{background:#e0f2fe;color:#0369a1;border:none;padding:11px;border-radius:10px;width:100%;cursor:pointer;font-weight:600;font-size:14px}
-  /* opções (radio cards) */
-  .opt{display:flex;gap:10px;align-items:flex-start;background:#fff;border:2px solid #e2e8f0;border-radius:11px;padding:12px;cursor:pointer;margin-bottom:9px;width:100%;text-align:left}
-  .opt.on{border-color:#0ea5e9;background:#f0f9ff}
-  .opt .r{width:18px;height:18px;border:2px solid #cbd5e1;border-radius:50%;flex-shrink:0;margin-top:2px}
-  .opt.on .r{border-color:#0ea5e9;border-width:5px}
-  .opt b{font-size:13.5px;display:block}
-  .opt small{font-size:12px;color:#64748b;display:block;margin-top:2px}
-  .opt .m{font-size:12px;color:#0284c7;font-weight:600;margin-top:3px;display:block}
-  .avancado{background:none;border:none;color:#0369a1;font-size:13px;text-decoration:underline;cursor:pointer;padding:4px 0}
-  .caixa{background:#fff;border-radius:11px;padding:13px 15px;margin-bottom:12px;font-size:13.5px;color:#334155}
-  .caixa b{color:#0284c7}
-  .btn{width:100%;margin-top:14px;padding:15px;background:#0ea5e9;color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer}
+  .l2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+  .dica{font-size:12px;color:#94a3b8;margin-top:-8px;margin-bottom:14px}
+  .busca{width:100%;padding:12px 14px;border:2px solid #e2e8f0;border-radius:10px;font-size:14px;outline:none;margin-bottom:12px}
+  /* carrinho / itens */
+  .linha{display:grid;grid-template-columns:1fr 78px 78px auto;gap:8px;align-items:center;
+         background:#fff;border:1px solid #e2e8f0;border-radius:11px;padding:10px 12px;margin-bottom:8px}
+  .linha b{font-size:13px;display:block;line-height:1.3}
+  .linha small{color:#94a3b8;font-size:11px}
+  .linha input{padding:9px;border:1px solid #cbd5e1;border-radius:8px;font-size:13.5px;outline:none;width:100%;text-align:center}
+  .linha input:focus{border-color:#0ea5e9}
+  .linha .x{background:#fee2e2;color:#b91c1c;border:none;width:34px;height:34px;border-radius:8px;cursor:pointer}
+  .cab{display:grid;grid-template-columns:1fr 78px 78px auto;gap:8px;padding:0 12px 4px;
+       font-size:10.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:.3px}
+  .cab span:nth-child(n+2){text-align:center}
+  /* botões */
+  .btn{width:100%;margin-top:16px;padding:15px;background:#0ea5e9;color:#fff;border:none;border-radius:12px;
+       font-size:16px;font-weight:700;cursor:pointer}
   .btn:hover{background:#0284c7}
-  .btn.sec{background:#fff;color:#0369a1;border:2px solid #bae6fd;margin-top:9px}
+  .btn.sec{background:#fff;color:#0369a1;border:2px solid #bae6fd;margin-top:10px}
   .btn:disabled{background:#cbd5e1;cursor:not-allowed}
   .erro{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;border-radius:10px;padding:10px 14px;font-size:13.5px;margin-top:12px;display:none}
-  .aviso{background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:10px 14px;border-radius:10px;font-size:13px;margin:12px 0}
-  .promo{background:#ecfdf5;border:1px solid #6ee7b7;color:#065f46;padding:11px 14px;border-radius:10px;font-size:13px;margin-bottom:12px;display:flex;gap:9px;align-items:flex-start}
-  .promo.fora{background:#fff7ed;border-color:#fdba74;color:#9a3412}
-  .promo b{display:block;margin-bottom:2px}
-  .prop{text-align:center;padding:22px 8px}
-  .prop .ic{font-size:50px}.prop h2{margin:10px 0 6px}
-  .prop p{color:#475569;font-size:14px;line-height:1.6;margin-bottom:14px}
-  .prop .cx{background:#fff;border-radius:12px;padding:14px;text-align:left;font-size:13px;color:#334155}
-  .res{background:#fff;border-radius:14px;padding:16px}
-  .res h3{font-size:14px;margin:12px 0 3px}.res h3:first-child{margin-top:0}
-  .res .cut{font-size:13px;color:#475569;padding-left:6px}
-  .res .li{display:flex;justify-content:space-between;padding:7px 0;border-top:1px dashed #e2e8f0;font-size:13.5px;margin-top:8px}
-  .res .li span:first-child{color:#64748b}
-  .res .li span:last-child{font-weight:600;text-align:right;max-width:62%}
-  .fim{text-align:center;padding:22px 8px}
-  .fim .ok{font-size:50px}.fim h2{margin:8px 0 2px}
-  .fim .tt{font-size:31px;font-weight:800;color:#0284c7;margin:6px 0 2px}
-  .fim .met{font-size:13px;color:#64748b;margin-bottom:12px}
+  .aviso{background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:11px 14px;border-radius:10px;font-size:13px;margin:12px 0}
+  .caixa{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:12px}
+  /* resumo e final */
+  .res .it{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px dashed #e2e8f0;font-size:13.5px}
+  .res .it:last-child{border:none}
+  .res .it span:first-child{color:#64748b}
+  .res .it span:last-child{font-weight:600;text-align:right;max-width:62%}
+  .fim{text-align:center;padding:24px 8px}
+  .fim .ok{font-size:52px}.fim h2{margin:8px 0 2px}
+  .fim .tt{font-size:32px;font-weight:800;color:#0284c7;margin:6px 0 2px}
+  .fim .met{font-size:13px;color:#64748b;margin-bottom:14px}
   .parc{background:#fff;border-radius:12px;padding:12px 14px;text-align:left;font-size:13px}
   .parc div{display:flex;justify-content:space-between;padding:4px 0}
   .fim a.pdf{display:block;margin-top:14px;padding:15px;background:#0ea5e9;color:#fff;border-radius:12px;font-weight:700;text-decoration:none}
-  .fim button{margin-top:10px;background:none;border:none;color:#64748b;cursor:pointer;font-size:13px;text-decoration:underline}
+  .fim a.zap{display:block;margin-top:12px;padding:15px;background:#25d366;color:#fff;border-radius:12px;font-weight:700;text-decoration:none}
+  .fim button{margin-top:12px;background:none;border:none;color:#64748b;cursor:pointer;font-size:13px;text-decoration:underline}
 </style>
 </head>
 <body>
@@ -103,647 +74,312 @@
   <div class="topo">
     <button class="voltar" id="bv" onclick="voltar()">←</button>
     <div class="barra"><i id="pg"></i></div>
-    <span class="passo" id="pl"></span>
   </div>
   <div id="t"></div>
   <div class="erro" id="e"></div>
 </div>
 
 <script>
-// ── Ilustrações (SVG inline: não dependem de internet nem de arquivo) ──
-const ART={
-  umaQueda:`<svg viewBox="0 0 120 74" width="100%" height="70">
-    <rect x="18" y="40" width="84" height="26" fill="#e2e8f0"/>
-    <path d="M10 40 L110 20 L110 30 L10 50 Z" fill="#0ea5e9"/>
-    <path d="M10 40 L110 20" stroke="#0369a1" stroke-width="2" fill="none"/>
-    <path d="M22 16 L38 12" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#s1)"/>
-    <defs><marker id="s1" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-      <path d="M0,0 L5,3 L0,6 Z" fill="#94a3b8"/></marker></defs>
-    <text x="60" y="12" font-size="8" fill="#64748b" text-anchor="middle">água escorre p/ um lado</text>
-  </svg>`,
-  duasQuedas:`<svg viewBox="0 0 120 74" width="100%" height="70">
-    <rect x="18" y="42" width="84" height="24" fill="#e2e8f0"/>
-    <path d="M8 44 L60 18 L60 28 L8 54 Z" fill="#0ea5e9"/>
-    <path d="M112 44 L60 18 L60 28 L112 54 Z" fill="#38bdf8"/>
-    <circle cx="60" cy="18" r="3.5" fill="#f59e0b"/>
-    <text x="60" y="12" font-size="8" fill="#b45309" text-anchor="middle">cumeeira</text>
-    <text x="60" y="72" font-size="7.5" fill="#64748b" text-anchor="middle">duas caídas</text>
-  </svg>`,
-  medidas:`<svg viewBox="0 0 200 96" width="100%" height="92">
-    <path d="M30 62 L110 34 L180 50 L100 78 Z" fill="#bae6fd" stroke="#0284c7" stroke-width="1.5"/>
-    <path d="M30 62 L30 76 M100 78 L100 92" stroke="#94a3b8" stroke-width="1"/>
-    <path d="M30 84 L100 84" stroke="#0f172a" stroke-width="1.2" marker-start="url(#a2)" marker-end="url(#a2)"/>
-    <path d="M186 54 L116 38" stroke="#0f172a" stroke-width="1.2" marker-start="url(#a2)" marker-end="url(#a2)"/>
-    <defs><marker id="a2" markerWidth="7" markerHeight="7" refX="3.5" refY="3" orient="auto">
-      <path d="M0,3 L6,0 L6,6 Z" fill="#0f172a"/></marker></defs>
-    <text x="65" y="94" font-size="9" fill="#0f172a" text-anchor="middle" font-weight="600">comprimento</text>
-    <text x="163" y="34" font-size="9" fill="#0f172a" text-anchor="middle" font-weight="600">largura</text>
-    <text x="105" y="56" font-size="7.5" fill="#0369a1" text-anchor="middle">telhado</text>
-  </svg>`,
-  emenda:`<svg viewBox="0 0 220 56" width="100%" height="54">
-    <rect x="8" y="18" width="96" height="16" rx="2" fill="#0ea5e9"/>
-    <rect x="92" y="18" width="96" height="16" rx="2" fill="#38bdf8"/>
-    <rect x="92" y="18" width="12" height="16" fill="#f59e0b" opacity=".85"/>
-    <path d="M92 42 L104 42" stroke="#b45309" stroke-width="1.2" marker-start="url(#a3)" marker-end="url(#a3)"/>
-    <defs><marker id="a3" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
-      <path d="M0,3 L5,0 L5,6 Z" fill="#b45309"/></marker></defs>
-    <text x="98" y="53" font-size="8" fill="#b45309" text-anchor="middle">transpasse</text>
-    <text x="50" y="30" font-size="8.5" fill="#fff" text-anchor="middle">peça 1</text>
-    <text x="148" y="30" font-size="8.5" fill="#fff" text-anchor="middle">peça 2</text>
-    <text x="110" y="12" font-size="8" fill="#64748b" text-anchor="middle">as peças se sobrepõem na emenda</text>
-  </svg>`,
-};
-
-/**
- * MAQUETE 3D (isométrica) — desenha o galpão conforme o cliente digita.
- * Mostra as telhas uma a uma, a cumeeira e as medidas. Puro SVG: sem
- * biblioteca, sem internet, e nítido em qualquer tela.
- */
-function maquete3D(L,W,quedas,larguraUtil,compTelha){
-  if(!(L>0)||!(W>0))return `<div style="height:210px;display:flex;align-items:center;justify-content:center;
-    color:#94a3b8;font-size:13px;text-align:center">Digite as medidas<br>para ver seu telhado</div>`;
-
-  const q=quedas===1?1:2;
-  const hParede=Math.max(2.2,Math.min(L,W)*0.16);        // altura visual da parede
-  const hTelhado=(q===2?W/2:W)*0.30;                     // caimento exagerado p/ leitura
-  const cos30=Math.cos(Math.PI/6), sin30=Math.sin(Math.PI/6);
-  const P=(x,y,z)=>[(x-y)*cos30,(x+y)*sin30-z];
-
-  // pontos base
-  const pts=[];
-  const add=(...ps)=>{ps.forEach(p=>pts.push(p));return ps;};
-  const b=[P(0,0,0),P(L,0,0),P(L,W,0),P(0,W,0)];
-  const t=[P(0,0,hParede),P(L,0,hParede),P(L,W,hParede),P(0,W,hParede)];
-  add(...b,...t);
-  let cume=[];
-  if(q===2){cume=[P(0,W/2,hParede+hTelhado),P(L,W/2,hParede+hTelhado)];add(...cume);}
-  else{cume=[P(0,0,hParede+hTelhado),P(L,0,hParede+hTelhado)];add(...cume);}
-
-  // escala para caber na área
-  const VW=360,VH=210,M=26;
-  const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);
-  const bw=Math.max(...xs)-Math.min(...xs),bh=Math.max(...ys)-Math.min(...ys);
-  const s=Math.min((VW-M*2)/bw,(VH-M*2)/bh);
-  const ox=M-Math.min(...xs)*s, oy=M-Math.min(...ys)*s;
-  const T=p=>[(p[0]*s+ox).toFixed(1),(p[1]*s+oy).toFixed(1)];
-  const poly=arr=>arr.map(p=>T(p).join(',')).join(' ');
-
-  // telhas: uma faixa a cada largura útil, no sentido do comprimento
-  const nTelhas=Math.ceil(L/(larguraUtil||1));
-  const ripas=[];
-  for(let i=1;i<nTelhas;i++){
-    const x=Math.min(i*(larguraUtil||1),L);
-    if(q===2){
-      ripas.push([P(x,0,hParede),P(x,W/2,hParede+hTelhado)]);
-      ripas.push([P(x,W,hParede),P(x,W/2,hParede+hTelhado)]);
-    }else{
-      ripas.push([P(x,W,hParede),P(x,0,hParede+hTelhado)]);
-    }
-  }
-
-  const agua1=q===2?[b[0],b[1],[0,0]]:null; // placeholder p/ clareza
-  const face1=q===2?[t[0],t[1],cume[1],cume[0]]:[t[3],t[2],cume[1],cume[0]];
-  const face2=q===2?[t[3],t[2],cume[1],cume[0]]:null;
-
-  return `<svg viewBox="0 0 ${VW} ${VH}" width="100%" height="210" style="display:block">
-    <!-- paredes -->
-    <polygon points="${poly([b[0],b[1],t[1],t[0]])}" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1"/>
-    <polygon points="${poly([b[1],b[2],t[2],t[1]])}" fill="#eef2f7" stroke="#cbd5e1" stroke-width="1"/>
-    <!-- águas -->
-    <polygon points="${poly(face1)}" fill="#38bdf8" stroke="#0284c7" stroke-width="1.4"/>
-    ${face2?`<polygon points="${poly(face2)}" fill="#0ea5e9" stroke="#0284c7" stroke-width="1.4"/>`:''}
-    <!-- telhas -->
-    ${ripas.map(r=>`<line x1="${T(r[0])[0]}" y1="${T(r[0])[1]}" x2="${T(r[1])[0]}" y2="${T(r[1])[1]}"
-      stroke="#0369a1" stroke-width="0.7" opacity=".45"/>`).join('')}
-    <!-- cumeeira -->
-    ${q===2?`<line x1="${T(cume[0])[0]}" y1="${T(cume[0])[1]}" x2="${T(cume[1])[0]}" y2="${T(cume[1])[1]}"
-      stroke="#f59e0b" stroke-width="3.5" stroke-linecap="round"/>
-      <text x="${(+T(cume[0])[0]+ +T(cume[1])[0])/2}" y="${(+T(cume[0])[1]+ +T(cume[1])[1])/2-7}"
-        font-size="9" fill="#b45309" text-anchor="middle" font-weight="600">cumeeira</text>`:''}
-    <!-- medidas -->
-    <text x="${(+T(b[0])[0]+ +T(b[1])[0])/2}" y="${(+T(b[0])[1]+ +T(b[1])[1])/2+15}"
-      font-size="10" fill="#0f172a" text-anchor="middle" font-weight="600">${L} m</text>
-    <text x="${(+T(b[1])[0]+ +T(b[2])[0])/2+22}" y="${(+T(b[1])[1]+ +T(b[2])[1])/2+10}"
-      font-size="10" fill="#0f172a" text-anchor="middle" font-weight="600">${W} m</text>
-  </svg>
-  <div style="text-align:center;font-size:12px;color:#64748b;padding:2px 0 6px">
-    <b style="color:#0284c7">${nTelhas*q} telhas</b> de <b style="color:#0284c7">${compTelha} m</b>
-    · ${(L*W).toFixed(1)} m² de área${q===2?' · 2 águas':' · 1 água'}
-  </div>`;
-}
-
-/** Recalcula só a maquete, sem redesenhar a tela (não perde o foco do campo). */
-function atualiza3D(){
-  const box=document.getElementById('maquete');if(!box||!atual.telhaId)return;
-  const t=telha();
-  const L=parseFloat(String(atual.cg).replace(',','.'))||0;
-  const W=parseFloat(String(atual.lg).replace(',','.'))||0;
-  const q=atual.quedas===1?1:2;
-  const proj=q===2?W/2:W;
-  const comp=proj>0?(proj*1.005+0.10).toFixed(2):0;      // mesma conta do servidor
-  box.innerHTML=maquete3D(L,W,q,t.largura_util_m,comp);
-}
-
-let cat=null;
-const grupos=[];
-let atual={telhaId:null,modo:'cortes',cortes:[{q:'',c:''}],cg:'',lg:'',quedas:2,famAberta:null,busca:''};
-const pedido={comEstrutura:false,perfis:[],complementos:{}}; // complementos: {id:{on,metros,qtd}}
-const cliente={nome:'',telefone:'',cidade:'',endereco:''};
-let split=null, passo=0;
+/* ══════════════════════════════════════════════════════════════════
+   DOIS CAMINHOS
+   A) "Calcular pra mim" → telha → medidas → 2 perguntas → dados → PDF
+   B) "Já sei o que quero" → adiciona itens → dados → PDF
+   Nada de mostrar materiais ou descontos na tela: isso é do PDF.
+   ══════════════════════════════════════════════════════════════════ */
+let cat=null, modo=null, passo=0;
 const hist=[];
-const PASSOS=['Produto','Medidas','Complementos','Seus dados','Resumo'];
+const A={telhaId:null,cg:'',lg:'',quedas:2,famAberta:null,busca:'',
+         querAcabamento:null,querEstrutura:null,calc:null};   // modo A
+const B={itens:[],busca:''};                                   // modo B
+const cliente={nome:'',telefone:'',cidade:'',endereco:''};
 
 const T=document.getElementById('t');
+const g=id=>document.getElementById(id);
 const el=h=>{T.innerHTML=h;window.scrollTo(0,0);};
-const err=m=>{const x=document.getElementById('e');x.textContent=m||'';x.style.display=m?'block':'none';};
+const err=m=>{const x=g('e');x.textContent=m||'';x.style.display=m?'block':'none';};
+const BRL=v=>Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const telhaA=()=>cat.telhas.find(x=>x.id===A.telhaId);
+const totalPassos=()=>modo==='B'?4:6;
 
-/** Overlay de "processando" — evita a sensação de tela travada. */
-function ocupado(ligar,texto){
-  let o=document.getElementById('carregando');
-  if(ligar){
-    if(!o){
-      o=document.createElement('div');o.id='carregando';
-      o.style.cssText='position:fixed;inset:0;background:rgba(241,245,249,.88);display:flex;'+
-        'align-items:center;justify-content:center;z-index:99;font-size:15px;color:#0369a1;font-weight:600';
-      document.body.appendChild(o);
-    }
-    o.innerHTML=`<div style="text-align:center">
-      <div style="width:34px;height:34px;border:3px solid #bae6fd;border-top-color:#0ea5e9;border-radius:50%;
-        margin:0 auto 10px;animation:gira .8s linear infinite"></div>${texto||'Processando...'}</div>
-      <style>@keyframes gira{to{transform:rotate(360deg)}}</style>`;
-  } else if(o) o.remove();
+function ocupado(on,txt){
+  let o=g('load');
+  if(on){
+    if(!o){o=document.createElement('div');o.id='load';
+      o.style.cssText='position:fixed;inset:0;background:rgba(241,245,249,.9);display:flex;align-items:center;'+
+        'justify-content:center;z-index:99;color:#0369a1;font-weight:600;font-size:15px';
+      document.body.appendChild(o);}
+    o.innerHTML=`<div style="text-align:center"><div style="width:34px;height:34px;border:3px solid #bae6fd;
+      border-top-color:#0ea5e9;border-radius:50%;margin:0 auto 10px;animation:gi .8s linear infinite"></div>
+      ${txt||'Processando...'}</div><style>@keyframes gi{to{transform:rotate(360deg)}}</style>`;
+  }else if(o)o.remove();
 }
-const BRL=v=>Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-const metG=g=>g.cortes.reduce((s,c)=>s+c.quantidade*c.comprimentoM,0);
-const metTot=()=>grupos.reduce((s,g)=>s+metG(g),0);
-const telha=()=>cat.telhas.find(x=>x.id===atual.telhaId);
-/** maior comprimento digitado, para avisar quando sai da promoção */
-const maiorCorte=()=>Math.max(0,...atual.cortes.map(c=>+c.c||0));
-
 function ir(n){hist.push(passo);passo=n;err('');render();}
 function voltar(){if(hist.length){passo=hist.pop();err('');render();}}
-
 function barra(){
-  document.getElementById('pg').style.width=((passo+1)/6*100)+'%';
-  document.getElementById('pl').textContent=passo<5?PASSOS[passo]:'';
-  document.getElementById('bv').className='voltar'+(passo>0&&passo<5?' on':'');
+  g('pg').style.width=((passo+1)/totalPassos()*100)+'%';
+  g('bv').className='voltar'+(passo>0?' on':'');
 }
-function cart(){
-  if(!grupos.length)return'';
-  return `<div class="cart"><b>📦 No orçamento</b>
-    ${grupos.map((g,i)=>`<div class="l"><span>${g.nome}<br><small style="color:#94a3b8">${g.cortes.map(c=>c.quantidade+' x '+c.comprimentoM+'m').join(' · ')}</small></span>
-    <button onclick="rmG(${i})">remover</button></div>`).join('')}
-    <div class="tot"><span>Total</span><span>${metTot().toFixed(3)} mts</span></div></div>`;
-}
-function rmG(i){grupos.splice(i,1);render();}
+const chips=t=>{const a=t.atributos||{},c=[];
+  if(a.nucleo)c.push(`${a.nucleo}${a.espessura_isolamento_mm?' '+a.espessura_isolamento_mm+'mm':''}`);
+  if(a.perfil)c.push(a.perfil);
+  if(a.espessura_chapa_mm)c.push(`chapa ${String(a.espessura_chapa_mm).replace('.',',')}mm`);
+  return c.map(x=>`<span class="chip">${x}</span>`).join('');};
 
+/**
+ * Opção de tipo de telhado. Usa FOTO REAL quando cadastrada em
+ * catalogo.ilustracoes; sem foto, cai no ícone.
+ */
+function opcaoQueda(n,titulo,desc,icone){
+  const url=n===1?cat.ilustracoes?.uma_queda:cat.ilustracoes?.duas_aguas;
+  const visual=url
+    ? `<img src="${url}" alt="${titulo}" style="width:88px;height:66px;object-fit:cover;border-radius:9px;flex-shrink:0">`
+    : `<span class="ico">${icone}</span>`;
+  return `<button class="op ${A.quedas===n?'on':''}" onclick="A.quedas=${n};render()">
+    ${visual}<span><b>${titulo}</b><small>${desc}</small></span></button>`;
+}
+
+/* ── Maquete isométrica (só no caminho "calcular pra mim") ───────── */
+function maquete(L,W,q,larguraUtil){
+  if(!(L>0)||!(W>0))return `<div style="height:190px;display:flex;align-items:center;justify-content:center;
+    color:#94a3b8;font-size:13px;text-align:center">Digite as medidas<br>para ver seu telhado</div>`;
+  const hP=Math.max(2.2,Math.min(L,W)*0.16), hT=(q===2?W/2:W)*0.30;
+  const c30=Math.cos(Math.PI/6), s30=Math.sin(Math.PI/6);
+  const P=(x,y,z)=>[(x-y)*c30,(x+y)*s30-z];
+  const b=[P(0,0,0),P(L,0,0),P(L,W,0),P(0,W,0)];
+  const t=[P(0,0,hP),P(L,0,hP),P(L,W,hP),P(0,W,hP)];
+  const cu=q===2?[P(0,W/2,hP+hT),P(L,W/2,hP+hT)]:[P(0,0,hP+hT),P(L,0,hP+hT)];
+  const pts=[...b,...t,...cu];
+  const VW=350,VH=190,MG=24;
+  const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);
+  const s=Math.min((VW-MG*2)/(Math.max(...xs)-Math.min(...xs)),(VH-MG*2)/(Math.max(...ys)-Math.min(...ys)));
+  const ox=MG-Math.min(...xs)*s, oy=MG-Math.min(...ys)*s;
+  const X=p=>[(p[0]*s+ox).toFixed(1),(p[1]*s+oy).toFixed(1)];
+  const poly=a=>a.map(p=>X(p).join(',')).join(' ');
+  const n=Math.ceil(L/(larguraUtil||1));
+  const passoF=Math.max(1,Math.ceil(n/50))*(larguraUtil||1);
+  let rip='';
+  for(let x=passoF;x<L-0.01;x+=passoF){
+    const seg=q===2?[[P(x,0,hP),P(x,W/2,hP+hT)],[P(x,W,hP),P(x,W/2,hP+hT)]]:[[P(x,W,hP),P(x,0,hP+hT)]];
+    seg.forEach(r=>{rip+=`<line x1="${X(r[0])[0]}" y1="${X(r[0])[1]}" x2="${X(r[1])[0]}" y2="${X(r[1])[1]}"
+      stroke="#0369a1" stroke-width=".7" opacity=".4"/>`;});
+  }
+  return `<svg viewBox="0 0 ${VW} ${VH}" width="100%" height="190" style="display:block">
+    <polygon points="${poly([b[0],b[1],t[1],t[0]])}" fill="#e2e8f0" stroke="#cbd5e1"/>
+    <polygon points="${poly([b[1],b[2],t[2],t[1]])}" fill="#eef2f7" stroke="#cbd5e1"/>
+    <polygon points="${poly(q===2?[t[0],t[1],cu[1],cu[0]]:[t[3],t[2],cu[1],cu[0]])}" fill="#38bdf8" stroke="#0284c7" stroke-width="1.4"/>
+    ${q===2?`<polygon points="${poly([t[3],t[2],cu[1],cu[0]])}" fill="#0ea5e9" stroke="#0284c7" stroke-width="1.4"/>`:''}
+    ${rip}
+    ${q===2?`<line x1="${X(cu[0])[0]}" y1="${X(cu[0])[1]}" x2="${X(cu[1])[0]}" y2="${X(cu[1])[1]}"
+      stroke="#f59e0b" stroke-width="3.5" stroke-linecap="round"/>`:''}
+    <text x="${(+X(b[0])[0]+ +X(b[1])[0])/2}" y="${(+X(b[0])[1]+ +X(b[1])[1])/2+15}" font-size="10"
+      fill="#0f172a" text-anchor="middle" font-weight="600">${L} m</text>
+    <text x="${(+X(b[1])[0]+ +X(b[2])[0])/2+20}" y="${(+X(b[1])[1]+ +X(b[2])[1])/2+10}" font-size="10"
+      fill="#0f172a" text-anchor="middle" font-weight="600">${W} m</text>
+  </svg>`;
+}
+function atualizaMaquete(){
+  const box=g('maq');if(!box||!A.telhaId)return;
+  box.innerHTML=maquete(parseFloat(String(A.cg).replace(',','.'))||0,
+    parseFloat(String(A.lg).replace(',','.'))||0, A.quedas===1?1:2, telhaA().largura_util_m);
+}
+
+/* ══════════════ TELAS ══════════════ */
 function render(){
+  try{desenhar();}catch(e){
+    console.error('[wizard]',e);ocupado(false);
+    el(`<h1>Ops, algo travou</h1><p class="sub">Tivemos um problema aqui. Tente novamente.</p>
+      <button class="btn" onclick="location.reload()">Recomeçar</button>`);
+  }
+}
+function desenhar(){
   barra();
-  // ── 0 PRODUTO: famílias + modelos na mesma tela ───────────────────
+
+  /* 0 — escolher o caminho */
   if(passo===0){
-    const q=atual.busca.toLowerCase();
+    el(`<h1>Vamos montar seu orçamento</h1>
+      <p class="sub">Como você prefere começar?</p>
+      <button class="op" onclick="modo='A';ir(1)"><span class="ico">📐</span>
+        <span><b>Calcular pra mim</b><small>Eu informo as medidas do telhado e o sistema monta a lista completa
+          de material — telhas, acabamentos e estrutura.</small></span></button>
+      <button class="op" onclick="modo='B';ir(1)"><span class="ico">📝</span>
+        <span><b>Já sei o que quero</b><small>Vou informar os itens e as quantidades direto.</small></span></button>`);
+  }
+
+  /* ═══════ CAMINHO A ═══════ */
+  /* 1 — telha */
+  if(passo===1&&modo==='A'){
+    const q=A.busca.toLowerCase();
     const lista=q?cat.telhas.filter(t=>(t.nome+' '+t.familia).toLowerCase().includes(q)):cat.telhas;
-    const fams=[...new Set(lista.map(t=>t.familia))];
-    el(cart()+`<h1>${grupos.length?'Qual a próxima telha?':'Qual telha você precisa?'}</h1>
-      <p class="sub">Cortadas <b>sob medida</b>. Toque na linha para ver os modelos.</p>
-      <input class="busca" placeholder="🔎 Buscar (ex: sanduíche, colonial, TP40)" value="${atual.busca}"
-        oninput="atual.busca=this.value;atual.famAberta=this.value?null:atual.famAberta;render();document.querySelector('.busca').focus()">
-      ${fams.map(f=>{
-        const g=lista.filter(t=>t.familia===f);
-        const im=g.find(t=>t.imagem);
-        const aberta=atual.famAberta===f||!!q;
-        return `<div class="fam ${aberta?'aberta':''}">
-          <button class="cab" onclick="abrirFam('${f.replace(/'/g,"\\'")}')">
-            ${im?`<img src="${im.imagem}" loading="lazy">`:'<div style="width:52px;height:40px;display:flex;align-items:center;justify-content:center;background:#f1f5f9;border-radius:7px">🏠</div>'}
-            <span class="txt"><b>${f}</b><small>${g.length} modelo${g.length>1?'s':''} · a partir de R$ ${BRL(Math.min(...g.map(t=>t.preco)))}/m</small></span>
-            <span class="seta">${aberta?'▲':'▼'}</span></button>
-          <div class="mods">${g.map(t=>`<button class="mod" onclick="selTelha('${t.id}')">
-            ${t.imagem?`<img src="${t.imagem}" loading="lazy">`:'<div class="ph">🏠</div>'}
-            <span class="i"><b>${t.nome}</b><span class="p">R$ ${BRL(t.preco)}/m</span></span></button>`).join('')}</div>
-        </div>`;
-      }).join('')||'<p class="sub">Nenhuma telha encontrada.</p>'}`);
+    el(`<h1>Qual telha?</h1><p class="sub">Cortadas sob medida no comprimento que você precisar.</p>
+      ${cat.telhas.length>6?`<input class="busca" placeholder="🔎 Buscar" value="${A.busca}"
+        oninput="A.busca=this.value;render();document.querySelector('.busca').focus()">`:''}
+      ${lista.map(t=>`<button class="op" onclick="A.telhaId='${t.id}';ir(2)">
+        ${t.imagem?`<img src="${t.imagem}" loading="lazy">`:'<span class="ico">🏠</span>'}
+        <span><b>${t.nome}</b><span>${chips(t)}</span></span></button>`).join('')
+      ||'<p class="sub">Nenhuma telha encontrada.</p>'}`);
   }
-  // ── 1 MEDIDAS: abas cortes/ambiente numa tela só ──────────────────
-  if(passo===1){
-    const t=telha();
-    el(`<h1>Medidas</h1><p class="sub"><b>${t.nome}</b> — R$ ${BRL(t.preco)}/metro</p>
-      <div class="abas">
-        <button class="aba ${atual.modo==='cortes'?'on':''}" onclick="atual.modo='cortes';render()">Já sei os tamanhos</button>
-        <button class="aba ${atual.modo==='ambiente'?'on':''}" onclick="atual.modo='ambiente';render()">Calcular pra mim</button>
+
+  /* 2 — medidas */
+  if(passo===2&&modo==='A'){
+    el(`<h1>Medidas do telhado</h1><p class="sub">Em metros. É só isso que eu preciso pra calcular tudo.</p>
+      <div class="l2">
+        <div class="campo"><label>Comprimento</label>
+          <input id="mc" type="number" inputmode="decimal" placeholder="20" value="${A.cg}"
+            oninput="A.cg=this.value;atualizaMaquete()"></div>
+        <div class="campo"><label>Largura</label>
+          <input id="ml" type="number" inputmode="decimal" placeholder="10" value="${A.lg}"
+            oninput="A.lg=this.value;atualizaMaquete()"></div>
       </div>
-      ${t.promocao_ate_m?`<div class="promo ${maiorCorte()>t.promocao_ate_m?'fora':''}">
-        <span>${maiorCorte()>t.promocao_ate_m?'⚠️':'🏷️'}</span>
-        <span>${maiorCorte()>t.promocao_ate_m
-          ? `<b>Fora da promoção</b>Peças acima de ${t.promocao_ate_m}m têm outra base de cálculo — nossa equipe cota esse valor pra você.`
-          : `<b>Preço promocional</b>Válido para peças de até ${t.promocao_ate_m}m. Acima disso, o valor muda de base.`}</span></div>`:''}
-      ${atual.modo==='cortes'?`
-        <p class="sub">Quantas peças de cada comprimento? Máximo ${t.comprimento_maximo_m}m por peça — se precisar de mais, eu divido com emenda.</p>
-        ${atual.cortes.map((c,i)=>`<div class="corte">
-          <input type="number" inputmode="numeric" placeholder="Qtd" value="${c.q}" oninput="atual.cortes[${i}].q=this.value;tot()">
-          <input type="number" inputmode="decimal" step="0.01" placeholder="Compr. (m)" value="${c.c}" oninput="atual.cortes[${i}].c=this.value;tot()">
-          <button onclick="delC(${i})" ${atual.cortes.length===1?'disabled style="opacity:.3"':''}>✕</button></div>`).join('')}
-        <button class="add" onclick="addC()">+ Outro comprimento</button>
-        <div class="caixa" id="tt" style="margin-top:12px"></div>
-        <button class="btn" onclick="okCortes()">Adicionar ao orçamento →</button>`
-      :`
-        <div class="l2">
-          <div class="campo"><label>Comprimento (m)</label><input id="mc" type="number" inputmode="decimal" placeholder="20" value="${atual.cg}" oninput="atual.cg=this.value;atualiza3D()"></div>
-          <div class="campo"><label>Largura (m)</label><input id="ml" type="number" inputmode="decimal" placeholder="10" value="${atual.lg}" oninput="atual.lg=this.value;atualiza3D()"></div>
-        </div>
-        <p class="dica" style="margin-bottom:12px">Comprimento = lado da cumeeira · largura = lado onde a água escorre.</p>
-        <div id="maquete" style="background:#fff;border:1px solid #e2e8f0;border-radius:11px;padding:6px 8px;margin-bottom:12px"></div>
-        <label style="display:block;font-size:13px;font-weight:600;color:#334155;margin-bottom:6px">Quantas quedas?</label>
-        <button class="opt ${atual.quedas===1?'on':''}" onclick="atual.quedas=1;render()"><span class="r"></span>
-          <span style="flex:1"><b>1 queda</b><small>Caída única — água escorre pra um lado</small></span>
-          <span style="width:96px;flex-shrink:0">${ART.umaQueda}</span></button>
-        <button class="opt ${atual.quedas===2?'on':''}" onclick="atual.quedas=2;render()"><span class="r"></span>
-          <span style="flex:1"><b>2 quedas</b><small>Duas caídas com cumeeira no topo</small></span>
-          <span style="width:96px;flex-shrink:0">${ART.duasQuedas}</span></button>
-        <button class="btn" onclick="okAmbiente()">Calcular e adicionar →</button>`}`);
-    if(atual.modo==='cortes')tot(); else atualiza3D();
+      <p class="dica">Comprimento = lado da cumeeira · Largura = lado onde a água escorre</p>
+      ${opcaoQueda(1,'1 queda','Água escorre para um lado só','📐')}
+      ${opcaoQueda(2,'2 quedas','Duas caídas com cumeeira no topo','⛰️')}
+      <div class="caixa" id="maq" style="padding:6px 8px"></div>
+      <button class="btn" onclick="okMedidas()">Continuar →</button>`);
+    atualizaMaquete();
   }
-  // ── 2 COMPLEMENTOS: emenda (se houver) + estrutura + mais telhas ──
-  if(passo===2){
-    el(cart()+`<h1>Complementos</h1><p class="sub">Só o que faltar — depois é só confirmar.</p>
-      ${split?`<div class="caixa" style="background:#fffbeb;border:1px solid #fde68a">
-        <b style="color:#92400e">Essa medida precisa de emenda</b><br>
-        <span style="color:#92400e">Você precisa de ${split.comp.toFixed(2)}m e a telha vai até ${split.max}m. Escolha como dividir:</span>
-        <div style="margin-top:8px">${ART.emenda}</div></div>
-        ${split.opcoes.map((o,i)=>`<button class="opt ${split.sel===i?'on':''}" onclick="split.sel=${i};render()"><span class="r"></span>
-          <span><b>${o.titulo}</b><small>${o.detalhe}</small><span class="m">${o.materialM.toFixed(2)}m de material por peça</span></span></button>`).join('')}
-        <div class="opt ${split.sel===-1?'on':''}" style="display:block;cursor:default">
-          <div style="display:flex;gap:10px;align-items:flex-start">
-            <span class="r" style="cursor:pointer" onclick="usarCustom()"></span>
-            <span style="flex:1"><b>Quero peças de um tamanho específico</b>
-              <small>Ex.: peças de 10m até completar os ${split.comp.toFixed(2)}m</small>
-              <div style="display:flex;gap:8px;margin-top:8px">
-                <input id="tp" type="number" inputmode="decimal" step="0.01" placeholder="ex: 10" value="${split.pref||''}"
-                  style="flex:1;padding:9px 11px;border:2px solid #e2e8f0;border-radius:9px;font-size:14px;outline:none">
-                <button onclick="calcCustom()" style="background:#0ea5e9;color:#fff;border:none;padding:9px 14px;border-radius:9px;cursor:pointer;font-weight:600;font-size:13px">Calcular</button>
-              </div>
-              ${split.custom?`<span class="m" style="margin-top:7px">✅ ${split.custom.titulo} — ${split.custom.materialM.toFixed(2)}m de material</span>`:''}
-              ${split.customErro?`<span style="color:#b91c1c;font-size:12px;display:block;margin-top:6px">${split.customErro}</span>`:''}
-            </span>
-          </div>
-        </div>
-        <div style="height:10px"></div>`:''}
-      ${blocoAcabamentos()}
-      <button class="btn" onclick="okComplementos()">Continuar →</button>
-      <button class="btn sec" onclick="novoProduto()">+ Adicionar outro tipo de telha</button>`);
+
+  /* 3 — as duas únicas perguntas */
+  if(passo===3&&modo==='A'){
+    el(`<h1>Mais duas perguntas</h1><p class="sub">Depois disso o orçamento está pronto.</p>
+      <label style="display:block;font-size:14px;font-weight:600;margin-bottom:8px">Vai precisar de acabamentos?</label>
+      <p class="dica" style="margin-top:-4px">Cumeeira e arremates das bordas. Eu calculo as quantidades.</p>
+      <button class="op ${A.querAcabamento===true?'on':''}" onclick="A.querAcabamento=true;render()">
+        <span class="ico">✅</span><span><b>Sim, incluir acabamentos</b></span></button>
+      <button class="op ${A.querAcabamento===false?'on':''}" onclick="A.querAcabamento=false;render()">
+        <span class="ico">➖</span><span><b>Não, só as telhas</b></span></button>
+
+      <label style="display:block;font-size:14px;font-weight:600;margin:20px 0 8px">Vai precisar de estrutura?</label>
+      <p class="dica" style="margin-top:-4px">As terças galvanizadas que sustentam as telhas.</p>
+      <button class="op ${A.querEstrutura===true?'on':''}" onclick="A.querEstrutura=true;render()">
+        <span class="ico">🔩</span><span><b>Sim, incluir as terças</b></span></button>
+      <button class="op ${A.querEstrutura===false?'on':''}" onclick="A.querEstrutura=false;render()">
+        <span class="ico">➖</span><span><b>Não, já tenho estrutura</b></span></button>
+      <button class="btn" onclick="okPerguntas()">Continuar →</button>`);
   }
-  // ── 3 DADOS ───────────────────────────────────────────────────────
-  if(passo===3){
-    const conhecido=cliente.nome&&cliente.endereco;
-    el(`<h1>Seus dados</h1>
-      <p class="sub">${conhecido?'Já preenchi com os dados do seu último orçamento — é só conferir. ':''}📍 O <b>endereço é obrigatório</b> para a entrega.</p>
+
+  /* ═══════ CAMINHO B ═══════ */
+  /* 1 — montar o pedido */
+  if(passo===1&&modo==='B'){
+    const q=B.busca.toLowerCase();
+    const todos=[...cat.telhas.map(t=>({...t,_tipo:'telha'})),
+                 ...(cat.complementos||[]).map(c=>({...c,_tipo:c.venda_por==='barra'?'barra':'unidade'})),
+                 ...(cat.perfis||[]).map(p=>({...p,_tipo:'metro'}))];
+    const lista=q?todos.filter(x=>(x.nome+' '+(x.codigo||'')).toLowerCase().includes(q)):todos;
+    el(`<h1>Monte seu pedido</h1><p class="sub">Adicione os itens e as quantidades.</p>
+      ${B.itens.length?`<div class="cab"><span>Item</span><span>Qtd</span><span>Compr.</span><span></span></div>
+        ${B.itens.map((it,i)=>{
+          const p=todos.find(x=>x.id===it.id)||{};
+          return `<div class="linha">
+            <span><b>${p.nome||it.id}</b><small>${p.codigo?p.codigo+' · ':''}${
+              it.tipo==='telha'?'por metro':it.tipo==='barra'?'por barra':it.tipo==='metro'?'em metros':'por peça'}</small></span>
+            <input type="number" value="${it.qtd}" placeholder="qtd" oninput="B.itens[${i}].qtd=this.value">
+            ${it.tipo==='telha'
+              ?`<input type="number" step="0.01" value="${it.comp||''}" placeholder="m" oninput="B.itens[${i}].comp=this.value">`
+              :'<span style="text-align:center;color:#cbd5e1">—</span>'}
+            <button class="x" onclick="B.itens.splice(${i},1);render()">✕</button></div>`;
+        }).join('')}`:''}
+      <input class="busca" style="margin-top:${B.itens.length?'14':'0'}px" placeholder="🔎 Buscar item para adicionar"
+        value="${B.busca}" oninput="B.busca=this.value;render();document.querySelector('.busca').focus()">
+      ${lista.slice(0,q?20:8).map(x=>`<button class="op" style="padding:11px 13px" onclick="addItem('${x.id}','${x._tipo}')">
+        <span class="ico" style="font-size:20px">${x._tipo==='telha'?'🏠':x._tipo==='barra'?'📏':x._tipo==='metro'?'🔩':'🔧'}</span>
+        <span><b style="font-size:13.5px">${x.nome}</b><small>${x.codigo?x.codigo+' · ':''}${
+          x._tipo==='telha'?'informe quantidade e comprimento':x._tipo==='barra'?'vendido por barra':
+          x._tipo==='metro'?'vendido por metro':'vendido por peça'}</small></span></button>`).join('')}
+      ${!q&&todos.length>8?'<p class="dica">Use a busca para ver todos os itens.</p>':''}
+      <button class="btn" onclick="okItens()">Continuar →</button>`);
+  }
+
+  /* ═══════ COMUM ═══════ */
+  /* dados */
+  if((passo===4&&modo==='A')||(passo===2&&modo==='B')){
+    el(`<h1>Seus dados</h1><p class="sub">Precisamos do endereço para a entrega do material.</p>
       <div class="campo"><label>Nome ou empresa</label><input id="dn" value="${cliente.nome}" placeholder="Seu nome"></div>
       <div class="campo"><label>WhatsApp</label><input id="dt" inputmode="tel" value="${cliente.telefone}" placeholder="(17) 99999-9999"></div>
       <div class="campo"><label>Cidade</label><input id="dc" value="${cliente.cidade}" placeholder="São José do Rio Preto - SP"></div>
-      <div class="campo"><label>Endereço da obra (rua, número e bairro)</label><input id="de" value="${cliente.endereco}" placeholder="Rua Exemplo, 120 - Centro"></div>
-      <button class="btn" onclick="okDados()">Ver resumo →</button>`);
+      <div class="campo"><label>Endereço da obra</label><input id="de" value="${cliente.endereco}" placeholder="Rua Exemplo, 120 - Centro"></div>
+      <button class="btn" onclick="okDados()">Gerar orçamento 📄</button>`);
   }
-  // ── 4 RESUMO ──────────────────────────────────────────────────────
-  if(passo===4){
-    el(`<h1>Confere tudo?</h1><p class="sub">Revise antes de gerar o PDF.</p>
-      <div class="res">
-        ${grupos.map(g=>`<h3>${g.nome}</h3><div class="cut">${g.cortes.map(c=>c.quantidade+' x '+c.comprimentoM+'m').join(' · ')}</div>`).join('')}
-        ${(()=>{const cs=complementosEscolhidos();if(!cs.length)return'';
-          return `<h3>Acabamentos e fixação</h3><div class="cut">${cs.map(x=>{
-            const c=cat.complementos.find(y=>y.id===x.produtoId);
-            if(x.metros){const b=Math.ceil(x.metros/(c.comprimento_barra_m||3));
-              return `${c.nome}: ${b} barra${b>1?'s':''} (${x.metros}m)`;}
-            return `${c.nome}: ${x.quantidade} un`;}).join('<br>')}</div>`;})()}
-        <div class="li"><span>Metragem total</span><span>${metTot().toFixed(3)} mts</span></div>
-        <div class="li"><span>Estrutura</span><span>${pedido.comEstrutura?(pedido.estruturaDescricao||'Sim'):'Não'}</span></div>
-        <div class="li"><span>Cliente</span><span>${cliente.nome} — ${cliente.telefone}</span></div>
-        <div class="li"><span>Entrega</span><span>${cliente.endereco}, ${cliente.cidade}</span></div>
-      </div>
-      ${window._av?`<div class="aviso">⚠️ ${window._av.join('<br>')}</div>`:''}
-      <button class="btn" id="bg" onclick="gerar()">Gerar orçamento 📄</button>`);
-  }
-  // ── 5 FINAL ───────────────────────────────────────────────────────
-  // Obra fora do raio de entrega: não conclui, encaminha para a equipe
-  if(passo===5&&window._res?.foraDoRaio){
+
+  /* resultado */
+  if((passo===5&&modo==='A')||(passo===3&&modo==='B')){
     const r=window._res;
-    el(`<div class="prop"><div class="ic">📬</div>
-      <h2>Pedido registrado!</h2>
-      <p>${r.mensagem}</p>
-      <div class="cx"><b>Protocolo:</b> ${r.numero}<br>
-        <b>Seu pedido:</b> ${r.resumo.totalPecas} peças · ${r.resumo.metragemTotal} mts<br>
-        ${r.resumo.produtos.map(p=>`• ${p.nome} — ${p.metros} mts`).join('<br>')}</div>
-      <p style="margin-top:14px;font-size:13px;color:#64748b">Guardamos tudo que você montou —
-        nossa equipe entra em contato pelo WhatsApp informado.</p>
-      <button onclick="location.reload()">Fazer outro orçamento</button></div>`);
-    return;
-  }
-  if(passo===5){
-    const r=window._res;
+    if(r.encaminhado){
+      el(`<div class="fim"><div class="ok">${r.motivo==='volume'?'🎯':'📬'}</div>
+        <h2>${r.motivo==='volume'?'Seu pedido rende condição especial':'Pedido registrado'}</h2>
+        <p class="sub" style="margin-top:8px">${r.mensagem}</p>
+        <div class="caixa" style="text-align:left"><b>Protocolo:</b> ${r.numero}<br>
+          <b>Seu pedido:</b> ${r.resumo.totalPecas} peças · ${r.resumo.metragemTotal} mts</div>
+        ${r.whatsapp?`<a class="zap" href="${r.whatsapp}" target="_blank">💬 Falar com o comercial</a>`:''}
+        <button onclick="location.reload()">Fazer outro orçamento</button></div>`);
+      return;
+    }
     el(`<div class="fim"><div class="ok">🎉</div><h2>Orçamento ${r.numero}</h2>
       <div class="tt">R$ ${BRL(r.totalAvista)}</div>
-      <div class="met">à vista · ${r.totalPecas} peças · ${r.metragemTotal} mts</div>
-      <div class="parc" style="margin-bottom:10px">
-        <div><span>Produtos</span><span>R$ ${BRL(r.totalProdutos)}</span></div>
-        <div><span>Frete ${r.frete?.km?`<small style="color:#94a3b8">(${r.frete.km} km)</small>`:''}</span>
-          <span>${r.frete?.embutido?'incluso':(r.frete&&!Number.isFinite(r.frete.valor)?'a confirmar':(r.totalFrete>0?'R$ '+BRL(r.totalFrete):'grátis'))}</span></div>
-      </div>
-      <div class="parc">${r.pagamentos.map(p=>`<div><span>${p.parcelas}x</span><span>R$ ${BRL(p.valorParcela)} <small style="color:#94a3b8">(R$ ${BRL(p.total)})</small></span></div>`).join('')}</div>
-      ${r.avisos?.length?`<div class="aviso">⚠️ ${r.avisos.join('<br>')}</div>`:''}
-      <a class="pdf" href="${r.pdf}" target="_blank">📄 Baixar PDF</a>
-      <button onclick="location.reload()">Fazer novo orçamento</button></div>`);
+      <div class="met">à vista · ${r.totalPecas} peças · ${r.metragemTotal} mts · <b style="color:#059669">frete grátis</b></div>
+      <div class="parc">${r.pagamentos.map(p=>`<div><span>${p.parcelas}x</span>
+        <span>R$ ${BRL(p.valorParcela)}</span></div>`).join('')}</div>
+      <a class="pdf" href="${r.pdf}" target="_blank">📄 Baixar orçamento completo</a>
+      <button onclick="location.reload()">Fazer outro orçamento</button></div>`);
   }
 }
 
-/** Calcula a divisão no tamanho que o cliente digitou. */
-async function calcCustom(){
-  const v=parseFloat(String(document.getElementById('tp').value).replace(',','.'));
-  if(!v||v<=0){split.customErro='Informe o tamanho da peça em metros.';split.custom=null;return render();}
-  split.pref=v;
-  const r=await fetch('/api/opcoes-corte',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({telhaId:atual.telhaId,comprimentoM:split.comp,tamanhoPreferidoM:v})})
-    .then(r=>r.json()).catch(()=>({error:'falha'}));
-  if(r.error||!r.personalizada||r.personalizada.erro){
-    split.custom=null;split.customErro=r.personalizada?.erro||'Não consegui calcular com esse tamanho.';
-  }else{
-    split.custom=r.personalizada;split.customErro=null;split.sel=-1; // -1 = usar a personalizada
-  }
-  render();
-}
-function usarCustom(){if(split.custom){split.sel=-1;render();}else{calcCustom();}}
-
-/** Soma as sugestões de perímetro vindas do cálculo (quando o cliente deu as medidas). */
-function sugestoes(){
-  const s={};
-  for(const g of grupos) for(const c of (g.complementosSugeridos||[]))
-    s[c.produtoId]=(s[c.produtoId]||0)+c.metros;
-  return s;
-}
-const metTotalPedido=()=>grupos.reduce((s,g)=>s+metrosDe(g.cortes),0);
-
-/** Tela de acabamentos, fixação e estrutura. */
-function blocoAcabamentos(){
-  const sug=sugestoes();
-  const acab=(cat.complementos||[]).filter(c=>c.tipo==='acabamento');
-  const fix=(cat.complementos||[]).filter(c=>c.tipo==='fixacao');
-
-  const linhaAcab=c=>{
-    const st=pedido.complementos[c.id]||{};
-    const m=st.metros!==undefined?st.metros:(sug[c.id]||'');
-    const barra=c.comprimento_barra_m||3;
-    const barras=m?Math.ceil(m/barra):0;
-    return `<div class="opt ${st.on?'on':''}" style="display:block;cursor:default">
-      <div style="display:flex;gap:10px;align-items:flex-start">
-        <span class="r" style="cursor:pointer" onclick="togComp('${c.id}')"></span>
-        <span style="flex:1">
-          <b>${c.nome}</b>
-          <small>R$ ${BRL(c.preco)} por barra de ${barra}m${sug[c.id]?` · sugerido ${sug[c.id].toFixed(2)}m pelo seu telhado`:''}</small>
-          ${st.on?`<div style="display:flex;gap:8px;align-items:center;margin-top:8px">
-            <input type="number" step="0.01" value="${m}" placeholder="metros"
-              oninput="setComp('${c.id}','metros',this.value)"
-              style="width:110px;padding:8px 10px;border:2px solid #e2e8f0;border-radius:8px;font-size:13.5px;outline:none">
-            <span style="font-size:12.5px;color:#0284c7;font-weight:600">
-              ${barras?`= ${barras} barra${barras>1?'s':''} · R$ ${BRL(barras*c.preco)}`:'informe os metros'}</span>
-          </div>`:''}
-        </span></div></div>`;
-  };
-
-  const linhaFix=c=>{
-    const st=pedido.complementos[c.id]||{};
-    const auto=Math.ceil((c.consumo_por_m2||0)*metTotalPedido());
-    const q=st.qtd!==undefined&&st.qtd!==''?Number(st.qtd):auto;
-    return `<div class="opt ${st.on?'on':''}" style="display:block;cursor:default">
-      <div style="display:flex;gap:10px;align-items:flex-start">
-        <span class="r" style="cursor:pointer" onclick="togComp('${c.id}')"></span>
-        <span style="flex:1">
-          <b>${c.nome}</b>
-          <small>R$ ${BRL(c.preco)} cada${c.consumo_por_m2?` · ${c.consumo_por_m2} por m² → ${auto} un`:''}</small>
-          ${st.on?`<div style="display:flex;gap:8px;align-items:center;margin-top:8px">
-            <input type="number" value="${st.qtd!==undefined?st.qtd:auto}" placeholder="qtd"
-              oninput="setComp('${c.id}','qtd',this.value)"
-              style="width:110px;padding:8px 10px;border:2px solid #e2e8f0;border-radius:8px;font-size:13.5px;outline:none">
-            <span style="font-size:12.5px;color:#0284c7;font-weight:600">= R$ ${BRL(q*c.preco)}</span>
-          </div>`:''}
-        </span></div></div>`;
-  };
-
-  // Veio só a lista de cortes? Pedimos as medidas do galpão para poder sugerir.
-  const semGeometria=!grupos.some(g=>g.ambiente)&&!pedido.geoManual;
-  const blocoGeo=semGeometria?`
-    <div class="caixa" style="background:#f0f9ff;border:1px solid #bae6fd">
-      <b style="color:#0369a1">Quer que eu calcule as quantidades?</b>
-      <div style="color:#475569;margin:4px 0 10px">Como você já trouxe as medidas das telhas, preciso só
-        do tamanho do galpão para calcular acabamentos e estrutura.</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end">
-        <div><label style="display:block;font-size:12px;font-weight:600;color:#334155;margin-bottom:4px">Comprimento do galpão (m)</label>
-          <input id="geoL" type="number" step="0.01" placeholder="20" value="${pedido.geoL||''}"
-            style="width:100%;padding:9px 11px;border:2px solid #e2e8f0;border-radius:9px;font-size:13.5px;outline:none"></div>
-        <div><label style="display:block;font-size:12px;font-weight:600;color:#334155;margin-bottom:4px">Quedas</label>
-          <select id="geoQ" style="width:100%;padding:9px 11px;border:2px solid #e2e8f0;border-radius:9px;font-size:13.5px;outline:none">
-            <option value="1" ${pedido.geoQ==1?'selected':''}>1 queda</option>
-            <option value="2" ${pedido.geoQ!=1?'selected':''}>2 quedas</option></select></div>
-        <button class="btn" style="margin:0;padding:10px 14px" onclick="calcSugestoes()">Calcular</button>
-      </div>
-    </div>`:'';
-
-  return `
-    ${blocoGeo}
-    ${acab.length?`<label style="display:block;font-size:13px;font-weight:600;color:#334155;margin:4px 0 6px">
-      Acabamentos <span style="font-weight:400;color:#94a3b8">— vendidos em barras fechadas</span></label>
-      ${acab.map(linhaAcab).join('')}`:''}
-    ${fix.length?`<label style="display:block;font-size:13px;font-weight:600;color:#334155;margin:16px 0 6px">Fixação</label>
-      ${fix.map(linhaFix).join('')}`:''}
-    <label style="display:block;font-size:13px;font-weight:600;color:#334155;margin:16px 0 6px">Precisa de estrutura?</label>
-    <button class="opt ${!pedido.comEstrutura?'on':''}" onclick="pedido.comEstrutura=false;render()"><span class="r"></span>
-      <span><b>Só as telhas</b><small>Já tenho a estrutura</small></span></button>
-    <button class="opt ${pedido.comEstrutura?'on':''}" onclick="setEstrutura(true)"><span class="r"></span>
-      <span style="flex:1"><b>Telhas + estrutura</b><small>Incluir vigas e terças galvanizadas</small>
-        ${pedido.estruturaDescricao?`<span class="m" style="display:block;margin-top:4px">✅ ${pedido.estruturaDescricao}</span>`:''}
-        ${pedido.comEstrutura&&!pedido.estruturaDescricao?`<span style="display:block;margin-top:4px;font-size:12px;color:#b45309">
-          Informe o comprimento do galpão acima para eu calcular as terças.</span>`:''}</span></button>`;
-}
-
-/** Só os complementos marcados, no formato que o motor espera. */
-function complementosEscolhidos(){
-  const out=[];
-  for(const [id,st] of Object.entries(pedido.complementos)){
-    if(!st.on)continue;
-    const c=(cat.complementos||[]).find(x=>x.id===id);
-    if(!c)continue;
-    if(c.venda_por==='barra'){
-      const m=parseFloat(String(st.metros).replace(',','.'));
-      if(m>0)out.push({produtoId:id,metros:m});
-    }else{
-      const q=st.qtd===''||st.qtd===undefined
-        ? Math.ceil((c.consumo_por_m2||0)*metTotalPedido())
-        : Math.ceil(Number(st.qtd));
-      if(q>0)out.push({produtoId:id,quantidade:q});
-    }
-  }
-  return out;
-}
-
-/** Calcula acabamentos e estrutura para quem trouxe só a lista de cortes. */
-async function calcSugestoes(){
-  const L=parseFloat(String(g('geoL').value).replace(',','.'));
-  const q=Number(g('geoQ').value)||2;
-  if(!L||L<=0)return err('Informe o comprimento do galpão em metros.');
-  const maior=Math.max(0,...grupos.flatMap(gr=>gr.cortes.map(c=>c.comprimentoM)));
-  const d=await fetch('/api/sugestoes',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({telhaIds:[...new Set(grupos.map(x=>x.telhaId))],
-      comprimentoGalpaoM:L,quedas:q,maiorCorteM:maior,comEstrutura:pedido.comEstrutura})})
-    .then(r=>r.json()).catch(()=>({error:'falha'}));
-  if(d.error)return err(d.error);
-
-  pedido.geoManual=true;pedido.geoL=L;pedido.geoQ=q;
-  // guarda as sugestões no primeiro grupo, para o cálculo de metros
-  if(grupos[0])grupos[0].complementosSugeridos=d.complementos||[];
-  // já marca os acabamentos sugeridos, com a metragem preenchida
-  for(const c of (d.complementos||[]))
-    pedido.complementos[c.produtoId]={on:true,metros:c.metros};
-  if(pedido.comEstrutura){pedido.perfis=d.perfis||[];pedido.estruturaDescricao=d.estruturaDescricao||null;}
-  err('');render();
-}
-
-/** Marcar "com estrutura" recalcula as terças se já soubermos a geometria. */
-async function setEstrutura(v){
-  pedido.comEstrutura=v;
-  if(!v){pedido.perfis=[];pedido.estruturaDescricao=null;return render();}
-  const amb=grupos.find(x=>x.ambiente);
-  const L=amb?amb.ambiente.comprimentoGalpaoM:pedido.geoL;
-  if(!L)return render();                    // sem geometria: pede acima
-  const maior=Math.max(0,...grupos.flatMap(gr=>gr.cortes.map(c=>c.comprimentoM)));
-  const d=await fetch('/api/sugestoes',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({telhaIds:[...new Set(grupos.map(x=>x.telhaId))],
-      comprimentoGalpaoM:L,quedas:amb?amb.ambiente.quedas:(pedido.geoQ||2),
-      maiorCorteM:maior,comEstrutura:true})}).then(r=>r.json()).catch(()=>({}));
-  pedido.perfis=d.perfis||[];pedido.estruturaDescricao=d.estruturaDescricao||null;
-  render();
-}
-
-function togComp(id){
-  const st=pedido.complementos[id]||{};
-  const sug=sugestoes();
-  pedido.complementos[id]={...st,on:!st.on,
-    metros:st.metros!==undefined?st.metros:(sug[id]||'')};
-  render();
-}
-function setComp(id,campo,valor){
-  pedido.complementos[id]={...(pedido.complementos[id]||{on:true}),[campo]:valor};
-  render();
-}
-
-function abrirFam(f){atual.famAberta=atual.famAberta===f?null:f;render();}
-function selTelha(id){atual.telhaId=id;atual.cortes=[{q:'',c:''}];atual.cg='';atual.lg='';ir(1);}
-function addC(){atual.cortes.push({q:'',c:''});render();}
-function delC(i){if(atual.cortes.length>1){atual.cortes.splice(i,1);render();}}
-function tot(){
-  const b=document.getElementById('tt');if(!b)return;
-  const m=atual.cortes.reduce((s,c)=>s+(+c.q||0)*(+c.c||0),0);
-  const p=atual.cortes.reduce((s,c)=>s+(+c.q||0),0);
-  b.innerHTML=`${p} peças · <b>${m.toFixed(3)} mts</b> · ≈ <b>R$ ${BRL(m*telha().preco)}</b>`;
-}
-async function okCortes(){
-  const t=telha();
-  const v=atual.cortes.filter(c=>+c.q>0&&+c.c>0);
-  if(!v.length)return err('Informe ao menos uma quantidade e um comprimento.');
-  const gr=v.find(c=>+c.c>t.comprimento_maximo_m);
-  if(gr){
-    const r=await fetch('/api/opcoes-corte',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({telhaId:t.id,comprimentoM:+gr.c})}).then(r=>r.json()).catch(()=>({error:'falha'}));
-    if(r.error||!r.opcoes?.length)return err('Não consegui dividir essa medida — fale com o vendedor.');
-    split={comp:+gr.c,max:t.comprimento_maximo_m,opcoes:r.opcoes,sel:0,origem:'cortes',qtd:+gr.q,linha:atual.cortes.indexOf(gr)};
-    return ir(2);
-  }
-  grupos.push({telhaId:t.id,nome:t.nome,ambiente:null,cortes:v.map(c=>({quantidade:+c.q,comprimentoM:+c.c}))});
-  ir(2);
-}
-async function okAmbiente(){
-  const c=parseFloat(String(atual.cg).replace(',','.')),l=parseFloat(String(atual.lg).replace(',','.'));
+/* ══════════════ AÇÕES ══════════════ */
+function okMedidas(){
+  const c=parseFloat(String(A.cg).replace(',','.')),l=parseFloat(String(A.lg).replace(',','.'));
   if(!c||!l||c<=0||l<=0)return err('Preencha comprimento e largura em metros.');
-  ocupado(true,'Calculando...');
-  const d=await fetch('/api/romaneio',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({telhaId:atual.telhaId,comprimentoGalpaoM:c,larguraGalpaoM:l,quedas:atual.quedas,comEstrutura:false})})
-    .then(r=>r.json()).catch(()=>({error:'falha'}));
-  ocupado(false);
-  if(d.error)return err(d.error);
-  const t=telha();
-  if(d.precisaEscolher){
-    split={comp:d.compTelha,max:t.comprimento_maximo_m,opcoes:d.opcoes,sel:0,origem:'ambiente'};
-    return ir(2);
-  }
-  grupos.push({telhaId:t.id,nome:t.nome,cortes:d.cortes,
-    ambiente:{comprimentoGalpaoM:c,larguraGalpaoM:l,quedas:atual.quedas},
-    complementosSugeridos:d.complementos||[]});
-  window._av=d.avisos?.length?d.avisos:null;
-  ir(2);
-}
-async function okComplementos(){
-  // aplica a divisão escolhida, se houver
-  if(split){
-    const op=split.sel===-1?split.custom:split.opcoes[split.sel];
-    if(!op)return err('Escolha uma das opções de divisão (ou calcule o tamanho personalizado).');
-    const t=telha();
-    if(split.origem==='cortes'){
-      const cont={};op.panos.forEach(p=>cont[p]=(cont[p]||0)+1);
-      const outras=atual.cortes.filter((c,i)=>i!==split.linha&&+c.q>0&&+c.c>0)
-        .map(c=>({quantidade:+c.q,comprimentoM:+c.c}));
-      grupos.push({telhaId:t.id,nome:t.nome,ambiente:null,cortes:[...outras,
-        ...Object.entries(cont).map(([c,v])=>({quantidade:split.qtd*v,comprimentoM:+c}))]});
-    }else{
-      const amb={telhaId:t.id,comprimentoGalpaoM:+atual.cg,larguraGalpaoM:+atual.lg,
-        quedas:atual.quedas,comEstrutura:false,opcaoCorte:op.id,
-        tamanhoPreferidoM:split.sel===-1?split.pref:undefined};
-      const d=await fetch('/api/romaneio',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify(amb)}).then(r=>r.json()).catch(()=>({error:'falha'}));
-      if(d.error)return err(d.error);
-      grupos.push({telhaId:t.id,nome:t.nome,cortes:d.cortes,ambiente:{...amb,telhaId:undefined},
-        complementosSugeridos:d.complementos||[]});
-      window._av=d.avisos?.length?d.avisos:null;
-    }
-    split=null;
-  }
-  if(!grupos.length)return err('Adicione ao menos uma telha.');
-  // estrutura já foi calculada em setEstrutura/calcSugestoes; só avisa se faltou
-  if(pedido.comEstrutura&&!pedido.perfis?.length){
-    return err('Informe o comprimento do galpão para eu calcular a estrutura — ou escolha "Só as telhas".');
-  }
   ir(3);
 }
-function novoProduto(){
-  if(split)return err('Escolha primeiro como dividir a peça acima.');
-  atual={telhaId:null,modo:'cortes',cortes:[{q:'',c:''}],cg:'',lg:'',quedas:2,famAberta:null,busca:''};
-  ir(0);
+function okPerguntas(){
+  if(A.querAcabamento===null)return err('Responda se vai precisar de acabamentos.');
+  if(A.querEstrutura===null)return err('Responda se vai precisar de estrutura.');
+  ir(4);
+}
+function addItem(id,tipo){
+  if(B.itens.some(x=>x.id===id))return err('Esse item já está na lista.');
+  B.itens.push({id,tipo,qtd:'',comp:''});B.busca='';err('');render();
+}
+function okItens(){
+  const v=B.itens.filter(x=>+x.qtd>0&&(x.tipo!=='telha'||+x.comp>0));
+  if(!v.length)return err('Adicione ao menos um item com quantidade (e comprimento, no caso das telhas).');
+  B.itens=v;ir(2);
 }
 function okDados(){
-  cliente.nome=document.getElementById('dn').value.trim();
-  cliente.telefone=document.getElementById('dt').value.trim();
-  cliente.cidade=document.getElementById('dc').value.trim();
-  cliente.endereco=document.getElementById('de').value.trim();
+  cliente.nome=g('dn').value.trim();cliente.telefone=g('dt').value.trim();
+  cliente.cidade=g('dc').value.trim();cliente.endereco=g('de').value.trim();
   if(cliente.nome.length<2)return err('Informe seu nome.');
   if(cliente.telefone.replace(/\D/g,'').length<10)return err('Informe um WhatsApp válido com DDD.');
   if(cliente.cidade.length<2)return err('Informe a cidade.');
   if(cliente.endereco.length<8||!/\d/.test(cliente.endereco))return err('Endereço completo com rua, número e bairro.');
   try{localStorage.setItem('cliente4a',JSON.stringify(cliente));}catch(e){}
-  ir(4);
+  gerar();
 }
+
 async function gerar(){
-  const b=document.getElementById('bg');b.disabled=true;b.textContent='Gerando...';
-  ocupado(true,'Montando seu orçamento e calculando a entrega...');
+  ocupado(true,'Montando seu orçamento...');
+  let corpo;
+  if(modo==='A'){
+    corpo={modo:'auto',
+      telhaId:A.telhaId,
+      comprimentoGalpaoM:parseFloat(String(A.cg).replace(',','.')),
+      larguraGalpaoM:parseFloat(String(A.lg).replace(',','.')),
+      quedas:A.quedas,
+      querAcabamento:A.querAcabamento,
+      querEstrutura:A.querEstrutura};
+  }else{
+    corpo={modo:'itens',itens:B.itens.map(x=>({id:x.id,tipo:x.tipo,qtd:+x.qtd,comp:+x.comp||null}))};
+  }
   const d=await fetch('/api/orcamento',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({pedido:{
-        grupos:grupos.map(g=>({telhaId:g.telhaId,cortes:g.cortes})),
-        perfis:pedido.perfis,
-        complementos:complementosEscolhidos(),
-      },
-      cliente,vendedor:new URLSearchParams(location.search).get('vendedor')||null})})
+    body:JSON.stringify({pedido:corpo,cliente,vendedor:new URLSearchParams(location.search).get('vendedor')||null})})
     .then(r=>r.json()).catch(()=>({error:'Falha ao gerar — tente de novo.'}));
   ocupado(false);
-  if(d.error){err(d.error);b.disabled=false;b.textContent='Gerar orçamento 📄';return;}
-  window._res=d;ir(5);
+  if(d.error)return err(d.error);
+  window._res=d;
+  ir(modo==='A'?5:3);
 }
 
 try{const s=localStorage.getItem('cliente4a');if(s)Object.assign(cliente,JSON.parse(s));}catch(e){}
 fetch('/api/catalogo').then(r=>r.json()).then(c=>{cat=c;render();})
-  .catch(()=>{T.innerHTML='<h1>Ops!</h1><p class="sub">Não consegui carregar o catálogo. O servidor está rodando?</p>';});
+  .catch(()=>{T.innerHTML='<h1>Ops!</h1><p class="sub">Não consegui carregar o catálogo.</p>';});
 </script>
 </body>
 </html>
