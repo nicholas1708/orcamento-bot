@@ -217,6 +217,11 @@ async function gerarPDF({ cliente, pedido, orcamento, catalogo }, destino) {
       doc.font('Helvetica-Bold').fontSize(7.5)
         .text(`Economia total nesta compra: R$ ${BRL(orcamento.economiaTotal)}`, M, doc.y + 1, { width: W });
     }
+    if (orcamento.descontoOnline) {
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#0a7a3d')
+        .text('★ CONDIÇÃO EXCLUSIVA DO ORÇAMENTO ONLINE — faixa de desconto liberada por proximidade.',
+          M, doc.y + 2, { width: W });
+    }
     doc.fillColor('#000');
     doc.y += 6;
   }

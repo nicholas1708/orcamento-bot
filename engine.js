@@ -71,6 +71,7 @@ function calcularOrcamento(pedido, catalogo) {
   const avisos = [];
   let escalarParaVendedor = false;
   let foraDaPromocao = false;
+  let descontoOnline = false;      // faixa concedida por proximidade (regra do sistema)
 
   // normaliza: formato antigo (um produto) → grupos
   const grupos = Array.isArray(pedido.grupos) && pedido.grupos.length
@@ -104,7 +105,8 @@ function calcularOrcamento(pedido, catalogo) {
       telha, baseFaixa === 'pedido' ? metragemPedido : metrosDoProduto, catalogo
     );
     if (porProximidade) {
-      avisos.push(`${telha.nome}: desconto da faixa seguinte concedido por proximidade (faltava pouco para atingi-la).`);
+      descontoOnline = true;
+      avisos.push(`${telha.nome}: desconto da faixa seguinte concedido por proximidade — condição exclusiva do orçamento online.`);
     }
     if (!Number.isFinite(precoUnit) || precoUnit <= 0) {
       throw new Error(`Preço não cadastrado para ${telha.nome}.`);
@@ -196,7 +198,14 @@ function calcularOrcamento(pedido, catalogo) {
 
     let qtd, nome = item.nome, unidade = item.unidade || 'UN';
 
-    if (item.venda_por === 'barra') {
+    if (item.venda_por === 'metro') {
+      // cobrado por metro corrido (ex: acabamento lateral a R$ 27,48/m)
+      qtd = Number.isFinite(Number(comp.quantidade)) && Number(comp.quantidade) > 0
+        ? m3(Number(comp.quantidade))
+        : m3(Number(comp.metros) || 0);
+      if (qtd <= 0) continue;
+
+    } else if (item.venda_por === 'barra') {
       const barra = Number(item.comprimento_barra_m) || 3;
       const metros = Number(comp.metros) || 0;
       qtd = Number.isFinite(Number(comp.quantidade)) && Number(comp.quantidade) > 0
@@ -209,6 +218,13 @@ function calcularOrcamento(pedido, catalogo) {
         const sobra = m3(qtd * barra - metros);
         if (sobra > 0) avisos.push(`${item.nome}: ${metros}m necessários → ${qtd} barras de ${barra}m (sobra de ${sobra}m).`);
       }
+
+    } else if (item.aplica_em && (comp.metros > 0) && !Number.isFinite(Number(comp.quantidade))) {
+      // peça avulsa com rendimento por metro (ex: cumeeira 1 un por metro)
+      const rend = Number(item.rendimento_m) || 1;
+      qtd = Math.ceil(Number(comp.metros) / rend);
+      if (qtd <= 0) continue;
+
     } else {
       qtd = Number.isFinite(Number(comp.quantidade)) && Number(comp.quantidade) > 0
         ? Math.ceil(Number(comp.quantidade))
@@ -318,7 +334,7 @@ function calcularOrcamento(pedido, catalogo) {
     totalProdutos, totalFrete, freteDiluido, totalAvista, economiaTotal,
     frete: pedido.frete || null,
     foraDoRaio: !!pedido.frete?.foraDoRaio,
-    foraDaPromocao,
+    foraDaPromocao, descontoOnline,
     pagamentos, resumoPorProduto, avisos, escalarParaVendedor,
   };
 }

@@ -105,33 +105,15 @@
     }
   ],
 
-  "_complementos_nota": "Acabamentos e fixação: VENDIDOS POR BARRA/PEÇA (não por metro). O sistema arredonda para cima. Preço igual em todas as faixas de metragem. Preencha 'imagem' com a URL da foto para ela aparecer na coluna IMAGEM do PDF.",
+  "_complementos_nota": "REGRAS CONFERIDAS no orçamento oficial nº 11454 (galpão 10x10m, 2 águas, 100 m²): cumeeira 10 UN para 10m de cumeeira (1/m) · frontal 20 UN para 20m de beiral (1/m) · lateral 20 M² para 20m de borda (por metro) · parafuso fixação 300 un para 100 m² (3/m²) · costura 150 un (1,5/m²).",
   "complementos": [
-    {
-      "id": "P143019", "codigo": "143019", "familia": "Acabamento",
-      "nome": "Acabamento Frontal TP 40/1000 p/ Telha 30mm — Branco",
-      "descricao_completa": "143019 - ACABAMENTO FRONTAL TP 40/1000 P/ T-30mm RAL 9003 BRANCO",
-      "imagem": null,
-      "tipo": "acabamento", "venda_por": "barra", "comprimento_barra_m": 3.0,
-      "unidade": "PC", "preco": 25.10,
-      "aplica_em": "frontal", "ativo": true
-    },
-    {
-      "id": "P152327", "codigo": "152327", "familia": "Acabamento",
-      "nome": "Acabamento Lateral Trapézio 40/1000 p/ Telha PIR 30mm — Branco",
-      "descricao_completa": "152327 - ACABAMENTO LATERAL TRAPÉZIO 40/1000 TELHA PIR 30mm RAL 9003 BRANCO - Barras C/ 3mts",
-      "imagem": null,
-      "tipo": "acabamento", "venda_por": "barra", "comprimento_barra_m": 3.0,
-      "unidade": "PC", "preco": 56.03,
-      "aplica_em": "lateral", "ativo": true
-    },
     {
       "id": "P148384", "codigo": "148384", "familia": "Acabamento",
       "nome": "Cumeeira Galvalume Trapézio 40/1000 — Galvalume ZCL 0,43mm",
       "descricao_completa": "148384 - CUMEEIRA GALVALUME TRAPEZIO 40/1000 GALVALUME ZCL 0,43mm",
       "imagem": null,
-      "tipo": "acabamento", "venda_por": "barra", "comprimento_barra_m": 3.0,
-      "unidade": "PC", "preco": 46.09,
+      "tipo": "acabamento", "venda_por": "unidade", "rendimento_m": 1.0,
+      "unidade": "UN", "preco": 46.09,
       "aplica_em": "cumeeira", "ativo": true
     },
     {
@@ -139,17 +121,37 @@
       "nome": "Cumeeira Galvalume Trapézio 40/1000 — Branco RAL 9003",
       "descricao_completa": "148474 - CUMEEIRA GALVALUME TRAPEZIO 40/1000 RAL 9003 BRANCO",
       "imagem": null,
-      "tipo": "acabamento", "venda_por": "barra", "comprimento_barra_m": 3.0,
-      "unidade": "PC", "preco": 53.88,
-      "aplica_em": "cumeeira", "ativo": true
+      "tipo": "acabamento", "venda_por": "unidade", "rendimento_m": 1.0,
+      "unidade": "UN", "preco": 53.88,
+      "aplica_em": "cumeeira", "ativo": false,
+      "_nota": "alternativa branca da cumeeira — ative se for usada"
+    },
+    {
+      "id": "P143019", "codigo": "143019", "familia": "Acabamento",
+      "nome": "Acabamento Frontal TP 40/1000 p/ Telha 30mm — Branco",
+      "descricao_completa": "143019 - ACABAMENTO FRONTAL TP 40/1000 P/ T-30mm RAL 9003 BRANCO",
+      "imagem": null,
+      "tipo": "acabamento", "venda_por": "unidade", "rendimento_m": 1.0,
+      "unidade": "UN", "preco": 25.10,
+      "aplica_em": "frontal", "ativo": true
+    },
+    {
+      "id": "P152327", "codigo": "152327", "familia": "Acabamento",
+      "nome": "Acabamento Lateral Trapézio 40/1000 p/ Telha PIR 30mm — Branco",
+      "descricao_completa": "152327 - ACABAMENTO LATERAL TRAPÉZIO 40/1000 TELHA PIR 30mm RAL 9003 BRANCO - Barras C/ 3mts",
+      "imagem": null,
+      "tipo": "acabamento", "venda_por": "metro",
+      "unidade": "M²", "preco": 27.48,
+      "aplica_em": "lateral", "ativo": true,
+      "_nota": "vendido em barras de 3m, mas COBRADO POR METRO (conferido no orçamento 11454: 20 m² x 27,48 = 549,60)"
     },
     {
       "id": "P142962", "codigo": "142962", "familia": "Acabamento",
       "nome": "Acabamento Interno Branco RAL 9003 — 3mts",
       "descricao_completa": "142962 - ACABAMENTO INTERNO RAL 9003 BRANCO INTERNO - 3mts",
       "imagem": null,
-      "tipo": "acabamento", "venda_por": "barra", "comprimento_barra_m": 3.0,
-      "unidade": "PC", "preco": 47.95,
+      "tipo": "acabamento", "venda_por": "metro",
+      "unidade": "M²", "preco": 47.95,
       "aplica_em": "interno", "ativo": true
     },
     {
@@ -159,7 +161,7 @@
       "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/parafuso-fixacao-4-auto-broca-20240626195102.png",
       "tipo": "fixacao", "venda_por": "unidade",
       "unidade": "UN", "preco": 1.25,
-      "consumo_por_m2": 6, "ativo": true
+      "consumo_por_m2": 3, "ativo": true
     },
     {
       "id": "PPA-101", "codigo": "PA-101", "familia": "Fixação",
@@ -168,7 +170,7 @@
       "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/parafuso-costura-auto-brocante-20240626195627.png",
       "tipo": "fixacao", "venda_por": "unidade",
       "unidade": "UN", "preco": 0.45,
-      "consumo_por_m2": 2, "ativo": true
+      "consumo_por_m2": 1.5, "ativo": true
     }
   ],
 
@@ -239,7 +241,7 @@
   "regras": {
     "faixa_preco_por": "produto",
     "faixa_tolerancia_pct": 5,
-    "_faixa_tolerancia_nota": "Se o cliente chegar a até 5% abaixo do limite da faixa, o desconto da faixa seguinte já é concedido (ex: faixa de 50 m² vale a partir de 47,5 m²). Coloque 0 para exigir que ultrapasse o limite.",
+    "_faixa_tolerancia_nota": "REGRA DE DESCONTO DO SISTEMA (decisão comercial da 4A): chegando a até 5% do limite da faixa, o desconto da faixa seguinte já é concedido. Efeito prático: os limites viram 47,5 / 95 / 190 m². ⚠️ Isto faz o sistema cobrar MENOS que o orçamento manual em alguns casos — ex: 100 m² sai a R$ 123,02 aqui e a R$ 126,91 no GestãoClick (diferença de R$ 389 em 100 m²). Zerar para igualar ao orçamento manual.",
     "_faixa_preco_por_opcoes": "'produto' = a faixa vale pela metragem daquele produto · 'pedido' = pela metragem total. CONFIRMAR COM A 4A.",
     "metragem_maxima_autoatendimento_m": 150,
     "_metragem_maxima_nota": "Acima disto o orçamento É GERADO e fica no painel, mas o valor NÃO é mostrado ao cliente: ele é direcionado ao comercial pelo WhatsApp. Mesma regra vale para obras além do raio de 600 km da fábrica.",
