@@ -1,50 +1,53 @@
-Conferência da lista, painel novo e WhatsApp alinhado ao site
+Pedido sem telha, conferencia da lista, painel novo e WhatsApp alinhado
 
-Wizard web
-- Tela inicial volta a ser a escolha entre os dois caminhos; nenhum
-  deles começa aberto por cima do outro.
-- Novo passo "Confira sua lista": mostra tudo que vai no orçamento SEM
-  PREÇO, com ajuste de quantidade, exclusão e inclusão de item.
-- Tamanho da telha deixou de ser digitável: sai de comprimentos_padrao
-  (lista suspensa) ou do romaneio calculado.
-- Campo de CEP da obra, preenchendo a cidade automaticamente.
+Telha deixa de ser obrigatoria
+- Da para orcar so acabamento, parafuso ou estrutura. Antes o motor, o
+  servidor, a tela e o WhatsApp exigiam pelo menos uma telha.
+- Frete: pedido sem telha cai na regra do minimo (R$ 400). Como nao ha
+  metro de telha onde embutir, o valor e rateado proporcional ao valor
+  de cada item. Removida a trava metragem > 0 no frete.js, que impedia
+  a regra de disparar com metragem zero.
+- WhatsApp: opcao "So acabamento, parafuso ou estrutura" na primeira
+  pergunta, com lista de avulsos e quantidade.
+- Modo IA: campo avulsos e perguntas de acabamento/estrutura puladas
+  quando nao ha telha.
 
-Núcleo compartilhado
-- Novo lista.js: montarLista (pedido -> linhas editáveis),
-  aplicarLista (linhas -> pedido) e complementosSugeridos. Fonte única
-  do site e do WhatsApp, para o total não divergir entre os canais.
-- engine.js: regra de quantidade de complemento extraída para
-  quantidadeDoComplemento(), usada pelo cálculo do preço e pela lista.
-- server.js: montarPedido() compartilhado, GET /api/cep/:cep,
-  POST /api/lista; complemento vendido por metro não é mais
-  arredondado; erro de preenchimento volta como 400.
+Conferencia da lista
+- Novo passo "Confira sua lista" nos dois canais: tudo que vai no
+  orcamento SEM PRECO, com ajuste de quantidade, exclusao e inclusao.
+- Novo lista.js compartilhado: montarLista, aplicarLista e
+  complementosSugeridos. Fonte unica do site e do WhatsApp.
+- engine.js: quantidadeDoComplemento() usada pelo calculo do preco e
+  pela lista, para o total nao divergir.
 
-WhatsApp (flow.js, conversa.js, roteiro.js, state.js)
-- CORRIGE: orçamento pelo WhatsApp saía sem acabamentos e parafusos.
-  O motor passa a receber complementos nos dois caminhos.
-- Pergunta de acabamentos, com perímetro vindo do ambiente ou
+Tamanho de telha travado
+- Sai de comprimentos_padrao ou do romaneio calculado; nao se digita.
+- No WhatsApp e no modo IA a medida fora do cadastro e recusada pelo
+  codigo, mesmo que a IA tenha aceitado.
+
+CORRIGE: orcamento pelo WhatsApp saia sem acabamentos e parafusos
+- O motor passa a receber complementos nos dois caminhos.
+- Pergunta de acabamentos, com perimetro vindo do ambiente ou
   perguntado quando o cliente trouxe a lista de cortes.
-- Tamanho fora dos comprimentos_padrao é recusado, tanto no menu
-  quanto no modo com IA (o código é o juiz, não a IA).
-- Conferência editável antes de gerar; da conferência em diante a IA
-  não interfere.
-- Pergunta de CEP, resolvendo a cidade pela base.
-- Escolha do perfil de estrutura quando há mais de uma terça.
 
-Painel (identidade visual do site novo)
-- painel-ui.css / painel-ui.js: menu fixo, tipografia Barlow, gaveta
-  de detalhe e helpers compartilhados pelas páginas internas.
-- Orçamentos: filtros, indicadores e ficha completa na gaveta.
-- Clientes: página nova. Lista com pendências de cadastro, edição e
-  os orçamentos de cada cliente. O cadastro nasce do orçamento.
-- Produtos: três abas (telhas, acabamentos e fixação, estrutura) com
-  cadastro completo ao abrir o item.
-- CRUD de complementos, que não existia — exige aplica_em no
-  acabamento e consumo_por_m2 na fixação, senão o item nunca entra
-  num orçamento automático.
-- Passam a ser salvos largura_total_m e promocao_ate_m; tamanhos de
-  fábrica viraram obrigatórios.
-- clientes.js: listar, atualizar e pendencias.
-- pricing.js: validação ampliada (complementos, perfis, faixas de
-  preço, tamanhos, unidades), separando o que impede orçamento do que
-  só pede atenção. Exposta em /api/painel/diagnostico.
+CEP
+- Campo no site e pergunta no WhatsApp, resolvendo a cidade pela base.
+- Nova rota GET /api/cep/:cep.
+
+Painel com a identidade do site novo
+- painel-ui.css / painel-ui.js: menu fixo, gaveta de detalhe e helpers.
+- Orcamentos: filtros, indicadores e ficha completa.
+- Clientes: pagina nova, com pendencias de cadastro e os orcamentos de
+  cada cliente. O cadastro nasce do proprio orcamento.
+- Produtos: tres abas com cadastro completo ao abrir o item.
+- CRUD de complementos, que nao existia. Exige aplica_em no acabamento
+  e consumo_por_m2 na fixacao.
+- Salva largura_total_m e promocao_ate_m; tamanhos de fabrica viraram
+  obrigatorios.
+- pricing.js: validacao ampliada, exposta em /api/painel/diagnostico.
+
+Outros
+- Tela inicial do wizard volta a ser a escolha entre os dois caminhos.
+- Erro de /api/lista passa a mostrar o motivo real em vez de mensagem
+  generica.
+- WAHA.md: tutorial de ativacao do WhatsApp no servidor.

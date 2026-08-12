@@ -102,7 +102,7 @@ const T = {
     '✏️ Qual item e qual a nova quantidade?\n\n_Ex:_ `3 = 250` _(item 3 passa a ter 250)_',
   pedeItemTirar: '🗑️ Qual o *número* do item que você quer tirar?',
   erroItem: 'Não achei esse item 🤔 Responda com o *número* que aparece na lista.',
-  erroTirarTelha: 'Esse é o produto principal — sem telha não existe orçamento. Use *4* pra recomeçar.',
+  erroListaVazia: 'É o último item da lista — sem ele não sobra orçamento. Use *4* pra recomeçar.',
 
   erroOpcao: 'Não entendi 🤔 Responda com o *número* da opção.',
   erroCortes: 'Não consegui ler as medidas 🤔 Use `quantidade de comprimento`, ex: `3 de 4m, 9 de 4,75`.',

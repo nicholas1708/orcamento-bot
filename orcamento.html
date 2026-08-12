@@ -462,8 +462,10 @@ function desenhar(){
         :'<div class="caixa" style="text-align:center;color:var(--muted)">Sua lista está vazia — adicione um item abaixo.</div>'}
 
       <div class="caixa" id="tot" style="display:flex;justify-content:space-between;align-items:center">
-        <span style="color:var(--muted);font-size:13px">Telhas</span>
-        <b>${telhas.reduce((s,l)=>s+(+l.qtd||0),0)} peças · ${mts.toFixed(2).replace('.',',')} metros</b>
+        <span style="color:var(--muted);font-size:13px">${telhas.length?'Telhas':'Itens'}</span>
+        <b>${telhas.length
+          ? `${telhas.reduce((s,l)=>s+(+l.qtd||0),0)} peças · ${mts.toFixed(2).replace('.',',')} metros`
+          : `${R.linhas.length} produto${R.linhas.length===1?'':'s'}`}</b>
       </div>
 
       ${R.addAberto?`
@@ -576,9 +578,24 @@ function corpoDoPedido(){
 
 async function carregarLista(){
   R.carregando=true;
-  const d=await fetch('/api/lista',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({pedido:corpoDoPedido()})})
-    .then(r=>r.json()).catch(()=>({error:'Não consegui montar a lista — tente de novo.'}));
+  let d;
+  try{
+    const r=await fetch('/api/lista',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({pedido:corpoDoPedido()})});
+    const txt=await r.text();
+    try{ d=JSON.parse(txt); }
+    catch{
+      // resposta não é JSON: quase sempre a rota não existe no servidor
+      // que está no ar (faltou reiniciar depois de atualizar o código)
+      console.error('[lista] resposta inesperada',r.status,txt.slice(0,200));
+      d={error:r.status===404
+        ? 'O servidor está numa versão antiga (rota /api/lista não existe). Reinicie o serviço.'
+        : `O servidor respondeu ${r.status} sem detalhe. Veja o log do serviço.`};
+    }
+  }catch(e){
+    console.error('[lista]',e);
+    d={error:'Não consegui falar com o servidor. Confira a conexão e tente de novo.'};
+  }
   R.carregando=false;
   if(d.error){R.linhas=[];render();return err(d.error);}
   R.linhas=d.linhas||[];
@@ -589,6 +606,11 @@ async function carregarLista(){
 function totConferir(){
   const box=g('tot');if(!box)return;
   const t=R.linhas.filter(l=>l.tipo==='telha');
+  if(!t.length){
+    box.innerHTML=`<span style="color:var(--muted);font-size:13px">Itens</span>
+      <b>${R.linhas.length} produto${R.linhas.length===1?'':'s'}</b>`;
+    return;
+  }
   const pecas=t.reduce((s,l)=>s+(+l.qtd||0),0);
   const mts=t.reduce((s,l)=>s+(+l.qtd||0)*(+l.comp||0),0);
   box.innerHTML=`<span style="color:var(--muted);font-size:13px">Telhas</span>
@@ -613,8 +635,9 @@ function addNaLista(id){
   R.addAberto=false;R.busca='';err('');render();
 }
 function okConferir(){
+  // Telha não é obrigatória: dá pra orçar só acabamento, parafuso ou estrutura.
   const v=(R.linhas||[]).filter(l=>+l.qtd>0);
-  if(!v.some(l=>l.tipo==='telha'))return err('Sua lista precisa de pelo menos uma telha com quantidade.');
+  if(!v.length)return err('Coloque ao menos um produto com quantidade.');
   R.linhas=v;ir(passoConferir()+1);
 }
 

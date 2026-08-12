@@ -59,9 +59,11 @@ async function calcularFrete(destino, pedido, catalogo) {
       };
     }
 
-    // PEDIDO PEQUENO: R$ X de frete, DILUÍDO no preço por metro
+    // PEDIDO PEQUENO: R$ X de frete, DILUÍDO no preço por metro.
+    // Inclui o pedido SEM TELHA (metragem 0) — só acabamento, parafuso ou
+    // estrutura: lá o motor rateia o valor entre os itens.
     const metragem = Number(pedido.metragemTotal) || 0;
-    if (cfg.metragem_minima_m2 && metragem > 0 && metragem < cfg.metragem_minima_m2) {
+    if (cfg.metragem_minima_m2 && metragem < cfg.metragem_minima_m2) {
       return {
         valor: 0, embutido: true, km, unidade,
         diluir: money(cfg.frete_abaixo_do_minimo || 0),

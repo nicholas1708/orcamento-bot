@@ -48,6 +48,7 @@ function novaFicha(chatId) {
       comAcabamento: null,
       complementos: null,         // [{ produtoId, metros? }]
       acabComprimentoM: null,     // comprimento do telhado, quando não vem do ambiente
+      avulsoId: null,             // item sendo adicionado no pedido sem telha
       // estrutura é OPCIONAL e vale para o orçamento todo
       comEstrutura: null,
       perfilEscolhido: null,      // id do perfil, quando há mais de um cadastrado

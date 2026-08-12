@@ -84,9 +84,32 @@ async function processar(chatId, textoRaw) {
     } else say(msg);
   };
 
+  /** Acabamentos, parafusos e perfis que podem ser vendidos avulsos. */
+  const itensAvulsos = () => [
+    ...(catalogo.complementos || []).filter((c) => c.ativo !== false)
+      .map((c) => ({ ...c, _avulso: 'complemento' })),
+    ...(catalogo.perfis || []).filter((p) => p.ativo !== false)
+      .map((p) => ({ ...p, _avulso: 'perfil' })),
+  ];
+
+  const perguntarItemAvulso = () => {
+    const lista = itensAvulsos();
+    if (!lista.length) {
+      say('Não tenho acabamento nem estrutura cadastrados no momento 😕');
+      perguntarFamilia();
+      return;
+    }
+    say(menu('🔩 Qual item você precisa?', lista.map((x) =>
+      `${x.nome} — R$ ${BRL(x.preco)} ${x.venda_por === 'metro' || x.unidade === 'M' ? 'por metro' : 'a peça'}`)));
+    ficha.etapa = 'AVULSO_ITEM';
+  };
+
   const perguntarFamilia = () => {
     const familias = [...new Set(catalogo.telhas.map((t) => t.familia))];
-    say(menu(R.T.perguntaFamilia(P.grupos.length > 0), familias));
+    // Telha é o carro-chefe, mas não é obrigatória: dá pra levar só
+    // acabamento, parafuso ou estrutura.
+    say(menu(R.T.perguntaFamilia(P.grupos.length > 0),
+      familias.concat('Só acabamento, parafuso ou estrutura')));
     ficha.etapa = 'FAMILIA';
   };
 
@@ -172,8 +195,16 @@ async function processar(chatId, textoRaw) {
 
     case 'FAMILIA': {
       const familias = [...new Set(catalogo.telhas.map((t) => t.familia))];
-      const idx = R.interpretarEscolha(texto, familias);
+      const opcoes = familias.concat('Só acabamento, parafuso ou estrutura');
+      const idx = R.interpretarEscolha(texto, opcoes);
       if (idx < 0) { erro(R.T.erroOpcao); break; }
+
+      // última opção: pedido sem telha
+      if (idx === familias.length) {
+        ficha.tentativasErro = 0;
+        perguntarItemAvulso();
+        break;
+      }
       const fam = familias[idx];
       P.atual.familia = fam;
       ficha.tentativasErro = 0;
@@ -359,6 +390,57 @@ async function processar(chatId, textoRaw) {
         larguraGalpaoM: P.atual.larguraGalpaoM,
         quedas: P.atual.quedas, opcaoCorte: op.id, tamanhoPreferidoM,
       });
+      break;
+    }
+
+    // ── Pedido sem telha: item avulso com quantidade ──────────────────
+    case 'AVULSO_ITEM': {
+      const lista = itensAvulsos();
+      const item = await escolhaInteligente(texto, lista, lista.map((x) => x.nome), 'acabamento ou perfil');
+      if (!item) { erro(R.T.erroOpcao); break; }
+      ficha.tentativasErro = 0;
+      P.avulsoId = item.id;
+      const porMetro = item.venda_por === 'metro' || item.unidade === 'M';
+      say(`✅ *${item.nome}*\n\nQuantos ${porMetro ? '*metros*' : item.venda_por === 'barra' ? '*barras*' : '*peças*'} você precisa?`);
+      ficha.etapa = 'AVULSO_QTD';
+      break;
+    }
+
+    case 'AVULSO_QTD': {
+      const q = num(texto);
+      if (!q || q <= 0) { erro('Me diga só o número, ex: *12*.'); break; }
+      ficha.tentativasErro = 0;
+
+      const item = itensAvulsos().find((x) => x.id === P.avulsoId);
+      if (!item) { erro(R.T.erroOpcao); break; }
+
+      if (item._avulso === 'perfil') {
+        P.perfis = (P.perfis || []).filter((p) => p.perfilId !== item.id);
+        P.perfis.push(item.unidade === 'UN'
+          ? { perfilId: item.id, quantidade: Math.ceil(q) }
+          : { perfilId: item.id, metros: q });
+      } else {
+        P.complementos = (P.complementos || []).filter((c) => c.produtoId !== item.id);
+        P.complementos.push({ produtoId: item.id,
+          quantidade: item.venda_por === 'metro' ? q : Math.ceil(q) });
+      }
+      // já escolheu item a item: não perguntamos acabamento/estrutura depois
+      P.comAcabamento = false;
+      P.comEstrutura = (P.perfis || []).length > 0;
+      P.avulsoId = null;
+
+      say(`Anotei ✅ *${item.nome}* — ${String(q).replace('.', ',')}`);
+      say('Falta mais alguma coisa?\n\n*1* — Sim, adicionar outro item\n*2* — Não, seguir');
+      ficha.etapa = 'AVULSO_MAIS';
+      break;
+    }
+
+    case 'AVULSO_MAIS': {
+      const mais = R.interpretarSimNao(texto);
+      if (mais === null) { erro('Responda *1* pra adicionar outro item ou *2* pra seguir.'); break; }
+      ficha.tentativasErro = 0;
+      if (mais) { perguntarItemAvulso(); break; }
+      pedirDados();
       break;
     }
 
@@ -569,9 +651,7 @@ async function processar(chatId, textoRaw) {
       const l = linhas[aj.item - 1];
 
       if (aj.valor <= 0) {           // "3 = 0" é a mesma coisa que tirar
-        if (l.tipo === 'telha' && linhas.filter((x) => x.tipo === 'telha').length === 1) {
-          erro(R.T.erroTirarTelha); break;
-        }
+        if (linhas.length === 1) { erro(R.T.erroListaVazia); break; }
         linhas.splice(aj.item - 1, 1);
         say(`🗑️ *${l.nome}* fora da lista.`);
       } else {
@@ -588,9 +668,7 @@ async function processar(chatId, textoRaw) {
       const linhas = P.linhas || [];
       if (!(i >= 1 && i <= linhas.length)) { erro(R.T.erroItem); break; }
       const l = linhas[i - 1];
-      if (l.tipo === 'telha' && linhas.filter((x) => x.tipo === 'telha').length === 1) {
-        erro(R.T.erroTirarTelha); break;
-      }
+      if (linhas.length === 1) { erro(R.T.erroListaVazia); break; }
       ficha.tentativasErro = 0;
       linhas.splice(i - 1, 1);
       P.linhas = linhas;
@@ -620,8 +698,8 @@ async function processar(chatId, textoRaw) {
       P.complementos = conferido.complementos;
       P.perfis = conferido.perfis;
 
-      if (!P.grupos.length) {
-        say('Sua lista ficou sem telha 😕 Digite *menu* pra recomeçar.');
+      if (!P.grupos.length && !P.complementos.length && !P.perfis.length) {
+        say('Sua lista ficou vazia 😕 Digite *menu* pra recomeçar.');
         ficha.etapa = 'FIM';
         break;
       }

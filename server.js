@@ -587,7 +587,6 @@ function montarPedido(pedido, catalogo) {
       catalogo, pedido.ambiente || null
     );
     grupos = r.grupos; complementos = r.complementos; perfis = r.perfis;
-    if (!grupos.length) throw erroCliente('Informe ao menos uma telha com quantidade e comprimento.');
 
   } else {
     // formato antigo (grupos prontos)
@@ -597,7 +596,12 @@ function montarPedido(pedido, catalogo) {
     perfis = pedido?.perfis || [];
   }
 
-  if (!grupos.length || grupos.some((g) => !catalogo.telhas.some((t) => t.id === g.telhaId))) {
+  // Telha NÃO é obrigatória — dá pra orçar só acabamento, parafuso ou
+  // estrutura. Obrigatório é ter pelo menos um item de qualquer tipo.
+  if (!grupos.length && !complementos.length && !perfis.length) {
+    throw erroCliente('Coloque ao menos um produto com quantidade.');
+  }
+  if (grupos.some((g) => !catalogo.telhas.some((t) => t.id === g.telhaId))) {
     throw erroCliente('Produto inválido.');
   }
   return { grupos, complementos, perfis };

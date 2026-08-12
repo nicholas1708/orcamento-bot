@@ -45,10 +45,13 @@ function secaoTelhas(catalogo, ficha) {
 function faltantes(ficha) {
   const p = ficha.pedido, c = ficha.cliente;
   const f = [];
-  if (!Array.isArray(p.grupos) || !p.grupos.length) f.push('pelo menos um produto (grupos)');
-  if (p.maisProdutos !== false) f.push('confirmar se há MAIS algum tipo de telha (campo maisProdutos: false quando o cliente disser que acabou)');
-  if (p.comAcabamento === null || p.comAcabamento === undefined) f.push('comAcabamento (true/false) — se leva cumeeira, acabamentos e parafusos');
-  if (p.comEstrutura === null || p.comEstrutura === undefined) f.push('comEstrutura (true/false)');
+  const temTelha = Array.isArray(p.grupos) && p.grupos.length;
+  const temAvulso = (p.complementos || []).length || (p.perfis || []).length;
+  // telha NÃO é obrigatória: dá pra fechar só com acabamento/parafuso/perfil
+  if (!temTelha && !temAvulso) f.push('pelo menos um produto (grupos ou avulsos)');
+  if (temTelha && p.maisProdutos !== false) f.push('confirmar se há MAIS algum tipo de telha (campo maisProdutos: false quando o cliente disser que acabou)');
+  if (temTelha && (p.comAcabamento === null || p.comAcabamento === undefined)) f.push('comAcabamento (true/false) — se leva cumeeira, acabamentos e parafusos');
+  if (temTelha && (p.comEstrutura === null || p.comEstrutura === undefined)) f.push('comEstrutura (true/false)');
   if (!c.nome) f.push('nome');
   if (!c.cidade) f.push('cidade');
   if (!c.endereco) f.push('endereco (rua, número e bairro — OBRIGATÓRIO)');
@@ -66,6 +69,12 @@ function montarSystemPrompt(catalogo, ficha) {
 A EMPRESA VENDE APENAS TELHAS (cortadas SOB MEDIDA) E ESTRUTURA METÁLICA (vigas/terças). Não executa serviços nem instalação.
 
 ${secaoTelhas(catalogo, ficha)}
+
+VENDIDOS AVULSOS (o cliente pode levar SÓ isso, sem telha nenhuma):
+${[...(catalogo.complementos || []).filter((c) => c.ativo !== false),
+   ...(catalogo.perfis || []).filter((p) => p.ativo !== false)]
+  .map((x) => `- id "${x.id}": ${x.nome} — ${fmt(x.preco)} ${x.venda_por === 'metro' || x.unidade === 'M' ? 'por metro' : 'a peça'}`)
+  .join('\n') || '- nada cadastrado'}
 
 COMO FUNCIONA: a telha é cortada no comprimento pedido e o preço é POR METRO LINEAR.
 UM ORÇAMENTO PODE TER VÁRIOS PRODUTOS — é comum (galpão/fábrica) usar um modelo em vários comprimentos e ainda combinar com translúcida ou sanduíche. Colete um produto de cada vez e SEMPRE pergunte se falta mais algum tipo antes de fechar.
@@ -99,8 +108,11 @@ AINDA FALTA: ${falta.length ? falta.join(', ') : 'nada — ficha completa'}
 
 RESPONDA APENAS JSON:
 {"reply":"sua mensagem","campos":{...},"fotos":[],"handoff":false}
-Campos possíveis: familiaFoco, novosProdutos (array, ver caminhos A/B), maisProdutos (bool), comAcabamento (bool), comEstrutura (bool), nome, cep, cidade, endereco.
-Envie em "novosProdutos" APENAS produtos ainda não listados acima.`
+Campos possíveis: familiaFoco, novosProdutos (array, ver caminhos A/B), avulsos (array), maisProdutos (bool), comAcabamento (bool), comEstrutura (bool), nome, cep, cidade, endereco.
+Envie em "novosProdutos" APENAS produtos ainda não listados acima.
+Pedido SEM TELHA (só parafuso, acabamento ou perfil) é permitido: use
+"avulsos": [{"produtoId":"...","quantidade":12}] com os ids da lista de avulsos.
+Nesse caso não pergunte sobre acabamentos nem estrutura — ele já escolheu item a item.`
   );
 }
 
@@ -179,6 +191,27 @@ async function aplicarCampos(ficha, campos, catalogo, acoes) {
         acoes.push({ type: 'text', text: `Não consegui calcular a ${telha.nome} com essas medidas 😕` });
         acoes.push({ type: 'handoff', motivo: 'Erro no romaneio: ' + e.message });
       }
+    }
+  }
+
+  // ── itens avulsos (pedido sem telha) ────────────────────────────
+  for (const av of (Array.isArray(campos.avulsos) ? campos.avulsos : [])) {
+    const qtd = Number(av.quantidade);
+    if (!okNum(qtd, 0.01, 100000)) continue;
+
+    const comp = (catalogo.complementos || []).find((x) => x.ativo !== false && x.id === av.produtoId);
+    if (comp) {
+      p.complementos = (p.complementos || []).filter((x) => x.produtoId !== comp.id);
+      p.complementos.push({ produtoId: comp.id,
+        quantidade: comp.venda_por === 'metro' ? qtd : Math.ceil(qtd) });
+      continue;
+    }
+    const perfil = (catalogo.perfis || []).find((x) => x.ativo !== false && x.id === av.produtoId);
+    if (perfil) {
+      p.perfis = (p.perfis || []).filter((x) => x.perfilId !== perfil.id);
+      p.perfis.push(perfil.unidade === 'UN'
+        ? { perfilId: perfil.id, quantidade: Math.ceil(qtd) }
+        : { perfilId: perfil.id, metros: qtd });
     }
   }
 

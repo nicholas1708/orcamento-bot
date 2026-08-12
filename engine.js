@@ -125,11 +125,15 @@ function calcularOrcamento(pedido, catalogo) {
   let descontoOnline = false;      // faixa concedida por proximidade (regra do sistema)
 
   // normaliza: formato antigo (um produto) → grupos
+  // Telha é o carro-chefe, mas NÃO é obrigatória: dá pra orçar só acabamento,
+  // só parafuso ou só estrutura. Quem exige item é a validação lá embaixo.
   const grupos = Array.isArray(pedido.grupos) && pedido.grupos.length
     ? pedido.grupos
-    : [{ telhaId: pedido.telhaId, cortes: pedido.cortes }];
+    : (pedido.telhaId ? [{ telhaId: pedido.telhaId, cortes: pedido.cortes }] : []);
 
-  if (!grupos.length) throw new Error('Nenhum produto informado.');
+  if (!grupos.length && !(pedido.complementos || []).length && !(pedido.perfis || []).length) {
+    throw new Error('Nenhum produto informado.');
+  }
 
   const eng = catalogo.engenharia;
   const itens = [];
@@ -313,6 +317,19 @@ function calcularOrcamento(pedido, catalogo) {
         p.subtotal = money(p.metros * p.precoUnit);
       }
       totalProdutos = money(itens.reduce((s, i) => s + i.subtotal, 0));
+
+    } else if (pedido.frete.diluir > 0 && totalProdutos > 0) {
+      // Pedido SEM TELHA (só acabamento, parafuso ou estrutura): não existe
+      // metro de telha onde embutir o frete, então ele é rateado por valor,
+      // proporcional a cada item. O cliente continua vendo "frete grátis".
+      freteDiluido = money(pedido.frete.diluir);
+      const fator = (totalProdutos + freteDiluido) / totalProdutos;
+      for (const it of itens) {
+        it.precoUnit = money(it.precoUnit * fator);
+        it.subtotal = money(it.qtd * it.precoUnit);
+      }
+      totalProdutos = money(itens.reduce((s, i) => s + i.subtotal, 0));
+      avisos.push(`Pedido sem telha: frete de R$ ${freteDiluido.toFixed(2).replace('.', ',')} rateado nos itens.`);
     }
     // no modo "embutido" nada é somado à parte
     if (!pedido.frete.embutido && Number.isFinite(pedido.frete.valor)) {
