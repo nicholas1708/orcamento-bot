@@ -40,6 +40,7 @@ function salvar(cliente) {
     nome: cliente.nome || anterior.nome || null,
     cidade: cliente.cidade || anterior.cidade || null,
     endereco: cliente.endereco || anterior.endereco || null,
+    cep: cliente.cep || anterior.cep || null,
     documento: cliente.documento || anterior.documento || null,
     email: cliente.email || anterior.email || null,
     orcamentos: (anterior.orcamentos || 0) + 1,
@@ -49,9 +50,52 @@ function salvar(cliente) {
   return registro;
 }
 
+/**
+ * Edição manual pelo painel — não incrementa o contador de orçamentos.
+ * O telefone é a chave: mudá-lo criaria outro cadastro, então ele é fixo.
+ */
+function atualizar(telefone, dados) {
+  const atual = carregar(telefone);
+  if (!atual) return null;
+  const campos = ['nome', 'cidade', 'endereco', 'cep', 'documento', 'email', 'observacao'];
+  const registro = { ...atual };
+  for (const c of campos) {
+    if (dados[c] !== undefined) registro[c] = dados[c] === '' ? null : dados[c];
+  }
+  registro.atualizadoEm = new Date().toISOString();
+  fs.writeFileSync(arquivo(atual.telefone), JSON.stringify(registro, null, 2));
+  return registro;
+}
+
+/**
+ * Todos os cadastros, do último atendimento para o mais antigo.
+ * ⚠️ Só para a área interna: a lista inteira tem dados pessoais.
+ */
+function listar() {
+  let arquivos = [];
+  try { arquivos = fs.readdirSync(DIR).filter((f) => f.endsWith('.json')); } catch { return []; }
+  const out = [];
+  for (const f of arquivos) {
+    try { out.push(JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf8'))); } catch { /* ignora corrompido */ }
+  }
+  return out.sort((a, b) =>
+    String(b.ultimoOrcamentoEm || b.criadoEm || '').localeCompare(String(a.ultimoOrcamentoEm || a.criadoEm || '')));
+}
+
 /** true quando há dados suficientes para pular as perguntas. */
 function completo(c) {
   return !!(c && c.nome && c.cidade && c.endereco);
 }
 
-module.exports = { carregar, salvar, completo };
+/** O que ainda falta no cadastro — o painel mostra isso na lista. */
+function pendencias(c) {
+  const f = [];
+  if (!c?.nome) f.push('nome');
+  if (!c?.cidade) f.push('cidade');
+  if (!c?.endereco) f.push('endereço');
+  if (!c?.documento) f.push('CPF/CNPJ');
+  if (!c?.email) f.push('e-mail');
+  return f;
+}
+
+module.exports = { carregar, salvar, atualizar, listar, completo, pendencias };

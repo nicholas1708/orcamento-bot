@@ -129,14 +129,16 @@
    B) "Já sei o que quero" → adiciona itens → dados → PDF
    Nada de mostrar materiais ou descontos na tela: isso é do PDF.
    ══════════════════════════════════════════════════════════════════ */
-// Abre direto no "já sei o que quero"; o cálculo automático fica lá dentro.
-let cat=null, modo='B', passo=0;
+// A tela inicial é a escolha do caminho; o orçamento começa depois dela.
+let cat=null, modo=null, passo=0;
 const hist=[];
 // Acabamentos, fixação e estrutura entram por PADRÃO — o cliente desmarca.
 const A={telhaId:null,cg:'',lg:'',quedas:2,famAberta:null,busca:'',
          sel:{}, selPronta:false};
 const B={itens:[],busca:''};                                   // modo B
-const cliente={nome:'',telefone:'',cidade:'',endereco:''};
+// Conferência final: a lista que vai ser cobrada, SEM PREÇO, montada pelo servidor.
+const R={linhas:null,carregando:false,busca:'',ambiente:null,addAberto:false};
+const cliente={nome:'',telefone:'',cep:'',cidade:'',endereco:''};
 
 const T=document.getElementById('t');
 const g=id=>document.getElementById(id);
@@ -144,7 +146,9 @@ const el=h=>{T.innerHTML=h;window.scrollTo(0,0);};
 const err=m=>{const x=g('e');x.textContent=m||'';x.style.display=m?'block':'none';};
 const BRL=v=>Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const telhaA=()=>cat.telhas.find(x=>x.id===A.telhaId);
-const totalPassos=()=>modo==='B'?3:6;
+const totalPassos=()=>modo==='B'?5:7;
+/** Passo da conferência em cada caminho — o resto se conta a partir dele. */
+const passoConferir=()=>modo==='B'?2:4;
 
 function ocupado(on,txt){
   let o=g('load');
@@ -162,7 +166,7 @@ function ir(n){hist.push(passo);passo=n;err('');render();}
 function voltar(){
   if(!hist.length)return;
   passo=hist.pop();
-  if(passo===0)modo='B';      // a tela inicial é sempre a de montar o pedido
+  if(passo===0)modo=null;     // voltou para a escolha do caminho
   err('');render();
 }
 function barra(){
@@ -277,41 +281,66 @@ function render(){
 function desenhar(){
   barra();
 
-  /* 0 — MONTAR O PEDIDO (tela inicial) */
+  /* 0 — ESCOLHA DO CAMINHO */
   if(passo===0){
+    el(`<h1>Como prefere começar?</h1>
+      <p class="sub">Escolha uma das opções — as duas terminam no mesmo orçamento em PDF.</p>
+
+      <button class="op" style="padding:20px;align-items:flex-start" onclick="modo='A';ir(1)">
+        <span style="width:52px;height:52px;background:var(--brand-tint);display:flex;align-items:center;
+          justify-content:center;flex-shrink:0">
+          <svg viewBox="0 0 40 34" style="width:34px"><path d="M4 24 L20 10 L36 24 L36 30 L20 16 L4 30 Z"
+            fill="#01A79D"/><path d="M2 32 h36" stroke="#0E1416" stroke-width="1.6" stroke-dasharray="3 2"/></svg></span>
+        <span><b style="font-size:19px">Não sei quanto preciso</b>
+        <small>Você me diz o tamanho do telhado e eu monto a lista inteira — telhas,
+          acabamentos e estrutura, com as quantidades certas.</small>
+        <small style="color:var(--brand);font-weight:600;margin-top:6px">✓ o mais usado</small></span></button>
+
+      <button class="op" style="padding:20px;align-items:flex-start" onclick="modo='B';ir(1)">
+        <span style="width:52px;height:52px;background:var(--line-2);display:flex;align-items:center;
+          justify-content:center;flex-shrink:0">
+          <svg viewBox="0 0 40 34" style="width:30px"><rect x="6" y="6" width="28" height="4" fill="#28353A"/>
+            <rect x="6" y="15" width="28" height="4" fill="#28353A"/><rect x="6" y="24" width="18" height="4" fill="#28353A"/>
+          </svg></span>
+        <span><b style="font-size:19px">Já sei o que quero</b>
+        <small>Escolho os produtos e informo as quantidades. Ideal para quem já tem
+          a lista pronta ou vai repetir um pedido.</small></span></button>`);
+  }
+
+  /* 1 — MONTAR O PEDIDO (caminho B) */
+  if(passo===1&&modo==='B'){
     const q=B.busca.toLowerCase();
     const todos=itensDoCatalogo();
     const lista=q?todos.filter(x=>(x.nome+' '+(x.codigo||'')).toLowerCase().includes(q)):todos;
     el(`<h1>Seu orçamento</h1>
       <p class="sub">Escolha os produtos e diga quanto precisa de cada um.</p>
 
-      <button class="op" style="background:var(--brand-tint);border-color:var(--brand)" onclick="modo='A';ir(1)">
-        <span class="ico">📐</span><span><b>Não sei quanto preciso</b>
-        <small>Me diga o tamanho do telhado que eu faço a conta pra você.</small></span></button>
-
       ${B.itens.length?`<div class="cab" style="margin-top:16px"><span>Produto</span><span>Quantas</span><span>Tamanho</span><span></span></div>
         ${B.itens.map((it,i)=>{
           const p=todos.find(x=>x.id===it.id)||{};
+          const tam=p.comprimentos_padrao||[];
           return `<div class="linha">
             <span><b>${p.nome||it.id}</b><small>${p.codigo?p.codigo+' · ':''}${
               it.tipo==='telha'
-                ? (it.qtd&&it.comp?`${it.qtd} telhas de ${it.comp}m = ${(it.qtd*it.comp).toFixed(2)} metros`
-                   :'quantas telhas e de que tamanho')
+                ? (it.qtd&&it.comp?`${it.qtd} telhas de ${String(it.comp).replace('.',',')}m = ${(it.qtd*it.comp).toFixed(2).replace('.',',')} metros`
+                   :'escolha o tamanho de fábrica')
                 : rotuloUnidade(it.tipo)}</small></span>
             <input type="number" value="${it.qtd}" placeholder="qtd" oninput="B.itens[${i}].qtd=this.value;render()">
-            ${it.tipo==='telha'
-              ?`<input type="number" step="0.01" value="${it.comp||''}" placeholder="m" oninput="B.itens[${i}].comp=this.value;render()">`
-              :'<span style="text-align:center;color:#cbd5e1">—</span>'}
-            <button class="x" onclick="B.itens.splice(${i},1);render()">✕</button></div>
-            ${it.tipo==='telha'&&p.comprimentos_padrao?.length?`
-              <div style="display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 10px 12px">
-                <span style="font-size:11px;color:#94a3b8;align-self:center">tamanhos comuns:</span>
-                ${p.comprimentos_padrao.map(m=>`<button onclick="B.itens[${i}].comp=${m};render()"
-                  style="background:${+it.comp===m?'var(--brand)':'#fff'};color:${+it.comp===m?'#fff':'var(--brand-dd)'};
-                  border:1px solid ${+it.comp===m?'var(--brand)':'var(--line)'};padding:5px 12px;
-                  font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">${m}m</button>`).join('')}
-              </div>`:''}`;
-        }).join('')}`:''}
+            ${it.tipo!=='telha'
+              ?'<span style="text-align:center;color:#cbd5e1">—</span>'
+              :tam.length
+                ?`<select onchange="B.itens[${i}].comp=this.value;render()"
+                    style="width:100%;padding:11px 6px;border:1.5px solid var(--line);background:#fff;
+                    font-family:inherit;font-size:15px;text-align:center;cursor:pointer">
+                    <option value="">tamanho</option>
+                    ${tam.map(m=>`<option value="${m}" ${+it.comp===m?'selected':''}>${String(m).replace('.',',')}m</option>`).join('')}
+                  </select>`
+                :'<span style="text-align:center;color:#c62828;font-size:12px">sem tamanho cadastrado</span>'}
+            <button class="x" onclick="B.itens.splice(${i},1);render()">✕</button></div>`;
+        }).join('')}
+        <p class="dica" style="margin-top:2px">Os tamanhos são os de fábrica — não dá para digitar
+          uma medida fora do cadastro. Precisa de outra medida?
+          <a href="#" onclick="irParaCalculo();return false" style="color:var(--brand);font-weight:600">deixe eu calcular</a>.</p>`:''}
 
       <input class="busca" style="margin-top:16px" placeholder="🔎 Buscar produto"
         value="${B.busca}" oninput="B.busca=this.value;render();document.querySelector('.busca').focus()">
@@ -321,10 +350,13 @@ function desenhar(){
           <small>${x.codigo?x.codigo+' · ':''}${rotuloUnidade(x._tipo)}</small></span>
       </button>`).join('')}
       ${!q&&todos.length>10?'<p class="dica" style="margin-top:8px">Busque para ver todos os produtos.</p>':''}
-      ${B.itens.length?'<button class="btn" onclick="okItens()">Continuar →</button>':''}`);
+      ${B.itens.length?'<button class="btn" onclick="okItens()">Continuar →</button>':''}
+      <p class="dica" style="margin-top:14px;text-align:center">Não sabe as quantidades?
+        <a href="#" onclick="irParaCalculo();return false"
+          style="color:var(--brand);font-weight:600">Eu calculo pra você</a></p>`);
   }
 
-  /* ═══════ CAMINHO A — calcular pra mim ═══════ */
+  /* ═══════ CAMINHO A — eu calculo pra você ═══════ */
   /* 1 — telha */
   if(passo===1&&modo==='A'){
     const q=A.busca.toLowerCase();
@@ -394,22 +426,78 @@ function desenhar(){
             `aguenta até ${String(p.vao_maximo_m).replace('.',',')}m sem apoio`)).join('')
         : '<p class="dica">Nenhuma estrutura cadastrada ainda.</p>'}
 
-      <button class="btn" onclick="ir(4)">Continuar →</button>`);
+      <button class="btn" onclick="irConferir()">Continuar →</button>`);
   }
 
   /* ═══════ COMUM ═══════ */
+  /* CONFERÊNCIA — a lista completa, sem preço, antes de fechar */
+  if(passo===passoConferir()){
+    if(R.linhas===null){
+      if(!R.carregando)carregarLista();
+      el(`<h1>Montando sua lista</h1><p class="sub">Só um instante.</p>
+        <div class="caixa" style="text-align:center;color:var(--muted)">Separando os itens...</div>`);
+      return;
+    }
+    const q=R.busca.toLowerCase();
+    const todos=itensDoCatalogo();
+    const achados=q?todos.filter(x=>(x.nome+' '+(x.codigo||'')).toLowerCase().includes(q)):[];
+    const telhas=R.linhas.filter(l=>l.tipo==='telha');
+    const mts=telhas.reduce((s,l)=>s+(+l.qtd||0)*(+l.comp||0),0);
+
+    const linha=(l,i)=>`<div class="linha" style="grid-template-columns:56px 1fr 88px 34px">
+        ${mini({imagem:l.imagem,aplica_em:l.desenho},52)}
+        <span><b style="font-size:14px;text-transform:none;letter-spacing:0">${l.nome}</b>
+          <small>${l.codigo?l.codigo+' · ':''}${l.tipo==='telha'
+            ? `peças de <span style="color:var(--brand-dd);font-weight:700">${(+l.comp).toFixed(2).replace('.',',')}m</span>`
+            : l.rotulo}${l.detalhe&&l.tipo!=='telha'?' · '+l.detalhe:''}</small></span>
+        <input type="number" ${l.tipo==='telha'?'step="1"':'step="0.01"'} value="${l.qtd}"
+          oninput="R.linhas[${i}].qtd=this.value;totConferir()">
+        <button class="x" onclick="R.linhas.splice(${i},1);render()">✕</button>
+      </div>`;
+
+    el(`<h1>Confira sua lista</h1>
+      <p class="sub">É isso que vai no orçamento. <b>Ajuste as quantidades, tire ou adicione o que quiser.</b></p>
+
+      ${R.linhas.length?R.linhas.map(linha).join('')
+        :'<div class="caixa" style="text-align:center;color:var(--muted)">Sua lista está vazia — adicione um item abaixo.</div>'}
+
+      <div class="caixa" id="tot" style="display:flex;justify-content:space-between;align-items:center">
+        <span style="color:var(--muted);font-size:13px">Telhas</span>
+        <b>${telhas.reduce((s,l)=>s+(+l.qtd||0),0)} peças · ${mts.toFixed(2).replace('.',',')} metros</b>
+      </div>
+
+      ${R.addAberto?`
+        <input class="busca" placeholder="🔎 Qual produto?" value="${R.busca}"
+          oninput="R.busca=this.value;render();document.querySelector('.busca').focus()">
+        ${achados.slice(0,12).map(x=>`<button class="op" style="padding:10px 12px" onclick="addNaLista('${x.id}')">
+          ${mini(x,52)}<span><b style="font-size:13.5px;text-transform:none;letter-spacing:0">${x.nome}</b>
+          <small>${x.codigo?x.codigo+' · ':''}${rotuloUnidade(x._tipo)}</small></span></button>`).join('')
+          ||(q?'<p class="dica">Nada encontrado com esse nome.</p>':'<p class="dica">Digite para procurar no catálogo.</p>')}
+        <button class="op" style="justify-content:center;padding:12px" onclick="R.addAberto=false;R.busca='';render()">
+          <span><b>Fechar</b></span></button>`
+        :`<button class="op" style="justify-content:center;padding:14px" onclick="R.addAberto=true;render()">
+          <span><b style="color:var(--brand)">+ Adicionar outro produto</b></span></button>`}
+
+      <p class="dica" style="margin-top:12px">O tamanho da telha é de fábrica e não pode ser digitado.
+        Precisa de outra medida? Volte e deixe o sistema calcular.</p>
+      <button class="btn" onclick="okConferir()">Continuar →</button>`);
+  }
+
   /* dados */
-  if((passo===4&&modo==='A')||(passo===2&&modo==='B')){
+  if(passo===passoConferir()+1){
     el(`<h1>Seus dados</h1><p class="sub">Precisamos do endereço para entregar o material.</p>
       <div class="campo"><label>Seu nome</label><input id="dn" value="${cliente.nome}" placeholder="Nome ou empresa"></div>
       <div class="campo"><label>WhatsApp</label><input id="dt" inputmode="tel" value="${cliente.telefone}" placeholder="(17) 99999-9999"></div>
+      <div class="campo"><label>CEP da obra</label>
+        <input id="dp" inputmode="numeric" value="${cliente.cep}" placeholder="15000-000"
+          oninput="buscarCep(this.value)"><small id="cepmsg" class="dica"></small></div>
       <div class="campo"><label>Cidade</label><input id="dc" value="${cliente.cidade}" placeholder="São José do Rio Preto - SP"></div>
       <div class="campo"><label>Onde entregar</label><input id="de" value="${cliente.endereco}" placeholder="Rua Exemplo, 120 - Centro"></div>
       <button class="btn" onclick="okDados()">Ver meu orçamento</button>`);
   }
 
   /* resultado */
-  if((passo===5&&modo==='A')||(passo===3&&modo==='B')){
+  if(passo===passoConferir()+2){
     const r=window._res;
     if(r.encaminhado){
       el(`<div class="fim"><div class="ok">${r.motivo==='volume'?'🎯':'📬'}</div>
@@ -460,11 +548,97 @@ function addItem(id,tipo){
 }
 function okItens(){
   const v=B.itens.filter(x=>+x.qtd>0&&(x.tipo!=='telha'||+x.comp>0));
-  if(!v.length)return err('Preencha a quantidade — e o tamanho, no caso das telhas.');
-  B.itens=v;ir(2);
+  if(!v.length)return err('Preencha a quantidade — e escolha o tamanho, no caso das telhas.');
+  B.itens=v;irConferir();
+}
+/** Sem itens ainda? Oferece o cálculo automático em vez de deixar o cliente travado. */
+function irParaCalculo(){modo='A';B.itens.length=0;R.linhas=null;ir(1);}
+
+/* ── CONFERÊNCIA ────────────────────────────────────────────────────
+   A lista é montada pelo SERVIDOR (mesma regra que calcula o preço).
+   Aqui o cliente só ajusta quantidade, tira e acrescenta item.
+   Tamanho de telha não se digita: é o que está no cadastro.          */
+function irConferir(){R.linhas=null;R.addAberto=false;R.busca='';ir(passoConferir());}
+
+function corpoDoPedido(){
+  if(modo==='A'){
+    const marcados=Object.keys(A.sel).filter(k=>A.sel[k]);
+    return {modo:'auto',
+      telhaId:A.telhaId,
+      comprimentoGalpaoM:parseFloat(String(A.cg).replace(',','.')),
+      larguraGalpaoM:parseFloat(String(A.lg).replace(',','.')),
+      quedas:A.quedas,
+      complementosIds:marcados.filter(id=>(cat.complementos||[]).some(c=>c.id===id)),
+      perfisIds:marcados.filter(id=>(cat.perfis||[]).some(p=>p.id===id))};
+  }
+  return {modo:'itens',itens:B.itens.map(x=>({id:x.id,tipo:x.tipo,qtd:+x.qtd,comp:+x.comp||null}))};
+}
+
+async function carregarLista(){
+  R.carregando=true;
+  const d=await fetch('/api/lista',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({pedido:corpoDoPedido()})})
+    .then(r=>r.json()).catch(()=>({error:'Não consegui montar a lista — tente de novo.'}));
+  R.carregando=false;
+  if(d.error){R.linhas=[];render();return err(d.error);}
+  R.linhas=d.linhas||[];
+  R.ambiente=d.ambiente||null;
+  render();
+}
+/** Atualiza só o rodapé — reescrever a tela faria o campo perder o foco. */
+function totConferir(){
+  const box=g('tot');if(!box)return;
+  const t=R.linhas.filter(l=>l.tipo==='telha');
+  const pecas=t.reduce((s,l)=>s+(+l.qtd||0),0);
+  const mts=t.reduce((s,l)=>s+(+l.qtd||0)*(+l.comp||0),0);
+  box.innerHTML=`<span style="color:var(--muted);font-size:13px">Telhas</span>
+    <b>${pecas} peças · ${mts.toFixed(2).replace('.',',')} metros</b>`;
+}
+function addNaLista(id){
+  if(R.linhas.some(l=>l.id===id))return err('Esse produto já está na lista.');
+  const x=itensDoCatalogo().find(y=>y.id===id);if(!x)return;
+  const ehTelha=x._tipo==='telha';
+  const ehPerfil=(cat.perfis||[]).some(p=>p.id===id);
+  if(ehTelha&&!(x.comprimentos_padrao||[]).length)
+    return err('Essa telha está sem tamanho cadastrado — fale com o comercial.');
+  R.linhas.push({
+    id, tipo:ehTelha?'telha':ehPerfil?'perfil':'complemento',
+    nome:x.nome, codigo:x.codigo||null, imagem:x.imagem||null,
+    desenho:x.aplica_em||x.tipo||null,
+    qtd:'', comp:ehTelha?x.comprimentos_padrao[0]:null,
+    rotulo:ehTelha?'peças':x.venda_por==='metro'||(ehPerfil&&x.unidade!=='UN')?'metros'
+      :x.venda_por==='barra'?'barras':'peças',
+    detalhe:null,
+  });
+  R.addAberto=false;R.busca='';err('');render();
+}
+function okConferir(){
+  const v=(R.linhas||[]).filter(l=>+l.qtd>0);
+  if(!v.some(l=>l.tipo==='telha'))return err('Sua lista precisa de pelo menos uma telha com quantidade.');
+  R.linhas=v;ir(passoConferir()+1);
+}
+
+/** CEP → cidade. Serve para medir a distância até a unidade mais próxima. */
+let _cepTimer=null;
+function buscarCep(v){
+  cliente.cep=v;
+  const d=v.replace(/\D/g,'');
+  const msg=g('cepmsg');if(msg)msg.textContent=d.length===8?'Procurando...':'';
+  clearTimeout(_cepTimer);
+  if(d.length!==8)return;
+  _cepTimer=setTimeout(async()=>{
+    const r=await fetch('/api/cep/'+d).then(x=>x.json()).catch(()=>null);
+    const m=g('cepmsg');
+    if(r&&r.cidade){
+      cliente.cidade=`${r.cidade} - ${r.uf}`;
+      const c=g('dc');if(c)c.value=cliente.cidade;
+      if(m)m.textContent=`${r.cidade} - ${r.uf}`;
+    }else if(m)m.textContent='CEP não encontrado — confira a cidade abaixo.';
+  },500);
 }
 function okDados(){
   cliente.nome=g('dn').value.trim();cliente.telefone=g('dt').value.trim();
+  cliente.cep=g('dp').value.trim();
   cliente.cidade=g('dc').value.trim();cliente.endereco=g('de').value.trim();
   if(cliente.nome.length<2)return err('Informe seu nome.');
   if(cliente.telefone.replace(/\D/g,'').length<10)return err('Informe um WhatsApp válido com DDD.');
@@ -476,31 +650,24 @@ function okDados(){
 
 async function gerar(){
   ocupado(true,'Montando seu orçamento...');
-  let corpo;
-  if(modo==='A'){
-    const marcados=Object.keys(A.sel).filter(k=>A.sel[k]);
-    corpo={modo:'auto',
-      telhaId:A.telhaId,
-      comprimentoGalpaoM:parseFloat(String(A.cg).replace(',','.')),
-      larguraGalpaoM:parseFloat(String(A.lg).replace(',','.')),
-      quedas:A.quedas,
-      complementosIds:marcados.filter(id=>(cat.complementos||[]).some(c=>c.id===id)),
-      perfisIds:marcados.filter(id=>(cat.perfis||[]).some(p=>p.id===id))};
-  }else{
-    corpo={modo:'itens',itens:B.itens.map(x=>({id:x.id,tipo:x.tipo,qtd:+x.qtd,comp:+x.comp||null}))};
-  }
+  // Vale o que o cliente conferiu na tela — não a composição original.
+  // Se ele não mexeu em nada, a conta dá exatamente o mesmo valor.
+  const corpo={modo:'itens',
+    itens:(R.linhas||[]).filter(l=>+l.qtd>0)
+      .map(l=>({id:l.id,tipo:l.tipo,qtd:+l.qtd,comp:+l.comp||null})),
+    ambiente:R.ambiente||null};
   const d=await fetch('/api/orcamento',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({pedido:corpo,cliente,vendedor:new URLSearchParams(location.search).get('vendedor')||null})})
     .then(r=>r.json()).catch(()=>({error:'Falha ao gerar — tente de novo.'}));
   ocupado(false);
   if(d.error)return err(d.error);
   window._res=d;
-  ir(modo==='A'?5:3);
+  ir(passoConferir()+2);
 }
 
 try{const s=localStorage.getItem('cliente4a');if(s)Object.assign(cliente,JSON.parse(s));}catch(e){}
 
-// Veio do visualizador 3D? Retoma o que foi montado lá e pula para os dados.
+// Veio do visualizador 3D? Retoma o que foi montado lá e cai na conferência.
 let _de3d=null;
 try{
   const p=sessionStorage.getItem('pedido3d');
@@ -514,11 +681,10 @@ fetch('/api/catalogo').then(r=>r.json()).then(c=>{
     if(_de3d.modo==='auto'){
       modo='A';A.telhaId=_de3d.telhaId;A.cg=_de3d.comprimentoGalpaoM;A.lg=_de3d.larguraGalpaoM;
       A.quedas=_de3d.quedas;A.querAcabamento=_de3d.querAcabamento;A.querEstrutura=_de3d.querEstrutura;
-      passo=4;                                 // vai direto para os dados
     }else{
       modo='B';B.itens=_de3d.itens.map(i=>({id:i.id,tipo:i.tipo,qtd:i.qtd,comp:i.comp||''}));
-      passo=2;
     }
+    passo=passoConferir();                     // confere a lista antes dos dados
     hist.push(0);
   }
   render();

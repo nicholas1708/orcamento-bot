@@ -30,10 +30,14 @@ const T = {
     `*1* — Sim, tenho a lista de medidas\n` +
     `*2* — Não, prefiro passar as medidas do local`,
 
-  pedeCortes:
-    '📏 Manda a *lista* — quantas peças de cada comprimento.\n\n' +
-    '_Ex:_ `3 de 4m, 9 de 4,75 e 5 de 6,20`\n\n' +
-    '_Pode mandar tudo de uma vez._',
+  /** Os tamanhos são os de fábrica — o cliente escolhe, não inventa medida. */
+  pedeCortes: (tamanhos = []) =>
+    '📏 Manda a *lista* — quantas peças de cada tamanho.\n\n' +
+    (tamanhos.length
+      ? `_Tamanhos de fábrica desta telha:_ ${tamanhos.map((t) => String(t).replace('.', ',') + 'm').join(' · ')}\n\n` +
+        `_Ex:_ \`10 de ${String(tamanhos[0]).replace('.', ',')}m e 4 de ${String(tamanhos[tamanhos.length - 1]).replace('.', ',')}m\`\n\n` +
+        '_Precisa de outra medida? Responda *calcular* que eu monto o corte pelas medidas do telhado._'
+      : '_Ex:_ `3 de 4m, 9 de 4,75 e 5 de 6,20`\n\n_Pode mandar tudo de uma vez._'),
 
   pedeAmbiente:
     '📐 Quais as *medidas do local*?\n\n' +
@@ -49,23 +53,70 @@ const T = {
     `📦 No orçamento: *${qtd} produto(s)* · *${metros} mts*\n\n` +
     `Falta mais alguma telha?\n\n*1* — Sim, adicionar outra\n*2* — Não, seguir`,
 
+  // ── Acabamentos e fixação ───────────────────────────────────────────
+  pedeAcabamento:
+    '🔩 Quer os *acabamentos e parafusos* junto?\n\n' +
+    '_Cumeeira, frontal, lateral e a parafusagem — eu calculo a quantidade pelo tamanho do telhado._\n\n' +
+    '*1* — Sim, manda tudo\n*2* — Só as telhas',
+
+  pedeComprimentoAcabamento:
+    '📐 Pra calcular os acabamentos, qual o *comprimento do telhado* em metros?\n\n' +
+    '_É o lado da cumeeira. Ex: `20`_',
+
+  pedeQuedasAcabamento:
+    '🏠 E esse telhado tem *1 queda* ou *2 quedas*?\n\n*1* — Uma queda\n*2* — Duas quedas',
+
   pedeEstrutura:
     '🔧 Quer *estrutura* (vigas/terças galvanizadas) junto?\n\n' +
     '*1* — Só as telhas\n*2* — Telhas + estrutura',
 
   pedeNome: '🙂 Quase lá! Qual o seu *nome* (ou o da empresa)?',
+  pedeCep:
+    '📮 Qual o *CEP* da obra?\n\n' +
+    '_É o que define a distância até a unidade mais próxima._\n' +
+    'Se não souber, responda *pular*.',
   pedeCidade: '🏙️ Qual a *cidade* de entrega?',
   pedeEndereco: '📍 E o *endereço da obra* (rua, número e bairro)?\n\n_Necessário para a entrega._',
 
   confirmaDados: (c) =>
     `📋 Confirma os dados de entrega?\n\n` +
-    `*Nome:* ${c.nome}\n*Cidade:* ${c.cidade}\n*Endereço:* ${c.endereco}\n\n` +
+    `*Nome:* ${c.nome}\n${c.cep ? `*CEP:* ${c.cep}\n` : ''}` +
+    `*Cidade:* ${c.cidade}\n*Endereço:* ${c.endereco}\n\n` +
     `*1* — Confirmar\n*2* — Entregar em outro endereço`,
+
+  // ── Conferência da lista ────────────────────────────────────────────
+  conferencia: (nome, linhas, metragem) =>
+    `✅ *Confere pra mim, ${nome}?*\n\n` +
+    `_Essa é a lista completa do seu orçamento:_\n\n` +
+    linhas.map((l, i) =>
+      `*${i + 1}.* ${l.nome}\n     ${l.tipo === 'telha'
+        ? `${l.qtd} peças de ${String(l.comp).replace('.', ',')}m`
+        : `${String(l.qtd).replace('.', ',')} ${l.rotulo}`}`).join('\n') +
+    `\n\n*Metragem de telha:* ${metragem} mts\n\n` +
+    `*1* — Está certo, pode gerar 📄\n` +
+    `*2* — Mudar a quantidade de um item\n` +
+    `*3* — Tirar um item da lista\n` +
+    `*4* — Recomeçar do zero`,
+
+  pedeItemQuantidade:
+    '✏️ Qual item e qual a nova quantidade?\n\n_Ex:_ `3 = 250` _(item 3 passa a ter 250)_',
+  pedeItemTirar: '🗑️ Qual o *número* do item que você quer tirar?',
+  erroItem: 'Não achei esse item 🤔 Responda com o *número* que aparece na lista.',
+  erroTirarTelha: 'Esse é o produto principal — sem telha não existe orçamento. Use *4* pra recomeçar.',
 
   erroOpcao: 'Não entendi 🤔 Responda com o *número* da opção.',
   erroCortes: 'Não consegui ler as medidas 🤔 Use `quantidade de comprimento`, ex: `3 de 4m, 9 de 4,75`.',
   erroDimensoes: 'Me diga as medidas como `comprimento x largura`, ex: `20x10`.',
   erroEndereco: 'Preciso do endereço completo com *rua, número e bairro*.',
+
+  /** Tamanho é de fábrica: o cliente escolhe da lista, não digita qualquer medida. */
+  erroTamanhoForaDoPadrao: (nome, tamanhos, pedidos) =>
+    `📏 A *${nome}* é cortada nos tamanhos de fábrica:\n\n` +
+    tamanhos.map((t) => `• ${String(t).replace('.', ',')}m`).join('\n') +
+    `\n\n${pedidos.length > 1 ? `Os tamanhos *${pedidos.join('m, ')}m* não estão nessa lista.` :
+      `O tamanho *${pedidos[0]}m* não está nessa lista.`}\n\n` +
+    `Me manda a lista de novo usando esses tamanhos — ou responda *calcular* que eu monto ` +
+    `o corte a partir das medidas do telhado.`,
 
   handoffPedido: 'Sem problemas! Um dos nossos vendedores te atende por aqui em instantes 👍',
   handoffErro: 'Vou te passar pra um vendedor pra te ajudar melhor. Já já alguém te chama 😉',
@@ -144,8 +195,19 @@ function interpretarCortes(texto) {
   return out;
 }
 
+/** "3 = 250", "item 3 250", "3: 250" → { item: 3, valor: 250 } */
+function interpretarAjuste(texto) {
+  const t = String(texto || '').replace(/,(\d)/g, '.$1');
+  const m = t.match(/(\d+)\s*(?:=|:|->|para|pra|\s)\s*(\d+(?:\.\d+)?)/);
+  if (!m) return null;
+  const item = parseInt(m[1], 10);
+  const valor = parseFloat(m[2]);
+  if (!(item > 0) || !(valor >= 0)) return null;
+  return { item, valor };
+}
+
 module.exports = {
   T,
   interpretarSimNao, interpretarDimensoes, interpretarQuedas,
-  interpretarEscolha, interpretarCortes,
+  interpretarEscolha, interpretarCortes, interpretarAjuste,
 };

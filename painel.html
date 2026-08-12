@@ -3,200 +3,218 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Painel de Orçamentos — 4A</title>
-<style>
-  *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif}
-  body{background:#f1f5f9;color:#0f172a;padding:20px}
-  .wrap{max-width:1280px;margin:0 auto}
-  header{display:flex;align-items:center;gap:14px;margin-bottom:18px;flex-wrap:wrap}
-  header h1{font-size:22px}
-  header .sp{flex:1}
-  .btn{background:#0ea5e9;color:#fff;border:none;padding:10px 16px;border-radius:9px;font-size:13.5px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-block}
-  .btn:hover{background:#0284c7}
-  .btn.g{background:#fff;color:#334155;border:1px solid #cbd5e1}
-  /* KPIs */
-  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
-  .kpi{background:#fff;border-radius:12px;padding:14px 16px;border:1px solid #e2e8f0}
-  .kpi b{display:block;font-size:22px;color:#0f172a;line-height:1.2}
-  .kpi small{color:#64748b;font-size:12px}
-  .kpi.dest b{color:#0284c7}
-  .kpi.ok b{color:#16a34a}
-  /* filtros */
-  .filtros{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin-bottom:14px;display:grid;grid-template-columns:2fr repeat(4,1fr) auto;gap:9px;align-items:end}
-  .filtros label{display:block;font-size:11.5px;color:#64748b;margin-bottom:4px;font-weight:600}
-  .filtros input,.filtros select{width:100%;padding:9px 11px;border:1px solid #cbd5e1;border-radius:8px;font-size:13.5px;outline:none;background:#fff}
-  .filtros input:focus,.filtros select:focus{border-color:#0ea5e9}
-  /* tabela */
-  .tab{background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden}
-  table{width:100%;border-collapse:collapse;font-size:13px}
-  th{background:#f8fafc;text-align:left;padding:10px 12px;font-size:11.5px;color:#64748b;text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid #e2e8f0;white-space:nowrap}
-  td{padding:11px 12px;border-bottom:1px solid #f1f5f9;vertical-align:top}
-  tr.l:hover{background:#f8fafc;cursor:pointer}
-  .num{font-weight:700;color:#0369a1}
-  .mut{color:#94a3b8;font-size:11.5px}
-  .val{font-weight:700;white-space:nowrap}
-  .tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
-  .t-wpp{background:#dcfce7;color:#166534}
-  .t-web{background:#dbeafe;color:#1e40af}
-  .t-cli{background:#f1f5f9;color:#475569}
-  .t-vend{background:#fef3c7;color:#92400e}
-  .st{border:1px solid #cbd5e1;border-radius:7px;padding:5px 8px;font-size:12px;font-weight:600;cursor:pointer;background:#fff}
-  .st.novo{border-color:#93c5fd;color:#1d4ed8;background:#eff6ff}
-  .st.em_negociacao{border-color:#fcd34d;color:#92400e;background:#fffbeb}
-  .st.fechado{border-color:#86efac;color:#166534;background:#f0fdf4}
-  .st.perdido{border-color:#fca5a5;color:#991b1b;background:#fef2f2}
-  .det{background:#f8fafc;padding:0 12px}
-  .det .in{padding:12px 0;display:grid;grid-template-columns:1fr 1fr;gap:16px;font-size:12.5px}
-  .det h4{font-size:12px;color:#64748b;text-transform:uppercase;margin-bottom:6px;letter-spacing:.3px}
-  .det .ln{padding:3px 0;color:#334155}
-  .det .avs{grid-column:1/-1;background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:8px 10px;border-radius:8px}
-  .vazio{padding:44px;text-align:center;color:#94a3b8}
-  @media(max-width:900px){.filtros{grid-template-columns:1fr 1fr}.det .in{grid-template-columns:1fr}}
-</style>
+<title>Orçamentos — Painel 4A</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/painel/ui.css">
 </head>
-<body>
-<div class="wrap">
-  <header>
-    <h1>📊 Orçamentos</h1>
-    <span class="sp"></span>
-    <a class="btn g" href="/orcamento?vendedor=Interno" target="_blank">+ Novo orçamento</a>
-    <a class="btn g" href="/painel/produtos">🧱 Produtos</a>
-    <a class="btn g" href="/painel/dados">📥 Importar planilha</a>
-    <button class="btn g" onclick="exportar()">Exportar CSV</button>
-    <button class="btn" onclick="carregar()">Atualizar</button>
-  </header>
+<body></body>
+<script src="/painel/ui.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   ORÇAMENTOS — tudo que o sistema gerou, por WhatsApp ou pelo site,
+   pelo cliente sozinho ou por um vendedor. Clicar na linha abre a
+   ficha completa na gaveta lateral.
+   ═══════════════════════════════════════════════════════════════════ */
+const SIT={novo:['Novo','info'],em_negociacao:['Em negociação','warn'],
+           fechado:['Fechado','ok'],perdido:['Perdido','bad']};
+let dados=[];
+
+montarShell('orcamentos','Orçamentos','Gerados pelo site e pelo WhatsApp',
+  `<button class="btn g" onclick="exportar()">⤓ Exportar CSV</button>
+   <button class="btn" onclick="carregar()">Atualizar</button>`);
+
+g('corpo').innerHTML=`
+  <div class="filtros">
+    <div class="campo busca" style="flex:2"><label>Buscar</label>
+      <input id="f-busca" placeholder="número, nome, telefone ou cidade" oninput="deb()"></div>
+    <div class="campo"><label>De</label><input id="f-de" type="date" onchange="carregar()"></div>
+    <div class="campo"><label>Até</label><input id="f-ate" type="date" onchange="carregar()"></div>
+    <div class="campo"><label>Quem gerou</label><select id="f-origem" onchange="carregar()">
+      <option value="">Todos</option><option value="cliente">Cliente</option>
+      <option value="vendedor">Vendedor</option></select></div>
+    <div class="campo"><label>Canal</label><select id="f-canal" onchange="carregar()">
+      <option value="">Todos</option><option value="web">Site</option>
+      <option value="whatsapp">WhatsApp</option></select></div>
+    <div class="campo"><label>Situação</label><select id="f-status" onchange="carregar()">
+      <option value="">Todas</option>
+      ${Object.entries(SIT).map(([k,v])=>`<option value="${k}">${v[0]}</option>`).join('')}</select></div>
+  </div>
 
   <div class="kpis" id="kpis"></div>
 
-  <div class="filtros">
-    <div><label>Buscar</label><input id="f-busca" placeholder="número, cliente, telefone, cidade" oninput="deb()"></div>
-    <div><label>De</label><input id="f-de" type="date" onchange="carregar()"></div>
-    <div><label>Até</label><input id="f-ate" type="date" onchange="carregar()"></div>
-    <div><label>Origem</label><select id="f-origem" onchange="carregar()">
-      <option value="">Todas</option><option value="cliente">Cliente (autoatendimento)</option><option value="vendedor">Vendedor (interno)</option></select></div>
-    <div><label>Canal</label><select id="f-canal" onchange="carregar()">
-      <option value="">Todos</option><option value="whatsapp">WhatsApp</option><option value="web">Site</option></select></div>
-    <div><label>Situação</label><select id="f-status" onchange="carregar()">
-      <option value="">Todas</option><option value="novo">Novo</option><option value="em_negociacao">Em negociação</option>
-      <option value="fechado">Fechado</option><option value="perdido">Perdido</option></select></div>
-  </div>
-
-  <div class="tab">
+  <div class="tabela">
     <table>
       <thead><tr>
-        <th>Nº</th><th>Data</th><th>Cliente</th><th>Origem</th>
-        <th>Produtos</th><th style="text-align:right">Metragem</th>
-        <th style="text-align:right">Total</th><th>Situação</th><th></th>
+        <th>Número</th><th>Data</th><th>Cliente</th><th>Origem</th>
+        <th>Produtos</th><th class="num">Metragem</th><th class="num">Total</th>
+        <th>Situação</th><th></th>
       </tr></thead>
-      <tbody id="corpo"></tbody>
+      <tbody id="lista"></tbody>
     </table>
-    <div class="vazio" id="vazio" style="display:none">Nenhum orçamento encontrado com esses filtros.</div>
-  </div>
-</div>
-
-<script>
-let dados=[];
-const BRL=v=>Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-const dt=s=>{const d=new Date(s);return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});};
-const LABEL={novo:'Novo',em_negociacao:'Em negociação',fechado:'Fechado',perdido:'Perdido'};
+    <div class="vazio" id="vazio" hidden>
+      <b>Nenhum orçamento no período</b>
+      Ajuste os filtros acima ou espere o primeiro pedido chegar.
+    </div>
+  </div>`;
 
 let timer;
-function deb(){clearTimeout(timer);timer=setTimeout(carregar,350);}
+const deb=()=>{clearTimeout(timer);timer=setTimeout(carregar,350);};
 
 async function carregar(){
   const q=new URLSearchParams();
-  const g=id=>document.getElementById(id).value;
-  if(g('f-busca'))q.set('busca',g('f-busca'));
-  if(g('f-de'))q.set('de',g('f-de'));
-  if(g('f-ate'))q.set('ate',g('f-ate'));
-  if(g('f-origem'))q.set('origem',g('f-origem'));
-  if(g('f-canal'))q.set('canal',g('f-canal'));
-  if(g('f-status'))q.set('status',g('f-status'));
-
-  const r=await fetch('/api/painel/orcamentos?'+q).then(r=>r.json()).catch(()=>null);
-  if(!r)return;
-  dados=r.orcamentos;
-  pintarKpis(r.estatisticas);
-  pintarTabela();
+  for(const [p,id] of [['busca','f-busca'],['de','f-de'],['ate','f-ate'],
+                       ['origem','f-origem'],['canal','f-canal'],['status','f-status']]){
+    const v=g(id)?.value;if(v)q.set(p,v);
+  }
+  try{
+    const r=await pegar('/api/painel/orcamentos?'+q);
+    dados=r.orcamentos||[];
+    contador('orcamentos',dados.length);
+    pintarKpis(r.estatisticas||{});
+    pintarLista();
+  }catch(e){
+    g('lista').innerHTML=`<tr><td colspan="9"><div class="msg bad">${esc(e.message)}</div></td></tr>`;
+  }
 }
 
 function pintarKpis(e){
-  document.getElementById('kpis').innerHTML=`
-    <div class="kpi"><b>${e.quantidade}</b><small>orçamentos</small></div>
-    <div class="kpi dest"><b>R$ ${BRL(e.valorTotal)}</b><small>valor total</small></div>
-    <div class="kpi"><b>R$ ${BRL(e.ticketMedio)}</b><small>ticket médio</small></div>
-    <div class="kpi"><b>${BRL(e.metragemTotal)} m</b><small>metragem</small></div>
-    <div class="kpi ok"><b>${e.fechados} · ${e.conversao}%</b><small>fechados · conversão</small></div>
-    <div class="kpi"><b>${e.porOrigem.cliente} / ${e.porOrigem.vendedor}</b><small>cliente / vendedor</small></div>
-    <div class="kpi"><b>${e.porCanal.whatsapp} / ${e.porCanal.web}</b><small>WhatsApp / site</small></div>
-    <div class="kpi"><b>${e.precisaramVendedor}</b><small>foram p/ vendedor</small></div>`;
+  const cartao=(rot,val,det,cls='')=>`<div class="kpi ${cls}"><span>${rot}</span><b>${val}</b>
+    ${det?`<i>${det}</i>`:''}</div>`;
+  g('kpis').innerHTML=
+    cartao('Orçamentos',e.quantidade??0,`${e.porOrigem?.cliente??0} pelo cliente · ${e.porOrigem?.vendedor??0} por vendedor`)+
+    cartao('Valor total','R$ '+BRL(e.valorTotal),'ticket médio R$ '+BRL(e.ticketMedio))+
+    cartao('Fechados',(e.fechados??0)+' · '+(e.conversao??0)+'%','R$ '+BRL(e.valorFechado))+
+    cartao('Metragem',NUM(e.metragemTotal)+' m','soma de todas as peças','q')+
+    cartao('Foram ao comercial',e.precisaramVendedor??0,'fora do raio ou acima do limite','q')+
+    cartao('Canal',(e.porCanal?.web??0)+' / '+(e.porCanal?.whatsapp??0),'site / WhatsApp','q');
 }
 
-function pintarTabela(){
-  const c=document.getElementById('corpo');
-  document.getElementById('vazio').style.display=dados.length?'none':'block';
-  c.innerHTML=dados.map((o,i)=>{
-    const prods=o.produtos?.length?o.produtos.map(p=>p.nome).join(', '):'—';
-    const orig=(o.origem||'cliente')==='vendedor';
-    return `<tr class="l" onclick="abrir(${i})">
-      <td class="num">${o.numero}</td>
-      <td>${dt(o.criadoEm)}</td>
-      <td><b>${o.cliente?.nome||'—'}</b><div class="mut">${o.cliente?.telefone||''} · ${o.cliente?.cidade||''}</div></td>
-      <td><span class="tag ${orig?'t-vend':'t-cli'}">${orig?(o.vendedor||'Vendedor'):'Cliente'}</span>
-          <span class="tag ${o.canal==='whatsapp'?'t-wpp':'t-web'}">${o.canal==='whatsapp'?'WhatsApp':'Site'}</span></td>
-      <td>${prods.length>52?prods.slice(0,52)+'…':prods}<div class="mut">${o.totalPecas} peças</div></td>
-      <td style="text-align:right">${BRL(o.metragemTotal)} m</td>
-      <td style="text-align:right" class="val">R$ ${BRL(o.totalAvista)}
-        <div class="mut">${o.totalFrete>0?'frete R$ '+BRL(o.totalFrete):(o.frete&&o.frete.valor===null?'frete a confirmar':'')}</div></td>
+function pintarLista(){
+  g('vazio').hidden=!!dados.length;
+  g('lista').innerHTML=dados.map((o,i)=>{
+    const prods=(o.produtos||[]).map(p=>p.nome).join(', ')||'—';
+    const vend=(o.origem||'cliente')==='vendedor';
+    const [rot,cor]=SIT[o.status]||[o.status,'off'];
+    return `<tr class="clicavel" onclick="verFicha(${i})">
+      <td><span class="prim" style="font-variant-numeric:tabular-nums">${esc(o.numero)}</span>
+        ${o.precisouVendedor?'<div class="sec">↗ comercial</div>':''}</td>
+      <td><div class="sec">${dataCurta(o.criadoEm)}</div>
+        <div class="sec">${new Date(o.criadoEm).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div></td>
+      <td><div class="prim">${esc(o.cliente?.nome||'—')}</div>
+        <div class="sec">${telFmt(o.cliente?.telefone)} · ${esc(o.cliente?.cidade||'')}</div></td>
+      <td><span class="tag ${vend?'brand':'off'}">${vend?esc(o.vendedor||'Vendedor'):'Cliente'}</span>
+        <div class="sec" style="margin-top:3px">${o.canal==='whatsapp'?'WhatsApp':'Site'}</div></td>
+      <td style="max-width:230px"><div class="sec">${esc(prods.length>60?prods.slice(0,60)+'…':prods)}</div>
+        <div class="sec">${o.totalPecas||0} peças</div></td>
+      <td class="num">${NUM(o.metragemTotal)} m</td>
+      <td class="num"><span class="prim">R$ ${BRL(o.totalAvista)}</span>
+        <div class="sec">${o.totalFrete>0?'+ frete R$ '+BRL(o.totalFrete)
+          :(o.frete&&o.frete.valor===null?'frete a confirmar':'frete grátis')}</div></td>
       <td onclick="event.stopPropagation()">
-        <select class="st ${o.status}" onchange="mudar('${o.numero}',this.value)">
-          ${Object.entries(LABEL).map(([k,v])=>`<option value="${k}" ${o.status===k?'selected':''}>${v}</option>`).join('')}
-        </select></td>
-      <td onclick="event.stopPropagation()">${o.pdf?`<a class="btn g" href="${o.pdf}" target="_blank">PDF</a>`:''}</td>
-    </tr>
-    <tr id="d${i}" style="display:none"><td colspan="9" class="det"><div class="in">
-      <div><h4>Itens</h4>${(o.cortes||[]).map(g=>`<div class="ln"><b>${g.nome}</b><br>${g.cortes.map(x=>x.quantidade+' x '+x.comprimentoM+'m').join(' · ')}
-        ${g.ambiente?`<div class="mut">calculado de ${g.ambiente.comprimentoGalpaoM}x${g.ambiente.larguraGalpaoM}m, ${g.ambiente.quedas} queda(s)</div>`:''}</div>`).join('')||'—'}</div>
-      <div><h4>Entrega e valores</h4>
-        <div class="ln">${o.cliente?.endereco||'—'}</div>
-        <div class="ln">${o.cliente?.cidade||''}</div>
-        ${o.frete?`<div class="ln mut">${o.frete.descricao||''}${o.frete.unidade?' · sai de '+o.frete.unidade:''}</div>`:''}
-        <div class="ln">Produtos: R$ ${BRL(o.totalProdutos)}</div>
-        <div class="ln">Frete: ${o.totalFrete===null?'a confirmar':'R$ '+BRL(o.totalFrete)}</div>
-        <div class="ln"><b>Total: R$ ${BRL(o.totalAvista)}</b></div></div>
-      ${o.avisos?.length?`<div class="avs">⚠️ ${o.avisos.join('<br>')}</div>`:''}
-    </div></td></tr>`;
+        <select onchange="mudar('${esc(o.numero)}',this.value)" style="padding:6px 8px;border:1px solid var(--line);
+          font-family:inherit;font-size:13px;background:#fff;cursor:pointer">
+          ${Object.entries(SIT).map(([k,v])=>`<option value="${k}" ${o.status===k?'selected':''}>${v[0]}</option>`).join('')}
+        </select>
+        <div style="margin-top:4px"><span class="tag ${cor}">${rot}</span></div></td>
+      <td class="acao" onclick="event.stopPropagation()">
+        ${o.pdf?`<a class="btn g sm" href="${o.pdf}" target="_blank">PDF</a>`:nada}</td>
+    </tr>`;
   }).join('');
 }
 
-function abrir(i){const d=document.getElementById('d'+i);d.style.display=d.style.display==='none'?'table-row':'none';}
+/* ── Ficha do orçamento ───────────────────────────────────────────── */
+function verFicha(i){
+  const o=dados[i];
+  const [rot,cor]=SIT[o.status]||[o.status,'off'];
+  const zap=zapLink(o.cliente?.telefone);
+
+  const itens=(o.cortes||[]).map(gp=>`
+    <div style="border-bottom:1px solid var(--line-2);padding:9px 0">
+      <b class="cond" style="font-size:15px">${esc(gp.nome||'Produto')}</b>
+      <div style="font-size:13.5px;margin-top:2px">${(gp.cortes||[]).map(x=>
+        `${x.quantidade} × ${NUM(x.comprimentoM)}m`).join(' · ')||'—'}</div>
+      ${gp.ambiente?`<div style="font-size:12px;color:var(--muted);margin-top:2px">
+        calculado de ${gp.ambiente.comprimentoGalpaoM}×${gp.ambiente.larguraGalpaoM}m,
+        ${gp.ambiente.quedas} água(s)</div>`:''}
+    </div>`).join('')||`<div class="vazio">Sem detalhe de itens.</div>`;
+
+  const resumo=(o.produtos||[]).map(p=>`<tr>
+      <td>${esc(p.nome)}</td><td class="num">${p.pecas} pç</td>
+      <td class="num">${NUM(p.metros)} m</td><td class="num">R$ ${BRL(p.subtotal)}</td></tr>`).join('');
+
+  abrirGaveta(
+    `<h2>${esc(o.numero)}</h2>
+     <div style="font-size:13px;color:var(--muted)">${data(o.criadoEm)}</div>
+     <div style="margin-top:6px"><span class="tag ${cor}">${rot}</span></div>`,
+    `<div class="card">
+      <span class="eyebrow">Cliente</span>
+      ${ficha([
+        ['Nome',esc(o.cliente?.nome||'—')],
+        ['WhatsApp',telFmt(o.cliente?.telefone)+(zap?` · <a href="${zap}" target="_blank" style="color:var(--brand-dd);font-weight:600">abrir</a>`:'')],
+        ['Cidade',esc(o.cliente?.cidade||'—')],
+        ['Endereço',esc(o.cliente?.endereco||'—')],
+      ])}
+      <div style="margin-top:12px"><a class="btn g sm" href="/painel/clientes?tel=${encodeURIComponent(String(o.cliente?.telefone||'').replace(/[^0-9]/g,''))}">Ver cadastro do cliente</a></div>
+    </div>
+
+    <div class="card">
+      <span class="eyebrow">Valores</span>
+      ${ficha([
+        ['Produtos','R$ '+BRL(o.totalProdutos)],
+        ['Frete',o.totalFrete===null?'a confirmar pelo vendedor':(o.totalFrete>0?'R$ '+BRL(o.totalFrete):'grátis (embutido no preço)')],
+        ['Total à vista','<b style="font-size:17px;color:var(--brand-dd)">R$ '+BRL(o.totalAvista)+'</b>'],
+        ['Metragem',NUM(o.metragemTotal)+' m · '+(o.totalPecas||0)+' peças'],
+        ['Entrega',o.frete?esc(o.frete.descricao||'—')+(o.frete.km?` (${o.frete.km} km)`:''):'—'],
+        ['Sai de',o.frete?.unidade?esc(o.frete.unidade):null],
+      ])}
+    </div>
+
+    ${resumo?`<div class="card"><span class="eyebrow">Por produto</span>
+      <div class="tabela" style="border:none"><table><tbody>${resumo}</tbody></table></div></div>`:''}
+
+    <div class="card"><span class="eyebrow">Lista de cortes</span>${itens}</div>
+
+    ${(o.avisos||[]).length?`<div class="msg warn"><b>Observações do cálculo</b>
+      <ul>${o.avisos.map(a=>`<li>${esc(a)}</li>`).join('')}</ul></div>`:''}
+
+    <div class="card">
+      <span class="eyebrow">Histórico</span>
+      ${(o.historico||[]).map(h=>`<div style="display:flex;gap:10px;font-size:13px;padding:6px 0;
+        border-bottom:1px solid var(--line-2)">
+        <span style="color:var(--muted);white-space:nowrap">${dataCurta(h.em)}</span>
+        <span><b>${(SIT[h.status]||[h.status])[0]}</b>${h.nota?' — '+esc(h.nota):''}</span></div>`).join('')}
+    </div>
+
+    ${o.pdf?`<a class="btn wide" href="${o.pdf}" target="_blank">📄 Abrir PDF do orçamento</a>`:''}`
+  );
+}
 
 async function mudar(numero,status){
-  await fetch('/api/painel/status',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({numero,status})});
-  carregar();
+  try{ await enviar('/api/painel/status',{numero,status}); carregar(); }
+  catch(e){ alert(e.message); }
 }
 
 function exportar(){
-  const cab=['Numero','Data','Cliente','Telefone','Cidade','Endereco','Origem','Canal','Pecas','Metragem','Produtos','Frete','Total','Situacao'];
-  const linhas=dados.map(o=>[o.numero,dt(o.criadoEm),o.cliente?.nome||'',o.cliente?.telefone||'',
+  const cab=['Numero','Data','Cliente','Telefone','Cidade','Endereco','Origem','Canal',
+    'Pecas','Metragem','Produtos','Frete','Total','Situacao'];
+  const linhas=dados.map(o=>[o.numero,data(o.criadoEm),o.cliente?.nome||'',o.cliente?.telefone||'',
     o.cliente?.cidade||'',o.cliente?.endereco||'',o.origem||'cliente',o.canal,o.totalPecas,
     o.metragemTotal,BRL(o.totalProdutos),o.totalFrete===null?'a confirmar':BRL(o.totalFrete),
-    BRL(o.totalAvista),LABEL[o.status]||o.status]
-    .map(v=>`"${String(v).replace(/"/g,'""')}"`).join(';'));
-  const csv='﻿'+[cab.join(';'),...linhas].join('\n');
+    BRL(o.totalAvista),(SIT[o.status]||[o.status])[0]]
+    .map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(';'));
   const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.href=URL.createObjectURL(new Blob(['﻿'+[cab.join(';'),...linhas].join('\n')],
+    {type:'text/csv;charset=utf-8'}));
   a.download='orcamentos-'+new Date().toISOString().slice(0,10)+'.csv';
   a.click();
 }
 
 // padrão: últimos 30 dias
-const hoje=new Date(), atras=new Date(Date.now()-30*864e5);
-document.getElementById('f-ate').value=hoje.toISOString().slice(0,10);
-document.getElementById('f-de').value=atras.toISOString().slice(0,10);
+g('f-ate').value=new Date().toISOString().slice(0,10);
+g('f-de').value=new Date(Date.now()-30*864e5).toISOString().slice(0,10);
 carregar();
-setInterval(carregar,60000); // atualiza sozinho a cada minuto
+setInterval(carregar,60000);
 </script>
-</body>
 </html>

@@ -27,7 +27,8 @@ function novaFicha(chatId) {
       cidade: conhecido?.cidade || null,
       endereco: conhecido?.endereco || null,
       documento: conhecido?.documento || null,
-      cep: null, estado: null,
+      cep: conhecido?.cep || null,
+      estado: null,
       email: conhecido?.email || null,
       telefone,
     },
@@ -43,9 +44,16 @@ function novaFicha(chatId) {
         larguraGalpaoM: null,
         quedas: null,
       },
+      // acabamentos e fixação — OPCIONAIS, valem para o orçamento todo
+      comAcabamento: null,
+      complementos: null,         // [{ produtoId, metros? }]
+      acabComprimentoM: null,     // comprimento do telhado, quando não vem do ambiente
       // estrutura é OPCIONAL e vale para o orçamento todo
       comEstrutura: null,
+      perfilEscolhido: null,      // id do perfil, quando há mais de um cadastrado
       perfis: null,               // [{ perfilId, metros }]
+      // lista conferida pelo cliente antes de gerar (é ela que vira o PDF)
+      linhas: null,               // [{ tipo, id, nome, qtd, comp, rotulo }]
       memoriaCalculo: null,       // rastro do cálculo (auditoria)
     },
     anexos: [],

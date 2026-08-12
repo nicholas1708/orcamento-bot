@@ -55,6 +55,57 @@ const rotuloFaixa = (f) => {
 };
 
 /**
+ * QUANTO ENTRA NA NOTA de um complemento — REGRA ÚNICA.
+ *
+ * Usada em dois lugares que precisam bater exatamente:
+ *   1) aqui no motor, para calcular o preço;
+ *   2) na tela de conferência (/api/lista), que mostra a lista SEM valores
+ *      para o cliente ajustar antes de fechar.
+ *
+ * Se o cliente não mexer, a quantidade volta igual e o preço não muda.
+ *
+ * @param {object} item   produto do catálogo
+ * @param {object} comp   { metros? , quantidade? } — o que foi pedido
+ * @param {number} metragemTotal  metros de telha do orçamento (para consumo por m²)
+ * @returns {{qtd:number, nome:string, unidade:string, rotulo:string, aviso:string|null}}
+ */
+function quantidadeDoComplemento(item, comp, metragemTotal) {
+  let qtd, nome = item.nome, unidade = item.unidade || 'UN', rotulo = 'peças', aviso = null;
+  const informada = Number(comp.quantidade);
+  const temInformada = Number.isFinite(informada) && informada > 0;
+
+  if (item.venda_por === 'metro') {
+    // cobrado por metro corrido (ex: acabamento lateral a R$ 27,48/m)
+    qtd = temInformada ? m3(informada) : m3(Number(comp.metros) || 0);
+    unidade = item.unidade || 'M';
+    rotulo = 'metros';
+
+  } else if (item.venda_por === 'barra') {
+    const barra = Number(item.comprimento_barra_m) || 3;
+    const metros = Number(comp.metros) || 0;
+    qtd = temInformada ? Math.ceil(informada) : Math.ceil(metros / barra);
+    nome = `${item.nome} (${qtd} barra${qtd > 1 ? 's' : ''} de ${barra}m)`;
+    unidade = 'PC';
+    rotulo = `barras de ${String(barra).replace('.', ',')}m`;
+    if (metros > 0 && qtd > 0) {
+      const sobra = m3(qtd * barra - metros);
+      if (sobra > 0) aviso = `${item.nome}: ${metros}m necessários → ${qtd} barras de ${barra}m (sobra de ${sobra}m).`;
+    }
+
+  } else if (item.aplica_em && (comp.metros > 0) && !Number.isFinite(informada)) {
+    // peça avulsa com rendimento por metro (ex: cumeeira 1 un por metro)
+    const rend = Number(item.rendimento_m) || 1;
+    qtd = Math.ceil(Number(comp.metros) / rend);
+
+  } else {
+    qtd = temInformada
+      ? Math.ceil(informada)
+      : Math.ceil((Number(item.consumo_por_m2) || 0) * (Number(metragemTotal) || 0));
+  }
+  return { qtd, nome, unidade, rotulo, aviso };
+}
+
+/**
  * @param {object} pedido
  *   {
  *     grupos: [                                   // vários produtos por orçamento
@@ -196,41 +247,10 @@ function calcularOrcamento(pedido, catalogo) {
     const item = (catalogo.complementos || []).find((x) => x.id === comp.produtoId);
     if (!item) throw new Error(`Complemento inválido: ${comp.produtoId}`);
 
-    let qtd, nome = item.nome, unidade = item.unidade || 'UN';
-
-    if (item.venda_por === 'metro') {
-      // cobrado por metro corrido (ex: acabamento lateral a R$ 27,48/m)
-      qtd = Number.isFinite(Number(comp.quantidade)) && Number(comp.quantidade) > 0
-        ? m3(Number(comp.quantidade))
-        : m3(Number(comp.metros) || 0);
-      if (qtd <= 0) continue;
-
-    } else if (item.venda_por === 'barra') {
-      const barra = Number(item.comprimento_barra_m) || 3;
-      const metros = Number(comp.metros) || 0;
-      qtd = Number.isFinite(Number(comp.quantidade)) && Number(comp.quantidade) > 0
-        ? Math.ceil(Number(comp.quantidade))
-        : Math.ceil(metros / barra);
-      if (qtd <= 0) continue;
-      nome = `${item.nome} (${qtd} barra${qtd > 1 ? 's' : ''} de ${barra}m)`;
-      unidade = 'PC';
-      if (metros > 0) {
-        const sobra = m3(qtd * barra - metros);
-        if (sobra > 0) avisos.push(`${item.nome}: ${metros}m necessários → ${qtd} barras de ${barra}m (sobra de ${sobra}m).`);
-      }
-
-    } else if (item.aplica_em && (comp.metros > 0) && !Number.isFinite(Number(comp.quantidade))) {
-      // peça avulsa com rendimento por metro (ex: cumeeira 1 un por metro)
-      const rend = Number(item.rendimento_m) || 1;
-      qtd = Math.ceil(Number(comp.metros) / rend);
-      if (qtd <= 0) continue;
-
-    } else {
-      qtd = Number.isFinite(Number(comp.quantidade)) && Number(comp.quantidade) > 0
-        ? Math.ceil(Number(comp.quantidade))
-        : Math.ceil((Number(item.consumo_por_m2) || 0) * metragemTotal);
-      if (qtd <= 0) continue;
-    }
+    const r = quantidadeDoComplemento(item, comp, metragemTotal);
+    const { qtd, nome, unidade } = r;
+    if (r.aviso) avisos.push(r.aviso);
+    if (!(qtd > 0)) continue;
 
     itens.push({
       codigo: item.codigo || item.id,
@@ -339,4 +359,4 @@ function calcularOrcamento(pedido, catalogo) {
   };
 }
 
-module.exports = { calcularOrcamento };
+module.exports = { calcularOrcamento, quantidadeDoComplemento };

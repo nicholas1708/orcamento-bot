@@ -14,6 +14,7 @@
 const state = require('./state');
 const { getCatalogo } = require('./pricing');
 const { calcularOrcamento } = require('./engine');
+const { montarLista, aplicarLista, complementosSugeridos } = require('./lista');
 const { calcularRomaneio, corteComTamanho } = require('./romaneio');
 const { calcularFrete } = require('./frete');
 const { gerarPDF } = require('./pdf');
@@ -43,15 +44,6 @@ async function escolhaInteligente(txt, lista, nomes, contexto) {
 const BRL = (v) => Number(v).toFixed(2).replace('.', ',');
 const metrosDe = (cortes) => cortes.reduce((s, c) => s + c.quantidade * c.comprimentoM, 0);
 
-/** Resumo de todos os produtos já adicionados ao orçamento. */
-function resumoGrupos(grupos) {
-  return grupos.map((g, i) =>
-    `*${i + 1}. ${g.nome}*\n` +
-    g.cortes.map((c) => `   • ${c.quantidade} x ${c.comprimentoM}m`).join('\n') +
-    `\n   _${metrosDe(g.cortes).toFixed(3)} mts_`
-  ).join('\n\n');
-}
-
 async function processar(chatId, textoRaw) {
   const texto = String(textoRaw || '').trim();
   const catalogo = await getCatalogo();
@@ -69,11 +61,14 @@ async function processar(chatId, textoRaw) {
   }
   if (ficha.etapa === 'HUMANO') return acoes;
 
-  // Modo conversacional (IA ativa) conduz até a ficha fechar
-  if (ai.ativa() && !['CONFIRMA', 'FIM'].includes(ficha.etapa)) {
+  // Modo conversacional (IA ativa) conduz até a ficha fechar.
+  // Da CONFERÊNCIA em diante quem manda é o código: ali o cliente ajusta a
+  // lista e autoriza a geração, e isso não pode depender de interpretação.
+  const SEM_IA = ['CONFERE', 'CONFERE_QTD', 'CONFERE_TIRAR', 'CONFIRMA', 'FIM'];
+  if (ai.ativa() && !SEM_IA.includes(ficha.etapa)) {
     const r = await conversa.coletar(ficha, texto, catalogo);
     if (r.humano) ficha.etapa = 'HUMANO';
-    else if (r.confirmar) ficha.etapa = 'CONFIRMA';
+    else if (r.confirmar) ficha.etapa = 'CONFERE';
     else ficha.etapa = 'COLETA_IA';
     state.salvar(ficha);
     return acoes.concat(r.acoes);
@@ -101,18 +96,47 @@ async function processar(chatId, textoRaw) {
     return processar(chatId, texto);
   };
 
-  /** Resumo final antes de gerar o PDF. */
-  const mostrarResumoFinal = () => {
-    const met = P.grupos.reduce((s, g) => s + metrosDe(g.cortes), 0);
-    say(
-      `✅ *Confere pra mim, ${ficha.cliente.nome}?*\n\n` +
-      resumoGrupos(P.grupos) +
-      `\n\n*Metragem total:* ${met.toFixed(3)} mts` +
-      `\n*Estrutura:* ${P.comEstrutura ? 'sim' : 'não'}` +
-      `\n*Entrega:* ${ficha.cliente.endereco} — ${ficha.cliente.cidade}\n\n` +
-      `*1* — Sim, gerar orçamento 📄\n*2* — Não, recomeçar`
+  /**
+   * CONFERÊNCIA — a lista completa (telhas, acabamentos, parafusos e
+   * estrutura), sem preço, que o cliente pode ajustar antes de fechar.
+   * Mesma lista e mesmas quantidades da tela do site.
+   */
+  const mostrarConferencia = () => {
+    const r = montarLista(
+      { grupos: P.grupos, complementos: P.complementos || [], perfis: P.perfis || [] },
+      catalogo
     );
-    ficha.etapa = 'CONFIRMA';
+    P.linhas = r.linhas;
+    say(R.T.conferencia(ficha.cliente.nome, r.linhas, r.metragemTotal.toFixed(3)));
+    say(`📍 *Entrega:* ${ficha.cliente.endereco} — ${ficha.cliente.cidade}`);
+    ficha.etapa = 'CONFERE';
+  };
+
+  /** Reexibe a lista depois de um ajuste, já com a metragem recalculada. */
+  const mostrarListaConferida = () => {
+    const met = (P.linhas || [])
+      .filter((l) => l.tipo === 'telha')
+      .reduce((s, l) => s + (Number(l.qtd) || 0) * (Number(l.comp) || 0), 0);
+    say(R.T.conferencia(ficha.cliente.nome, P.linhas || [], met.toFixed(3)));
+    ficha.etapa = 'CONFERE';
+  };
+
+  /**
+   * Perfil já escolhido: calcula a estrutura. Se não sabemos o comprimento do
+   * galpão (cliente veio pela lista de cortes), pergunta antes.
+   */
+  const seguirEstrutura = () => {
+    const amb = P.grupos.find((g) => g.ambiente)?.ambiente;
+    const L = Number(amb?.comprimentoGalpaoM) || Number(P.acabComprimentoM) || 0;
+    if (L > 0) {
+      calcularEstrutura(P, catalogo, L, say);
+      pedirDados();
+    } else {
+      say('🔧 Pra calcular a estrutura, qual o *comprimento do galpão* em metros (o lado da cumeeira)?');
+      ficha.etapa = 'ESTRUTURA_MEDIDA';
+    }
+    state.salvar(ficha);
+    return acoes;
   };
 
   /** Cliente já cadastrado? Confirma os dados em vez de perguntar tudo de novo. */
@@ -185,8 +209,14 @@ async function processar(chatId, textoRaw) {
       const cortesJa = R.interpretarCortes(texto);
       const sabe = R.interpretarSimNao(texto);
 
+      const telhaAtual = catalogo.telhas.find((t) => t.id === P.atual.telhaId);
+
       if (dimJa) { ficha.etapa = 'AMBIENTE'; return processarDireto(); }
-      if (sabe === true || texto === '1') { say(R.T.pedeCortes); ficha.etapa = 'CORTES'; break; }
+      if (sabe === true || texto === '1') {
+        say(R.T.pedeCortes(telhaAtual?.comprimentos_padrao || []));
+        ficha.etapa = 'CORTES';
+        break;
+      }
       if (sabe === false || texto === '2') { say(R.T.pedeAmbiente); ficha.etapa = 'AMBIENTE'; break; }
       if (cortesJa.length) { ficha.etapa = 'CORTES'; return processarDireto(); }
       erro('Responda *1* (já sei os tamanhos) ou *2* (informo o local).');
@@ -195,8 +225,34 @@ async function processar(chatId, textoRaw) {
 
     // ── CAMINHO A: lista de cortes ────────────────────────────────────
     case 'CORTES': {
+      const telha = catalogo.telhas.find((t) => t.id === P.atual.telhaId);
+
+      // atalho: desistiu da lista e prefere que o sistema calcule
+      if (/^(calcular|calcula|medidas?|n[ãa]o sei)$/i.test(texto)) {
+        ficha.tentativasErro = 0;
+        say(R.T.pedeAmbiente);
+        ficha.etapa = 'AMBIENTE';
+        break;
+      }
+
       const cortes = R.interpretarCortes(texto);
       if (!cortes.length) { erro(R.T.erroCortes); break; }
+
+      // TAMANHO É DE FÁBRICA: quando a telha tem tamanhos cadastrados, o
+      // cliente escolhe entre eles. Medida fora da lista não é orçada aqui —
+      // quem precisa de corte diferente vai pelo cálculo automático.
+      const padrao = (telha?.comprimentos_padrao || []).map(Number).filter((x) => x > 0);
+      if (padrao.length) {
+        const fora = [...new Set(cortes
+          .map((c) => Number(c.comprimentoM))
+          .filter((c) => !padrao.some((p) => Math.abs(p - c) < 0.005))
+          .map((c) => String(c).replace('.', ',')))];
+        if (fora.length) {
+          erro(R.T.erroTamanhoForaDoPadrao(telha.nome, padrao, fora));
+          break;
+        }
+      }
+
       ficha.tentativasErro = 0;
       const resumo = cortes.map((c) => `• ${c.quantidade} peças de ${c.comprimentoM}m`).join('\n');
       say(`Anotei ✅\n\n${resumo}\n\n*${metrosDe(cortes).toFixed(3)} mts*`);
@@ -312,11 +368,55 @@ async function processar(chatId, textoRaw) {
       if (mais === true) { ficha.tentativasErro = 0; perguntarFamilia(); break; }
       if (mais === false) {
         ficha.tentativasErro = 0;
+        say(R.T.pedeAcabamento);
+        ficha.etapa = 'ACABAMENTO';
+        break;
+      }
+      erro('Responda *1* pra adicionar outra telha ou *2* pra seguir.');
+      break;
+    }
+
+    // ── Acabamentos e parafusos ───────────────────────────────────────
+    // Cumeeira, frontal e lateral saem do PERÍMETRO do telhado; a
+    // parafusagem sai do consumo por m². Quando o cliente veio pela lista
+    // de cortes, não sabemos as medidas do telhado — aí perguntamos.
+    case 'ACABAMENTO': {
+      const quer = R.interpretarSimNao(texto);
+      if (quer === null) { erro('Responda *1* (com acabamentos) ou *2* (só as telhas).'); break; }
+      ficha.tentativasErro = 0;
+      P.comAcabamento = quer;
+
+      if (!quer) { P.complementos = []; say(R.T.pedeEstrutura); ficha.etapa = 'ESTRUTURA'; break; }
+
+      const amb = P.grupos.find((g) => g.ambiente)?.ambiente;
+      if (amb) {
+        aplicarComplementos(P, catalogo, amb.comprimentoGalpaoM, amb.quedas, say);
         say(R.T.pedeEstrutura);
         ficha.etapa = 'ESTRUTURA';
         break;
       }
-      erro('Responda *1* pra adicionar outra telha ou *2* pra seguir.');
+      say(R.T.pedeComprimentoAcabamento);
+      ficha.etapa = 'ACABAMENTO_MEDIDA';
+      break;
+    }
+
+    case 'ACABAMENTO_MEDIDA': {
+      const L = num(texto);
+      if (!L || L <= 0) { erro('Informe o comprimento em metros, ex: *20*.'); break; }
+      ficha.tentativasErro = 0;
+      P.acabComprimentoM = L;
+      say(R.T.pedeQuedasAcabamento);
+      ficha.etapa = 'ACABAMENTO_QUEDAS';
+      break;
+    }
+
+    case 'ACABAMENTO_QUEDAS': {
+      const q = R.interpretarQuedas(texto);
+      if (!q) { erro('Responda *1* (uma queda) ou *2* (duas quedas).'); break; }
+      ficha.tentativasErro = 0;
+      aplicarComplementos(P, catalogo, P.acabComprimentoM, q, say);
+      say(R.T.pedeEstrutura);
+      ficha.etapa = 'ESTRUTURA';
       break;
     }
 
@@ -327,19 +427,27 @@ async function processar(chatId, textoRaw) {
       P.comEstrutura = e;
       ficha.tentativasErro = 0;
 
-      if (e) {
-        // usa o ambiente já informado, se houver; senão pergunta o comprimento
-        const comAmbiente = P.grupos.find((g) => g.ambiente);
-        if (comAmbiente) {
-          calcularEstrutura(P, catalogo, comAmbiente.ambiente.comprimentoGalpaoM, say);
-        } else {
-          say('🔧 Pra calcular a estrutura, qual o *comprimento do galpão* em metros (o lado da cumeeira)?');
-          ficha.etapa = 'ESTRUTURA_MEDIDA';
-          break;
-        }
+      if (!e) { pedirDados(); break; }
+
+      // mais de uma terça cadastrada? quem escolhe é o cliente
+      const tercas = (catalogo.perfis || []).filter((p) => p.ativo !== false && p.tipo === 'terca');
+      if (tercas.length > 1) {
+        say(menu('🔧 Qual perfil de estrutura?', tercas.map((p) =>
+          `${p.nome} — R$ ${BRL(p.preco)}/m (vence até ${String(p.vao_maximo_m).replace('.', ',')}m)`)));
+        ficha.etapa = 'ESTRUTURA_PERFIL';
+        break;
       }
-      pedirDados();
-      break;
+      P.perfilEscolhido = tercas[0]?.id || null;
+      return seguirEstrutura();
+    }
+
+    case 'ESTRUTURA_PERFIL': {
+      const tercas = (catalogo.perfis || []).filter((p) => p.ativo !== false && p.tipo === 'terca');
+      const p = await escolhaInteligente(texto, tercas, tercas.map((x) => x.nome), 'perfil de estrutura');
+      if (!p) { erro(R.T.erroOpcao); break; }
+      ficha.tentativasErro = 0;
+      P.perfilEscolhido = p.id;
+      return seguirEstrutura();
     }
 
     case 'ESTRUTURA_MEDIDA': {
@@ -362,7 +470,7 @@ async function processar(chatId, textoRaw) {
       }
       if (ok !== true) { erro('Responda *1* pra confirmar ou *2* pra usar outro endereço.'); break; }
       ficha.tentativasErro = 0;
-      mostrarResumoFinal();
+      mostrarConferencia();
       break;
     }
 
@@ -370,8 +478,41 @@ async function processar(chatId, textoRaw) {
       if (texto.length < 2) { erro('Pode me dizer seu nome?'); break; }
       ficha.cliente.nome = texto;
       ficha.tentativasErro = 0;
-      say(R.T.pedeCidade);
-      ficha.etapa = 'CIDADE';
+      say(R.T.pedeCep);
+      ficha.etapa = 'CEP';
+      break;
+    }
+
+    // CEP → cidade. É o CEP que mede a distância até a unidade mais próxima
+    // (e a regra dos 600 km da fábrica depende disso).
+    case 'CEP': {
+      if (/^(pular|pula|n[ãa]o sei|nao sei|-)$/i.test(texto)) {
+        ficha.tentativasErro = 0;
+        say(R.T.pedeCidade);
+        ficha.etapa = 'CIDADE';
+        break;
+      }
+      const digitos = texto.replace(/\D/g, '');
+      if (digitos.length !== 8) {
+        erro('O CEP tem 8 números, ex: *15130-000*. Ou responda *pular*.');
+        break;
+      }
+      ficha.tentativasErro = 0;
+      ficha.cliente.cep = digitos;
+
+      const { cidadeDoCep } = require('./distancia');
+      const info = await cidadeDoCep(digitos).catch(() => null);
+      if (info) {
+        ficha.cliente.cidade = `${info.cidade} - ${info.uf}`;
+        ficha.cliente.estado = info.uf;
+        say(`📍 *${info.cidade} - ${info.uf}* ✅`);
+        say(R.T.pedeEndereco);
+        ficha.etapa = 'ENDERECO';
+      } else {
+        say('Não achei esse CEP na base 🤔');
+        say(R.T.pedeCidade);
+        ficha.etapa = 'CIDADE';
+      }
       break;
     }
 
@@ -388,7 +529,73 @@ async function processar(chatId, textoRaw) {
       if (texto.length < 8 || !/\d/.test(texto)) { erro(R.T.erroEndereco); break; }
       ficha.cliente.endereco = texto;
       ficha.tentativasErro = 0;
-      mostrarResumoFinal();
+      mostrarConferencia();
+      break;
+    }
+
+    // ── Conferência da lista, antes de gerar ──────────────────────────
+    case 'CONFERE': {
+      if (/^1$/.test(texto) || R.interpretarSimNao(texto) === true) {
+        ficha.tentativasErro = 0;
+        ficha.etapa = 'CONFIRMA';
+        return processarDireto();
+      }
+      if (/^2$/.test(texto)) {
+        ficha.tentativasErro = 0;
+        say(R.T.pedeItemQuantidade);
+        ficha.etapa = 'CONFERE_QTD';
+        break;
+      }
+      if (/^3$/.test(texto)) {
+        ficha.tentativasErro = 0;
+        say(R.T.pedeItemTirar);
+        ficha.etapa = 'CONFERE_TIRAR';
+        break;
+      }
+      if (/^4$/.test(texto) || R.interpretarSimNao(texto) === false) {
+        ficha = state.resetar(chatId);
+        say('Sem problemas! Digite qualquer coisa pra recomeçar 🙂');
+        break;
+      }
+      erro('Responda *1* pra gerar, *2* pra mudar quantidade, *3* pra tirar item ou *4* pra recomeçar.');
+      break;
+    }
+
+    case 'CONFERE_QTD': {
+      const aj = R.interpretarAjuste(texto);
+      const linhas = P.linhas || [];
+      if (!aj || aj.item < 1 || aj.item > linhas.length) { erro(R.T.erroItem); break; }
+      ficha.tentativasErro = 0;
+      const l = linhas[aj.item - 1];
+
+      if (aj.valor <= 0) {           // "3 = 0" é a mesma coisa que tirar
+        if (l.tipo === 'telha' && linhas.filter((x) => x.tipo === 'telha').length === 1) {
+          erro(R.T.erroTirarTelha); break;
+        }
+        linhas.splice(aj.item - 1, 1);
+        say(`🗑️ *${l.nome}* fora da lista.`);
+      } else {
+        l.qtd = l.tipo === 'telha' ? Math.floor(aj.valor) : aj.valor;
+        say(`✅ *${l.nome}*: ${String(l.qtd).replace('.', ',')} ${l.rotulo}.`);
+      }
+      P.linhas = linhas;
+      mostrarListaConferida();
+      break;
+    }
+
+    case 'CONFERE_TIRAR': {
+      const i = parseInt(texto, 10);
+      const linhas = P.linhas || [];
+      if (!(i >= 1 && i <= linhas.length)) { erro(R.T.erroItem); break; }
+      const l = linhas[i - 1];
+      if (l.tipo === 'telha' && linhas.filter((x) => x.tipo === 'telha').length === 1) {
+        erro(R.T.erroTirarTelha); break;
+      }
+      ficha.tentativasErro = 0;
+      linhas.splice(i - 1, 1);
+      P.linhas = linhas;
+      say(`🗑️ *${l.nome}* fora da lista.`);
+      mostrarListaConferida();
       break;
     }
 
@@ -404,8 +611,24 @@ async function processar(chatId, textoRaw) {
       }
 
       // ==== MATEMÁTICA PURA — nada de IA ====
+      // Vale a LISTA CONFERIDA pelo cliente, não a composição original.
+      // Se ele não mexeu em nada, o resultado é idêntico.
+      const conferido = P.linhas
+        ? aplicarLista(P.linhas, catalogo, P.grupos.find((g) => g.ambiente)?.ambiente || null)
+        : { grupos: P.grupos, complementos: P.complementos || [], perfis: P.perfis || [] };
+      P.grupos = conferido.grupos;
+      P.complementos = conferido.complementos;
+      P.perfis = conferido.perfis;
+
+      if (!P.grupos.length) {
+        say('Sua lista ficou sem telha 😕 Digite *menu* pra recomeçar.');
+        ficha.etapa = 'FIM';
+        break;
+      }
+
       // frete cobrado À PARTE: calculado sobre a prévia e somado em linha própria
-      const previa = calcularOrcamento({ grupos: P.grupos, perfis: P.perfis || [] }, catalogo);
+      const previa = calcularOrcamento(
+        { grupos: P.grupos, perfis: P.perfis || [], complementos: P.complementos || [] }, catalogo);
       const frete = await calcularFrete(
         { cep: ficha.cliente.cep, cidade: ficha.cliente.cidade, uf: ficha.cliente.estado },
         {
@@ -416,7 +639,7 @@ async function processar(chatId, textoRaw) {
         catalogo
       );
       const orcamento = calcularOrcamento(
-        { grupos: P.grupos, perfis: P.perfis || [], frete },
+        { grupos: P.grupos, perfis: P.perfis || [], complementos: P.complementos || [], frete },
         catalogo
       );
       // Obra distante ou pedido grande: gera e guarda, mas NÃO mostra o valor
@@ -495,9 +718,34 @@ async function processar(chatId, textoRaw) {
   return acoes;
 }
 
+/**
+ * ACABAMENTOS E PARAFUSOS pelo perímetro do telhado e pelo consumo por m².
+ * Mesma regra do site (lista.js) — aqui só narra o que entrou.
+ */
+function aplicarComplementos(P, catalogo, comprimentoGalpaoM, quedas, say) {
+  const maiorCorte = P.grupos.reduce(
+    (m, g) => Math.max(m, ...g.cortes.map((c) => Number(c.comprimentoM) || 0)), 0);
+
+  P.complementos = complementosSugeridos(comprimentoGalpaoM, maiorCorte, quedas, catalogo);
+
+  if (!P.complementos.length) {
+    say('⚠️ Nenhum acabamento cadastrado no catálogo — seguindo só com as telhas.');
+    return;
+  }
+  const nomes = P.complementos
+    .map((c) => (catalogo.complementos || []).find((x) => x.id === c.produtoId)?.nome)
+    .filter(Boolean);
+  say(`✅ Acabamentos incluídos: ${nomes.join(', ')}.\n\n_As quantidades aparecem na conferência, antes de gerar._`);
+  P.memoriaCalculo = (P.memoriaCalculo || []).concat(
+    `Acabamentos: perímetro de ${comprimentoGalpaoM}m, maior corte ${maiorCorte}m, ${quedas} água(s)`
+  );
+}
+
 /** Terças pelo maior corte do orçamento e pelo vão máximo da telha mais restritiva. */
 function calcularEstrutura(P, catalogo, comprimentoGalpaoM, say) {
-  const perfil = (catalogo.perfis || []).find((p) => p.tipo === 'terca');
+  const ativos = (catalogo.perfis || []).filter((p) => p.ativo !== false);
+  const perfil = (P.perfilEscolhido && ativos.find((p) => p.id === P.perfilEscolhido))
+    || ativos.find((p) => p.tipo === 'terca');
   if (!perfil) { say('⚠️ Perfil de terça não cadastrado — estrutura não incluída.'); return; }
 
   let maiorCorte = 0, vaoMax = Infinity;

@@ -43,6 +43,10 @@ app.use('/out', express.static(path.join(__dirname, 'out'), { index: false }));
 
 app.get('/simulador', exigirSenha, (_req, res) => res.sendFile(path.join(__dirname, 'simulador.html')));
 
+// Design system do painel (compartilhado pelas páginas internas)
+app.get('/painel/ui.css', exigirSenha, (_req, res) => res.sendFile(path.join(__dirname, 'painel-ui.css')));
+app.get('/painel/ui.js', exigirSenha, (_req, res) => res.sendFile(path.join(__dirname, 'painel-ui.js')));
+
 // ── PAINEL ────────────────────────────────────────────────────────────
 app.get('/painel', exigirSenha, (_req, res) => res.sendFile(path.join(__dirname, 'painel.html')));
 
@@ -63,6 +67,77 @@ app.get('/api/painel/orcamentos', exigirSenha, (req, res) => {
       norm(o.cliente?.telefone).includes(b) || norm(o.cliente?.cidade).includes(b));
   }
   res.json({ orcamentos: lista, estatisticas: orcamentosDb.estatisticas(lista) });
+});
+
+// ── PAINEL › CLIENTES ─────────────────────────────────────────────────
+// O cadastro nasce do próprio orçamento: para orçar, o cliente informa nome,
+// telefone, cidade e endereço — e isso já fica gravado aqui.
+app.get('/painel/clientes', exigirSenha, (_req, res) => res.sendFile(path.join(__dirname, 'painel-clientes.html')));
+
+app.get('/api/painel/clientes', exigirSenha, (req, res) => {
+  const clientesDb = require('./clientes');
+  const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const orcs = orcamentosDb.listar();
+
+  let lista = clientesDb.listar().map((c) => {
+    const meus = orcs.filter((o) => String(o.cliente?.telefone || '').replace(/\D/g, '') === c.telefone);
+    const fechados = meus.filter((o) => o.status === 'fechado');
+    return {
+      ...c,
+      orcamentosGerados: meus.length,
+      valorTotal: Math.round(meus.reduce((s, o) => s + (Number(o.totalAvista) || 0), 0) * 100) / 100,
+      valorFechado: Math.round(fechados.reduce((s, o) => s + (Number(o.totalAvista) || 0), 0) * 100) / 100,
+      fechados: fechados.length,
+      completo: clientesDb.completo(c),
+      pendencias: clientesDb.pendencias(c),
+    };
+  });
+
+  const { busca, situacao } = req.query;
+  if (busca) {
+    const b = norm(busca);
+    lista = lista.filter((c) => norm(c.nome).includes(b) || norm(c.cidade).includes(b) ||
+      String(c.telefone || '').includes(b.replace(/\D/g, '')) || norm(c.documento).includes(b));
+  }
+  if (situacao === 'incompletos') lista = lista.filter((c) => c.pendencias.length);
+  if (situacao === 'compraram') lista = lista.filter((c) => c.fechados > 0);
+
+  res.json({
+    clientes: lista,
+    estatisticas: {
+      quantidade: lista.length,
+      comCompra: lista.filter((c) => c.fechados > 0).length,
+      incompletos: lista.filter((c) => c.pendencias.length).length,
+      valorTotal: Math.round(lista.reduce((s, c) => s + c.valorTotal, 0) * 100) / 100,
+    },
+  });
+});
+
+/** Orçamentos de um cliente — abre na ficha dele. */
+app.get('/api/painel/cliente/:telefone', exigirSenha, (req, res) => {
+  const clientesDb = require('./clientes');
+  const tel = String(req.params.telefone).replace(/\D/g, '');
+  const c = clientesDb.carregar(tel);
+  if (!c) return res.status(404).json({ error: 'Cliente não encontrado.' });
+  const orcamentos = orcamentosDb.listar()
+    .filter((o) => String(o.cliente?.telefone || '').replace(/\D/g, '') === tel)
+    .map((o) => ({ numero: o.numero, criadoEm: o.criadoEm, status: o.status, canal: o.canal,
+      origem: o.origem, totalAvista: o.totalAvista, metragemTotal: o.metragemTotal, pdf: o.pdf }));
+  res.json({ cliente: { ...c, pendencias: clientesDb.pendencias(c) }, orcamentos });
+});
+
+app.post('/api/painel/cliente', exigirSenha, (req, res) => {
+  try {
+    const clientesDb = require('./clientes');
+    const { telefone, ...dados } = req.body || {};
+    if (!telefone) return res.status(400).json({ error: 'Telefone é a chave do cadastro.' });
+    if (dados.nome !== undefined && !String(dados.nome).trim()) {
+      return res.status(400).json({ error: 'O nome não pode ficar em branco.' });
+    }
+    const r = clientesDb.atualizar(telefone, dados);
+    if (!r) return res.status(404).json({ error: 'Cliente não encontrado.' });
+    res.json({ ok: true, cliente: r });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ── PAINEL › CADASTRO DE DADOS (upload das planilhas) ─────────────────
@@ -127,6 +202,16 @@ app.get('/api/painel/produtos', exigirSenha, (_req, res) => {
   });
 });
 
+/**
+ * CONFERÊNCIA DO CADASTRO — o que está faltando ou desvinculado.
+ * "problemas" travam ou distorcem orçamento; "alertas" são para olhar depois.
+ */
+app.get('/api/painel/diagnostico', exigirSenha, (_req, res) => {
+  const { validarCatalogo } = require('./pricing');
+  const r = validarCatalogo(lerCat());
+  res.json({ problemas: r.problemas || [], alertas: r.alertas || [] });
+});
+
 /** Cadastro de perfis de estrutura (terças, vigas). */
 app.post('/api/painel/perfil', exigirSenha, (req, res) => {
   try {
@@ -168,6 +253,74 @@ app.delete('/api/painel/perfil/:id', exigirSenha, (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+/**
+ * Cadastro de complementos — acabamentos e fixação.
+ * Os dois vínculos que fazem o cálculo automático funcionar:
+ *   acabamento → aplica_em (cumeeira, frontal, lateral, interno)
+ *   fixação    → consumo_por_m2
+ * Sem eles o item existe, mas nunca entra sozinho num orçamento.
+ */
+app.post('/api/painel/complemento', exigirSenha, (req, res) => {
+  try {
+    const p = req.body || {};
+    if (!p.nome) return res.status(400).json({ error: 'Informe o nome do complemento.' });
+    if (!(Number(p.preco) > 0)) return res.status(400).json({ error: 'Informe o preço.' });
+
+    const tipo = p.tipo === 'fixacao' ? 'fixacao' : 'acabamento';
+    const vendaPor = ['metro', 'barra', 'unidade'].includes(p.venda_por) ? p.venda_por : 'unidade';
+
+    if (tipo === 'acabamento' && !p.aplica_em) {
+      return res.status(400).json({ error: 'Escolha onde o acabamento se aplica (cumeeira, frontal, lateral ou interno) — é isso que faz o sistema calcular a quantidade sozinho.' });
+    }
+    if (tipo === 'fixacao' && !(Number(p.consumo_por_m2) > 0)) {
+      return res.status(400).json({ error: 'Informe o consumo por m² — é o que define quantas peças entram no orçamento.' });
+    }
+    if (vendaPor === 'barra' && !(Number(p.comprimento_barra_m) > 0)) {
+      return res.status(400).json({ error: 'Vendido por barra: informe o tamanho da barra em metros.' });
+    }
+
+    const c = lerCat();
+    c.complementos = c.complementos || [];
+    const id = p.id || (p.codigo ? 'C' + String(p.codigo).toUpperCase().replace(/[^A-Z0-9]/g, '') : 'C' + Date.now().toString(36).toUpperCase());
+
+    const registro = {
+      id,
+      codigo: p.codigo || null,
+      gc_id: p.gc_id || null,
+      tipo,
+      nome: p.nome,
+      unidade: p.unidade || (vendaPor === 'metro' ? 'M' : vendaPor === 'barra' ? 'PC' : 'UN'),
+      preco: Number(p.preco),
+      venda_por: vendaPor,
+      comprimento_barra_m: vendaPor === 'barra' ? Number(p.comprimento_barra_m) : null,
+      aplica_em: tipo === 'acabamento' ? p.aplica_em : null,
+      rendimento_m: Number(p.rendimento_m) > 0 ? Number(p.rendimento_m) : null,
+      consumo_por_m2: tipo === 'fixacao' ? Number(p.consumo_por_m2) : null,
+      imagem: p.imagem || null,
+      observacao: p.observacao || null,
+      ativo: p.ativo !== false,
+    };
+
+    const i = c.complementos.findIndex((x) => x.id === id);
+    if (i >= 0) c.complementos[i] = { ...c.complementos[i], ...registro };
+    else c.complementos.push(registro);
+
+    gravarCat(c);
+    res.json({ ok: true, complemento: registro });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/painel/complemento/:id', exigirSenha, (req, res) => {
+  try {
+    const c = lerCat();
+    const antes = (c.complementos || []).length;
+    c.complementos = (c.complementos || []).filter((x) => x.id !== req.params.id);
+    if (c.complementos.length === antes) return res.status(404).json({ error: 'Complemento não encontrado.' });
+    gravarCat(c);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 /** Sugere os campos a partir da descrição do ERP (o usuário confirma). */
 app.post('/api/painel/desmembrar', exigirSenha, (req, res) => {
   const { desmembrar } = require('./parser-produto');
@@ -180,6 +333,17 @@ app.post('/api/painel/produto', exigirSenha, (req, res) => {
     if (!p.nome) return res.status(400).json({ error: 'Informe o nome do produto.' });
     if (!(Number(p.largura_util_m) > 0)) return res.status(400).json({ error: 'Largura útil é obrigatória — sem ela não dá pra calcular a quantidade de peças.' });
     if (!(Number(p.comprimento_maximo_m) > 0)) return res.status(400).json({ error: 'Informe o comprimento máximo de fabricação.' });
+
+    // O cliente escolhe o tamanho numa lista: sem tamanho cadastrado ele
+    // não consegue montar pedido no caminho "já sei o que quero".
+    const tamanhos = (Array.isArray(p.comprimentos_padrao) ? p.comprimentos_padrao : [])
+      .map(Number).filter((x) => x > 0);
+    if (!tamanhos.length) {
+      return res.status(400).json({ error: 'Informe os tamanhos de fábrica — é a lista que o cliente escolhe na tela.' });
+    }
+    if (Number(p.largura_total_m) > 0 && Number(p.largura_util_m) >= Number(p.largura_total_m)) {
+      return res.status(400).json({ error: 'A largura útil precisa ser menor que a largura total.' });
+    }
 
     const faixas = (p.faixas_preco || [])
       .map((f) => ({ ate_m2: f.ate_m2 === '' || f.ate_m2 == null ? null : Number(f.ate_m2), preco: Number(f.preco) }))
@@ -202,11 +366,12 @@ app.post('/api/painel/produto', exigirSenha, (req, res) => {
       preco: faixas[0].preco,          // compatibilidade / preço de referência
       faixas_preco: faixas,
       largura_util_m: Number(p.largura_util_m),
+      largura_total_m: Number(p.largura_total_m) || null,
       comprimento_maximo_m: Number(p.comprimento_maximo_m),
       comprimento_minimo_m: Number(p.comprimento_minimo_m) || 0.5,
       transpasse_m: Number(p.transpasse_m) || null,
-      comprimentos_padrao: Array.isArray(p.comprimentos_padrao) && p.comprimentos_padrao.length
-        ? p.comprimentos_padrao.map(Number).filter((x) => x > 0) : null,
+      comprimentos_padrao: tamanhos,
+      promocao_ate_m: Number(p.promocao_ate_m) || null,
       vao_maximo_m: Number(p.vao_maximo_m) || 1.8,
       inclinacao_minima_pct: Number(p.inclinacao_minima_pct) || 10,
       forro_integrado: !!p.forro_integrado,
@@ -350,6 +515,111 @@ app.post('/api/opcoes-corte', async (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
+/** CEP → cidade/UF. A distância até a unidade sai daqui. */
+app.get('/api/cep/:cep', async (req, res) => {
+  try {
+    const { cidadeDoCep } = require('./distancia');
+    const info = await cidadeDoCep(req.params.cep);
+    if (!info) return res.status(404).json({ error: 'CEP não encontrado.' });
+    res.json(info);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/** Erro de preenchimento (vira 400 e a mensagem vai para a tela do cliente). */
+function erroCliente(msg) { const e = new Error(msg); e.publico = true; return e; }
+
+/**
+ * TRADUZ O QUE VEIO DA TELA para o formato do motor.
+ * Fonte única: usada pelo /api/orcamento (que gera o PDF) e pelo /api/lista
+ * (que mostra a lista sem preço para o cliente conferir). Assim a tela de
+ * conferência mostra exatamente o que vai ser cobrado.
+ */
+function montarPedido(pedido, catalogo) {
+  let grupos = [], complementos = [], perfis = [];
+
+  if (pedido?.modo === 'auto') {
+    // O cliente só deu as medidas: o sistema monta a lista inteira.
+    const telha = catalogo.telhas.find((t) => t.id === pedido.telhaId);
+    if (!telha) throw erroCliente('Telha inválida.');
+
+    const rom = calcularRomaneio({
+      comprimentoGalpaoM: pedido.comprimentoGalpaoM,
+      larguraGalpaoM: pedido.larguraGalpaoM,
+      quedas: pedido.quedas,
+      comEstrutura: !!pedido.querEstrutura,
+    }, telha, catalogo);
+
+    grupos = [{ telhaId: telha.id, nome: telha.nome, cortes: rom.cortes,
+      ambiente: { comprimentoGalpaoM: pedido.comprimentoGalpaoM, larguraGalpaoM: pedido.larguraGalpaoM, quedas: pedido.quedas } }];
+
+    // O cliente escolheu item a item na tela (tudo vem marcado por padrão).
+    // Sem lista? Cai no comportamento antigo (querAcabamento/querEstrutura).
+    const idsComp = Array.isArray(pedido.complementosIds) ? pedido.complementosIds : null;
+    const idsPerf = Array.isArray(pedido.perfisIds) ? pedido.perfisIds : null;
+
+    const querComp = idsComp || (pedido.querAcabamento
+      ? (catalogo.complementos || []).filter((c) => c.ativo !== false).map((c) => c.id) : []);
+
+    for (const id of querComp) {
+      const item = (catalogo.complementos || []).find((c) => c.id === id);
+      if (!item) continue;
+      const sug = (rom.complementos || []).find((c) => c.produtoId === id);
+      if (sug) complementos.push({ produtoId: id, metros: sug.metros });      // pelo perímetro
+      else if (item.consumo_por_m2) complementos.push({ produtoId: id });     // por m²
+    }
+
+    const querPerf = idsPerf || (pedido.querEstrutura && pedido.perfilId ? [pedido.perfilId] : []);
+    if (querPerf.length) {
+      const { calcularEstruturaPerfis } = require('./romaneio');
+      const maior = Math.max(...rom.cortes.map((c) => c.comprimentoM));
+      for (const id of querPerf) {
+        const est = calcularEstruturaPerfis(maior, pedido.comprimentoGalpaoM, [telha], catalogo, id);
+        perfis.push(...(est.perfis || []));
+      }
+    }
+
+  } else if (pedido?.modo === 'itens') {
+    // O cliente já sabe o que quer (ou conferiu e ajustou a lista):
+    // cada item vem com a quantidade final. Mesma conversão do WhatsApp.
+    const { aplicarLista } = require('./lista');
+    const r = aplicarLista(
+      (pedido.itens || []).map((it) => ({ id: it.id, qtd: it.qtd, comp: it.comp })),
+      catalogo, pedido.ambiente || null
+    );
+    grupos = r.grupos; complementos = r.complementos; perfis = r.perfis;
+    if (!grupos.length) throw erroCliente('Informe ao menos uma telha com quantidade e comprimento.');
+
+  } else {
+    // formato antigo (grupos prontos)
+    grupos = Array.isArray(pedido?.grupos) && pedido.grupos.length
+      ? pedido.grupos : [{ telhaId: pedido?.telhaId, cortes: pedido?.cortes }];
+    complementos = pedido?.complementos || [];
+    perfis = pedido?.perfis || [];
+  }
+
+  if (!grupos.length || grupos.some((g) => !catalogo.telhas.some((t) => t.id === g.telhaId))) {
+    throw erroCliente('Produto inválido.');
+  }
+  return { grupos, complementos, perfis };
+}
+
+/**
+ * LISTA PARA CONFERÊNCIA — o que o cliente vai levar, SEM PREÇO.
+ * Serve aos dois caminhos: devolve linhas editáveis (quantidade, tamanho) que
+ * voltam para o /api/orcamento em modo "itens". Não mexeu em nada? O total é
+ * exatamente o mesmo, porque a regra de quantidade é a mesma dos dois lados.
+ */
+app.post('/api/lista', async (req, res) => {
+  try {
+    const { montarLista } = require('./lista');
+    const catalogo = await getCatalogo();
+    const pedidoMotor = montarPedido(req.body?.pedido, catalogo);
+    res.json(montarLista(pedidoMotor, catalogo));
+  } catch (e) {
+    res.status(e.publico ? 400 : 500).json({ error: e.message });
+  }
+});
+
 app.post('/api/orcamento', async (req, res) => {
   try {
     const { pedido, cliente } = req.body || {};
@@ -363,82 +633,7 @@ app.post('/api/orcamento', async (req, res) => {
     const catalogo = await getCatalogo();
 
     // ── Traduz o que veio da tela para o formato do motor ─────────────
-    let grupos = [], complementos = [], perfis = [];
-
-    if (pedido?.modo === 'auto') {
-      // O cliente só deu as medidas: o sistema monta a lista inteira.
-      const telha = catalogo.telhas.find((t) => t.id === pedido.telhaId);
-      if (!telha) return res.status(400).json({ error: 'Telha inválida.' });
-
-      const rom = calcularRomaneio({
-        comprimentoGalpaoM: pedido.comprimentoGalpaoM,
-        larguraGalpaoM: pedido.larguraGalpaoM,
-        quedas: pedido.quedas,
-        comEstrutura: !!pedido.querEstrutura,
-      }, telha, catalogo);
-
-      grupos = [{ telhaId: telha.id, nome: telha.nome, cortes: rom.cortes,
-        ambiente: { comprimentoGalpaoM: pedido.comprimentoGalpaoM, larguraGalpaoM: pedido.larguraGalpaoM, quedas: pedido.quedas } }];
-
-      // O cliente escolheu item a item na tela (tudo vem marcado por padrão).
-      // Sem lista? Cai no comportamento antigo (querAcabamento/querEstrutura).
-      const idsComp = Array.isArray(pedido.complementosIds) ? pedido.complementosIds : null;
-      const idsPerf = Array.isArray(pedido.perfisIds) ? pedido.perfisIds : null;
-
-      const querComp = idsComp || (pedido.querAcabamento
-        ? (catalogo.complementos || []).filter((c) => c.ativo !== false).map((c) => c.id) : []);
-
-      for (const id of querComp) {
-        const item = (catalogo.complementos || []).find((c) => c.id === id);
-        if (!item) continue;
-        const sug = (rom.complementos || []).find((c) => c.produtoId === id);
-        if (sug) complementos.push({ produtoId: id, metros: sug.metros });      // pelo perímetro
-        else if (item.consumo_por_m2) complementos.push({ produtoId: id });     // por m²
-      }
-
-      const querPerf = idsPerf || (pedido.querEstrutura && pedido.perfilId ? [pedido.perfilId] : []);
-      if (querPerf.length) {
-        const { calcularEstruturaPerfis } = require('./romaneio');
-        const maior = Math.max(...rom.cortes.map((c) => c.comprimentoM));
-        for (const id of querPerf) {
-          const est = calcularEstruturaPerfis(maior, pedido.comprimentoGalpaoM, [telha], catalogo, id);
-          perfis.push(...(est.perfis || []));
-        }
-      }
-
-    } else if (pedido?.modo === 'itens') {
-      // O cliente já sabe o que quer: cada item vem com sua quantidade.
-      const porTelha = new Map();
-      for (const it of (pedido.itens || [])) {
-        const qtd = Number(it.qtd);
-        if (!(qtd > 0)) continue;
-        const telha = catalogo.telhas.find((t) => t.id === it.id);
-        if (telha) {
-          const comp = Number(it.comp);
-          if (!(comp > 0)) continue;
-          if (!porTelha.has(telha.id)) porTelha.set(telha.id, { telhaId: telha.id, nome: telha.nome, cortes: [] });
-          porTelha.get(telha.id).cortes.push({ quantidade: Math.floor(qtd), comprimentoM: comp });
-          continue;
-        }
-        const comp2 = (catalogo.complementos || []).find((c) => c.id === it.id);
-        if (comp2) { complementos.push({ produtoId: comp2.id, quantidade: Math.ceil(qtd) }); continue; }
-        const perfil = (catalogo.perfis || []).find((p) => p.id === it.id);
-        if (perfil) perfis.push({ perfilId: perfil.id, metros: qtd });
-      }
-      grupos = [...porTelha.values()];
-      if (!grupos.length) return res.status(400).json({ error: 'Informe ao menos uma telha com quantidade e comprimento.' });
-
-    } else {
-      // formato antigo (grupos prontos)
-      grupos = Array.isArray(pedido?.grupos) && pedido.grupos.length
-        ? pedido.grupos : [{ telhaId: pedido?.telhaId, cortes: pedido?.cortes }];
-      complementos = pedido?.complementos || [];
-      perfis = pedido?.perfis || [];
-    }
-
-    if (!grupos.length || grupos.some((g) => !catalogo.telhas.some((t) => t.id === g.telhaId))) {
-      return res.status(400).json({ error: 'Produto inválido.' });
-    }
+    const { grupos, complementos, perfis } = montarPedido(pedido, catalogo);
 
     // frete é cobrado À PARTE: calculado aqui e somado como linha própria
     const { calcularFrete } = require('./frete');
@@ -534,8 +729,8 @@ app.post('/api/orcamento', async (req, res) => {
       pdf: '/out/' + path.basename(pdfPath),
     });
   } catch (e) {
-    console.error('Erro /api/orcamento:', e);
-    res.status(500).json({ error: e.message });
+    if (!e.publico) console.error('Erro /api/orcamento:', e);
+    res.status(e.publico ? 400 : 500).json({ error: e.message });
   }
 });
 // ===== fim do wizard =====

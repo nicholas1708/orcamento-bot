@@ -20,9 +20,11 @@ const metrosDe = (cortes) => cortes.reduce((s, c) => s + c.quantidade * c.compri
 function secaoTelhas(catalogo, ficha) {
   const todas = catalogo.telhas;
   const fam = ficha.pedido.familiaFoco;
+  const tam = (t) => (t.comprimentos_padrao || []).length
+    ? ` · tamanhos de fábrica: ${t.comprimentos_padrao.join('m, ')}m` : '';
   if (todas.length <= LIMITE_TELHAS_NO_PROMPT) {
     return 'TELHAS:\n' + todas.map((t) =>
-      `- id "${t.id}": ${t.nome} — ${fmt(t.preco)}/metro (largura útil ${t.largura_util_m}m, máx ${t.comprimento_maximo_m}m)`
+      `- id "${t.id}": ${t.nome} — ${fmt(t.preco)}/metro (largura útil ${t.largura_util_m}m, máx ${t.comprimento_maximo_m}m)${tam(t)}`
     ).join('\n');
   }
   if (!fam) {
@@ -36,7 +38,7 @@ function secaoTelhas(catalogo, ficha) {
   }
   const grupo = todas.filter((t) => t.familia === fam);
   return `TELHAS DA FAMÍLIA "${fam}":\n` + grupo.map((t) =>
-    `- id "${t.id}": ${t.nome} — ${fmt(t.preco)}/metro · largura útil ${t.largura_util_m}m · máx ${t.comprimento_maximo_m}m · ${Object.entries(t.atributos || {}).map(([k, v]) => `${k}: ${v}`).join(', ')}`
+    `- id "${t.id}": ${t.nome} — ${fmt(t.preco)}/metro · largura útil ${t.largura_util_m}m · máx ${t.comprimento_maximo_m}m${tam(t)} · ${Object.entries(t.atributos || {}).map(([k, v]) => `${k}: ${v}`).join(', ')}`
   ).join('\n');
 }
 
@@ -45,6 +47,7 @@ function faltantes(ficha) {
   const f = [];
   if (!Array.isArray(p.grupos) || !p.grupos.length) f.push('pelo menos um produto (grupos)');
   if (p.maisProdutos !== false) f.push('confirmar se há MAIS algum tipo de telha (campo maisProdutos: false quando o cliente disser que acabou)');
+  if (p.comAcabamento === null || p.comAcabamento === undefined) f.push('comAcabamento (true/false) — se leva cumeeira, acabamentos e parafusos');
   if (p.comEstrutura === null || p.comEstrutura === undefined) f.push('comEstrutura (true/false)');
   if (!c.nome) f.push('nome');
   if (!c.cidade) f.push('cidade');
@@ -71,34 +74,38 @@ Para cada produto existem dois caminhos:
  (A) cliente JÁ SABE os tamanhos → {"telhaId":"...","cortes":[{"comprimentoM":4.75,"quantidade":9}, ...]}
  (B) cliente NÃO SABE → peça as medidas e envie {"telhaId":"...","comprimentoGalpaoM":20,"larguraGalpaoM":10,"quedas":2}. O SISTEMA calcula o romaneio — você NÃO calcula.
 
+TAMANHOS: no caminho (A) só valem os TAMANHOS DE FÁBRICA listados em cada telha. Se o cliente pedir uma medida fora da lista, ofereça os tamanhos disponíveis OU o caminho (B), onde o sistema calcula o corte. Nunca aceite uma medida fora do cadastro.
+
 REGRAS INEGOCIÁVEIS:
 1. NUNCA calcule quantidade de telhas, metragem ou valor total. Pode citar o preço por metro do catálogo.
 2. NUNCA prometa prazo, desconto ou condição de pagamento — o PDF traz as opções e o vendedor confirma.
 3. Quando o cliente disser que não quer mais nada, envie "maisProdutos": false.
-4. Pergunte se quer só telhas ou telhas + estrutura → comEstrutura (true/false).
-5. Endereço completo (rua, número, bairro) e cidade são OBRIGATÓRIOS. Sem eles não há orçamento.
-6. Se pedir humano, fugir do assunto ou pedir algo que não vendemos → "handoff": true.
-7. Foto enviada pelo cliente: agradeça e diga que fica anexada pro vendedor. NUNCA tire medidas de fotos.
-8. Não invente dado técnico. Se não souber, diga que o vendedor confirma.
+4. Pergunte se leva os ACABAMENTOS E PARAFUSOS (cumeeira, frontal, lateral e parafusagem) → comAcabamento (true/false). O sistema calcula as quantidades.
+5. Pergunte se quer só telhas ou telhas + estrutura → comEstrutura (true/false).
+6. Endereço completo (rua, número, bairro) e cidade são OBRIGATÓRIOS. Sem eles não há orçamento.
+7. Peça o CEP da obra → cep. É ele que mede a distância até a unidade mais próxima. Se o cliente não souber, siga sem o CEP.
+8. Se pedir humano, fugir do assunto ou pedir algo que não vendemos → "handoff": true.
+9. Foto enviada pelo cliente: agradeça e diga que fica anexada pro vendedor. NUNCA tire medidas de fotos.
+10. Não invente dado técnico. Se não souber, diga que o vendedor confirma.
 
 FOTOS: pode pedir o envio de imagens com "fotos": ["id1","id2"] (ids do catálogo, máx 4).
 
 PRODUTOS JÁ NA FICHA: ${jaTem.length ? jaTem.join(' | ') : 'nenhum ainda'}
 CLIENTE: ${JSON.stringify({ nome: ficha.cliente.nome, cidade: ficha.cliente.cidade, endereco: ficha.cliente.endereco })}
 ${ficha.clienteConhecido ? '⚠️ CLIENTE JÁ CADASTRADO: cumprimente pelo nome, NÃO peça nome/cidade/endereço de novo. Apenas confirme a entrega no mesmo endereço; só atualize se ele pedir para mudar.' : ''}
-comEstrutura: ${ficha.pedido.comEstrutura} · maisProdutos: ${ficha.pedido.maisProdutos}
+comEstrutura: ${ficha.pedido.comEstrutura} · comAcabamento: ${ficha.pedido.comAcabamento} · maisProdutos: ${ficha.pedido.maisProdutos}
 
 AINDA FALTA: ${falta.length ? falta.join(', ') : 'nada — ficha completa'}
 
 RESPONDA APENAS JSON:
 {"reply":"sua mensagem","campos":{...},"fotos":[],"handoff":false}
-Campos possíveis: familiaFoco, novosProdutos (array, ver caminhos A/B), maisProdutos (bool), comEstrutura (bool), nome, cidade, endereco.
+Campos possíveis: familiaFoco, novosProdutos (array, ver caminhos A/B), maisProdutos (bool), comAcabamento (bool), comEstrutura (bool), nome, cep, cidade, endereco.
 Envie em "novosProdutos" APENAS produtos ainda não listados acima.`
   );
 }
 
 /** Valida e aplica o que a IA extraiu — o CÓDIGO é o juiz, não a IA. */
-function aplicarCampos(ficha, campos, catalogo, acoes) {
+async function aplicarCampos(ficha, campos, catalogo, acoes) {
   if (!campos || typeof campos !== 'object') return;
   const p = ficha.pedido, c = ficha.cliente, eng = catalogo.engenharia;
   const okNum = (v, min, max) => Number.isFinite(Number(v)) && Number(v) >= min && Number(v) <= max;
@@ -110,6 +117,7 @@ function aplicarCampos(ficha, campos, catalogo, acoes) {
   }
   if (typeof campos.maisProdutos === 'boolean') p.maisProdutos = campos.maisProdutos;
   if (typeof campos.comEstrutura === 'boolean') p.comEstrutura = campos.comEstrutura;
+  if (typeof campos.comAcabamento === 'boolean') p.comAcabamento = campos.comAcabamento;
 
   // ── novos produtos ──────────────────────────────────────────────
   p.grupos = p.grupos || [];
@@ -122,8 +130,25 @@ function aplicarCampos(ficha, campos, catalogo, acoes) {
       const validos = np.cortes
         .map((x) => ({ comprimentoM: Number(x.comprimentoM), quantidade: Math.floor(Number(x.quantidade)) }))
         .filter((x) => okNum(x.comprimentoM, eng.comprimento_minimo_fabricacao_m, 30) && okNum(x.quantidade, 1, 500));
-      if (validos.length) {
-        p.grupos.push({ telhaId: telha.id, nome: telha.nome, cortes: validos, ambiente: null });
+
+      // TAMANHO É DE FÁBRICA: a IA pode ter aceitado uma medida inventada.
+      // O código recusa e devolve a lista — quem quer outro corte usa o
+      // caminho B (medidas do telhado), onde o sistema é que calcula.
+      const padrao = (telha.comprimentos_padrao || []).map(Number).filter((x) => x > 0);
+      const dentro = padrao.length
+        ? validos.filter((x) => padrao.some((t) => Math.abs(t - x.comprimentoM) < 0.005))
+        : validos;
+      const fora = validos.filter((x) => !dentro.includes(x));
+
+      if (fora.length) {
+        acoes.push({ type: 'text', text:
+          `📏 A *${telha.nome}* sai nos tamanhos de fábrica: ` +
+          `${padrao.map((t) => String(t).replace('.', ',') + 'm').join(' · ')}.\n\n` +
+          `${fora.map((x) => String(x.comprimentoM).replace('.', ',') + 'm').join(', ')} não está nessa lista — ` +
+          `me diga as medidas do telhado que eu monto o corte, ou escolha um dos tamanhos acima.` });
+      }
+      if (dentro.length) {
+        p.grupos.push({ telhaId: telha.id, nome: telha.nome, cortes: dentro, ambiente: null });
         p.familiaFoco = null;
         p.maisProdutos = null; // volta a perguntar se tem mais
       }
@@ -162,21 +187,63 @@ function aplicarCampos(ficha, campos, catalogo, acoes) {
   if (typeof campos.endereco === 'string' && campos.endereco.trim().length >= 8 && /\d/.test(campos.endereco)) {
     c.endereco = campos.endereco.trim();
   }
+
+  // CEP: o código consulta a base e preenche a cidade — a IA não adivinha
+  if (typeof campos.cep === 'string') {
+    const d = campos.cep.replace(/\D/g, '');
+    if (d.length === 8 && d !== c.cep) {
+      c.cep = d;
+      const { cidadeDoCep } = require('./distancia');
+      const info = await cidadeDoCep(d).catch(() => null);
+      if (info) { c.cidade = `${info.cidade} - ${info.uf}`; c.estado = info.uf; }
+    }
+  }
 }
 
-/** Resumo montado pelo CÓDIGO com dados já validados. */
-function resumoConfirmacao(ficha) {
-  const linhas = ficha.pedido.grupos.map((g, i) =>
-    `*${i + 1}. ${g.nome}*\n` + g.cortes.map((c) => `   • ${c.quantidade} x ${c.comprimentoM}m`).join('\n')
-  ).join('\n');
-  const met = ficha.pedido.grupos.reduce((s, g) => s + metrosDe(g.cortes), 0);
-  return (
-    `✅ *Confere pra mim, ${ficha.cliente.nome}?*\n\n${linhas}\n\n` +
-    `*Metragem total:* ${met.toFixed(3)} mts\n` +
-    `*Estrutura:* ${ficha.pedido.comEstrutura ? 'sim' : 'não'}\n` +
-    `*Entrega:* ${ficha.cliente.endereco} — ${ficha.cliente.cidade}\n\n` +
-    `Posso gerar o orçamento em PDF? (*sim* / *não*)`
+/**
+ * CONFERÊNCIA — a mesma lista do menu e da tela do site: tudo que vai no
+ * orçamento, sem preço, com a opção de ajustar antes de gerar.
+ * Montada pelo CÓDIGO, a partir de dados já validados.
+ */
+function conferencia(ficha, catalogo) {
+  const { montarLista } = require('./lista');
+  const R = require('./roteiro');
+  const p = ficha.pedido;
+  const r = montarLista(
+    { grupos: p.grupos, complementos: p.complementos || [], perfis: p.perfis || [] },
+    catalogo
   );
+  p.linhas = r.linhas;
+  return R.T.conferencia(ficha.cliente.nome, r.linhas, r.metragemTotal.toFixed(3)) +
+    `\n\n📍 *Entrega:* ${ficha.cliente.endereco} — ${ficha.cliente.cidade}`;
+}
+
+/** Acabamentos e parafusos, quando o cliente aceitou levar junto. */
+function aplicarAcabamentos(ficha, catalogo, acoes) {
+  const { complementosSugeridos } = require('./lista');
+  const p = ficha.pedido;
+  if (!p.comAcabamento) { p.complementos = []; return; }
+  if (p.complementos) return;                       // já resolvido
+
+  const amb = (p.grupos || []).find((g) => g.ambiente)?.ambiente;
+  const maiorCorte = (p.grupos || []).reduce(
+    (m, g) => Math.max(m, ...g.cortes.map((c) => Number(c.comprimentoM) || 0)), 0);
+
+  p.complementos = complementosSugeridos(
+    amb ? amb.comprimentoGalpaoM : null, maiorCorte, amb ? amb.quedas : 2, catalogo);
+
+  const nomes = p.complementos
+    .map((c) => (catalogo.complementos || []).find((x) => x.id === c.produtoId)?.nome)
+    .filter(Boolean);
+  if (nomes.length) {
+    acoes.push({ type: 'text', text: `✅ Acabamentos incluídos: ${nomes.join(', ')}.` });
+  }
+  if (!amb) {
+    // sem as medidas do telhado só entra o que é calculado por m² (parafusos)
+    acoes.push({ type: 'text', text:
+      '_Cumeeira e acabamentos de borda dependem das medidas do telhado — ' +
+      'se quiser que eu inclua, me diga o comprimento e quantas águas._' });
+  }
 }
 
 async function coletar(ficha, texto, catalogo) {
@@ -196,7 +263,7 @@ async function coletar(ficha, texto, catalogo) {
   }
 
   if (r.reply) ficha.historico.push({ role: 'assistant', content: r.reply });
-  aplicarCampos(ficha, r.campos, catalogo, acoes);
+  await aplicarCampos(ficha, r.campos, catalogo, acoes);
 
   if (Array.isArray(r.fotos)) {
     for (const id of r.fotos.slice(0, 4)) {
@@ -234,7 +301,8 @@ async function coletar(ficha, texto, catalogo) {
 
   if (!faltantes(ficha).length) {
     if (r.reply) acoes.push({ type: 'text', text: r.reply });
-    acoes.push({ type: 'text', text: resumoConfirmacao(ficha) });
+    aplicarAcabamentos(ficha, catalogo, acoes);
+    acoes.push({ type: 'text', text: conferencia(ficha, catalogo) });
     return { acoes, confirmar: true };
   }
 

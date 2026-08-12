@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clientes — Painel 4A</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/painel/ui.css">
+</head>
+<body></body>
+<script src="/painel/ui.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   CLIENTES — o cadastro nasce do próprio orçamento.
+   Para orçar, o cliente informa nome, WhatsApp, cidade e endereço
+   (endereço é obrigatório por causa do frete) — e isso fica gravado
+   aqui, ligado a todos os orçamentos daquele telefone.
+
+   O telefone é a chave do cadastro e não pode ser trocado: mudá-lo
+   criaria outro cliente e desligaria o histórico.
+   ═══════════════════════════════════════════════════════════════════ */
+const SIT={novo:['Novo','info'],em_negociacao:['Em negociação','warn'],
+           fechado:['Fechado','ok'],perdido:['Perdido','bad']};
+let dados=[];
+
+montarShell('clientes','Clientes','Cadastro gerado automaticamente pelos orçamentos',
+  `<button class="btn g" onclick="exportar()">⤓ Exportar CSV</button>
+   <button class="btn" onclick="carregar()">Atualizar</button>`);
+
+g('corpo').innerHTML=`
+  <div class="msg info" style="margin-bottom:18px">
+    O cadastro é criado sozinho quando alguém fecha um orçamento — não existe
+    "novo cliente" manual aqui. O que falta preencher aparece marcado na lista.
+  </div>
+
+  <div class="filtros">
+    <div class="campo busca" style="flex:2"><label>Buscar</label>
+      <input id="f-busca" placeholder="nome, telefone, cidade ou CPF/CNPJ" oninput="deb()"></div>
+    <div class="campo"><label>Mostrar</label><select id="f-situacao" onchange="carregar()">
+      <option value="">Todos os clientes</option>
+      <option value="incompletos">Só com cadastro incompleto</option>
+      <option value="compraram">Só quem já fechou</option></select></div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="tabela">
+    <table>
+      <thead><tr>
+        <th>Cliente</th><th>Contato</th><th>Onde entregar</th>
+        <th class="num">Orçamentos</th><th class="num">Valor gerado</th>
+        <th>Último</th><th>Cadastro</th><th></th>
+      </tr></thead>
+      <tbody id="lista"></tbody>
+    </table>
+    <div class="vazio" id="vazio" hidden>
+      <b>Nenhum cliente ainda</b>
+      O primeiro cadastro aparece assim que alguém gerar um orçamento.
+    </div>
+  </div>`;
+
+let timer;
+const deb=()=>{clearTimeout(timer);timer=setTimeout(carregar,350);};
+
+async function carregar(){
+  const q=new URLSearchParams();
+  if(g('f-busca').value)q.set('busca',g('f-busca').value);
+  if(g('f-situacao').value)q.set('situacao',g('f-situacao').value);
+  try{
+    const r=await pegar('/api/painel/clientes?'+q);
+    dados=r.clientes||[];
+    contador('clientes',dados.length);
+    const e=r.estatisticas||{};
+    g('kpis').innerHTML=
+      `<div class="kpi"><span>Clientes</span><b>${e.quantidade??0}</b></div>
+       <div class="kpi"><span>Já fecharam</span><b>${e.comCompra??0}</b>
+         <i>${e.quantidade?Math.round((e.comCompra/e.quantidade)*100):0}% da base</i></div>
+       <div class="kpi q"><span>Cadastro incompleto</span><b>${e.incompletos??0}</b>
+         <i>faltam dados para nota fiscal</i></div>
+       <div class="kpi"><span>Valor orçado</span><b>R$ ${BRL(e.valorTotal)}</b></div>`;
+    pintarLista();
+    abrirDoLink();
+  }catch(err){
+    g('lista').innerHTML=`<tr><td colspan="8"><div class="msg bad">${esc(err.message)}</div></td></tr>`;
+  }
+}
+
+function pintarLista(){
+  g('vazio').hidden=!!dados.length;
+  g('lista').innerHTML=dados.map((c,i)=>`
+    <tr class="clicavel" onclick="verFicha(${i})">
+      <td><div class="prim">${esc(c.nome||'sem nome')}</div>
+        <div class="sec">${c.documento?esc(c.documento):'sem CPF/CNPJ'}</div></td>
+      <td><div class="sec">${telFmt(c.telefone)}</div>
+        <div class="sec">${c.email?esc(c.email):nada}</div></td>
+      <td style="max-width:250px"><div class="sec">${esc(c.cidade||'—')}</div>
+        <div class="sec">${esc(c.endereco||'endereço não informado')}</div></td>
+      <td class="num"><span class="prim">${c.orcamentosGerados||0}</span>
+        ${c.fechados?`<div class="sec">${c.fechados} fechado(s)</div>`:''}</td>
+      <td class="num"><span class="prim">R$ ${BRL(c.valorTotal)}</span>
+        ${c.valorFechado?`<div class="sec">R$ ${BRL(c.valorFechado)} fechado</div>`:''}</td>
+      <td><div class="sec">${dataCurta(c.ultimoOrcamentoEm)}</div>
+        <div class="sec">cliente desde ${dataCurta(c.criadoEm)}</div></td>
+      <td>${c.pendencias?.length
+        ?`<span class="tag warn">falta ${c.pendencias.length}</span>
+          <div class="sec" style="margin-top:3px">${esc(c.pendencias.join(', '))}</div>`
+        :'<span class="tag ok">completo</span>'}</td>
+      <td class="acao" onclick="event.stopPropagation()">
+        ${zapLink(c.telefone)?`<a class="btn g sm" href="${zapLink(c.telefone)}" target="_blank">WhatsApp</a>`:''}
+      </td>
+    </tr>`).join('');
+}
+
+/* ── Ficha do cliente: edição + orçamentos dele ───────────────────── */
+async function verFicha(i){
+  const base=dados[i];
+  abrirGaveta(`<h2>${esc(base.nome||'Cliente')}</h2>
+    <div style="font-size:13px;color:var(--muted)">${telFmt(base.telefone)}</div>`,
+    '<div class="vazio">Carregando...</div>');
+  let r;
+  try{ r=await pegar('/api/painel/cliente/'+base.telefone); }
+  catch(e){ g('gv-corpo').innerHTML=`<div class="msg bad">${esc(e.message)}</div>`; return; }
+  const c=r.cliente, orcs=r.orcamentos||[];
+
+  g('gv-corpo').innerHTML=`
+    <div id="cl-msg" class="msg" hidden></div>
+
+    <div class="card">
+      <h2>Dados do cliente</h2>
+      <p class="d">O que o cliente informou ao orçar. Complete o que faltar —
+        é o mesmo cadastro que vai para a nota.</p>
+
+      <div class="campo" style="margin-bottom:14px">
+        <label>WhatsApp <i>(chave do cadastro)</i></label>
+        <input value="${telFmt(c.telefone)}" disabled
+          style="background:var(--bg-soft);color:var(--muted)">
+        <small>Não pode ser alterado: é ele que liga o cliente aos orçamentos.</small>
+      </div>
+
+      <div class="grade g2">
+        <div class="campo"><label>Nome ou empresa <i>*</i></label>
+          <input id="cl-nome" value="${esc(c.nome||'')}"></div>
+        <div class="campo"><label>CPF / CNPJ</label>
+          <input id="cl-doc" value="${esc(c.documento||'')}" placeholder="44.627.801/0001-57">
+          <small>necessário para emitir nota</small></div>
+        <div class="campo"><label>E-mail</label>
+          <input id="cl-email" type="email" value="${esc(c.email||'')}" placeholder="cliente@email.com"></div>
+        <div class="campo"><label>CEP</label>
+          <input id="cl-cep" value="${esc(c.cep||'')}" placeholder="15000-000">
+          <small>define a distância até a unidade mais próxima</small></div>
+        <div class="campo"><label>Cidade <i>*</i></label>
+          <input id="cl-cidade" value="${esc(c.cidade||'')}" placeholder="São José do Rio Preto - SP"></div>
+        <div class="campo"><label>Endereço de entrega <i>*</i></label>
+          <input id="cl-end" value="${esc(c.endereco||'')}" placeholder="Rua Exemplo, 120 - Centro"></div>
+      </div>
+      <div class="campo" style="margin-top:14px"><label>Observação interna</label>
+        <textarea id="cl-obs" placeholder="não aparece para o cliente">${esc(c.observacao||'')}</textarea></div>
+
+      <div style="display:flex;gap:9px;margin-top:16px">
+        <button class="btn" onclick="salvarCliente('${c.telefone}')">Salvar cadastro</button>
+        <button class="btn g" onclick="fecharGaveta()">Cancelar</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <span class="eyebrow">Resumo</span>
+      ${ficha([
+        ['Orçamentos',(orcs.length||0)+' gerado(s)'],
+        ['Fechados',orcs.filter(o=>o.status==='fechado').length],
+        ['Valor orçado','R$ '+BRL(orcs.reduce((s,o)=>s+(+o.totalAvista||0),0))],
+        ['Cliente desde',dataCurta(c.criadoEm)],
+        ['Último orçamento',dataCurta(c.ultimoOrcamentoEm)],
+      ])}
+    </div>
+
+    <div class="card">
+      <h2>Orçamentos deste cliente</h2>
+      ${orcs.length?`<div class="tabela" style="border:none"><table>
+        <thead><tr><th>Número</th><th>Data</th><th class="num">Total</th><th>Situação</th><th></th></tr></thead>
+        <tbody>${orcs.map(o=>{const [rot,cor]=SIT[o.status]||[o.status,'off'];return `<tr>
+          <td><span class="prim" style="font-variant-numeric:tabular-nums">${esc(o.numero)}</span>
+            <div class="sec">${o.canal==='whatsapp'?'WhatsApp':'Site'} · ${o.origem==='vendedor'?'vendedor':'cliente'}</div></td>
+          <td class="sec">${dataCurta(o.criadoEm)}</td>
+          <td class="num">R$ ${BRL(o.totalAvista)}<div class="sec">${NUM(o.metragemTotal)} m</div></td>
+          <td><span class="tag ${cor}">${rot}</span></td>
+          <td class="acao">${o.pdf?`<a class="btn g sm" href="${o.pdf}" target="_blank">PDF</a>`:''}</td>
+        </tr>`;}).join('')}</tbody></table></div>`
+        :'<div class="vazio">Nenhum orçamento registrado.</div>'}
+    </div>`;
+}
+
+async function salvarCliente(telefone){
+  const corpo={
+    telefone,
+    nome:g('cl-nome').value.trim(),
+    documento:g('cl-doc').value.trim(),
+    email:g('cl-email').value.trim(),
+    cep:g('cl-cep').value.trim(),
+    cidade:g('cl-cidade').value.trim(),
+    endereco:g('cl-end').value.trim(),
+    observacao:g('cl-obs').value.trim(),
+  };
+  if(!corpo.nome)return aviso('cl-msg','bad','Informe o nome do cliente.');
+  try{
+    await enviar('/api/painel/cliente',corpo);
+    aviso('cl-msg','ok','Cadastro salvo.');
+    carregar();
+  }catch(e){ aviso('cl-msg','bad',esc(e.message)); }
+}
+
+/** Vem de um orçamento? Abre a ficha daquele cliente direto. */
+let _linkUsado=false;
+function abrirDoLink(){
+  if(_linkUsado)return;
+  const tel=new URLSearchParams(location.search).get('tel');
+  if(!tel)return;
+  _linkUsado=true;
+  const i=dados.findIndex(c=>c.telefone===tel.replace(/\D/g,''));
+  if(i>=0)verFicha(i);
+}
+
+function exportar(){
+  const cab=['Nome','Telefone','CPF/CNPJ','Email','CEP','Cidade','Endereco',
+    'Orcamentos','Fechados','ValorOrcado','ValorFechado','ClienteDesde','UltimoOrcamento','Pendencias'];
+  const linhas=dados.map(c=>[c.nome,c.telefone,c.documento,c.email,c.cep,c.cidade,c.endereco,
+    c.orcamentosGerados,c.fechados,BRL(c.valorTotal),BRL(c.valorFechado),
+    dataCurta(c.criadoEm),dataCurta(c.ultimoOrcamentoEm),(c.pendencias||[]).join(', ')]
+    .map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(';'));
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['﻿'+[cab.join(';'),...linhas].join('\n')],
+    {type:'text/csv;charset=utf-8'}));
+  a.download='clientes-'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+}
+
+carregar();
+</script>
+</html>

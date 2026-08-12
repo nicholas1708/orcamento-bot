@@ -81,21 +81,87 @@ async function getCatalogoGestaoClick() {
  * sem largura útil não há como calcular quantidade de peças.
  */
 function validarCatalogo(catalogo) {
-  const problemas = [];
+  const problemas = [];   // impedem ou distorcem o orçamento
+  const alertas = [];     // funcionam, mas alguém precisa olhar
+
+  const preco = (x) => Number(x.preco) > 0 ||
+    (Array.isArray(x.faixas_preco) && x.faixas_preco.some((f) => Number(f.preco) > 0));
+
+  // ── TELHAS ────────────────────────────────────────────────────────
   for (const t of catalogo.telhas || []) {
-    if (!(Number(t.largura_util_m) > 0)) problemas.push(`${t.id}: largura_util_m ausente`);
-    if (!(Number(t.comprimento_maximo_m) > 0)) problemas.push(`${t.id}: comprimento_maximo_m ausente`);
-    if (!(Number(t.vao_maximo_m) > 0)) problemas.push(`${t.id}: vao_maximo_m ausente`);
-    if (!(Number(t.preco) > 0)) problemas.push(`${t.id}: preco ausente`);
+    const eu = `Telha ${t.nome || t.id}`;
+    if (!(Number(t.largura_util_m) > 0)) problemas.push(`${eu}: falta a largura útil — sem ela não dá para calcular quantas peças.`);
+    if (!(Number(t.comprimento_maximo_m) > 0)) problemas.push(`${eu}: falta o comprimento máximo de fábrica.`);
+    if (!(Number(t.vao_maximo_m) > 0)) problemas.push(`${eu}: falta o vão máximo.`);
+    if (!preco(t)) problemas.push(`${eu}: sem preço cadastrado.`);
+    if (!t.codigo) alertas.push(`${eu}: sem código — não dá para vincular ao ERP nem às unidades.`);
+    if (!(t.comprimentos_padrao || []).length) {
+      problemas.push(`${eu}: sem tamanhos de fábrica cadastrados — o cliente não consegue escolher a medida.`);
+    }
+    if (!t.imagem) alertas.push(`${eu}: sem foto.`);
     if (t.largura_total_m && Number(t.largura_util_m) >= Number(t.largura_total_m)) {
-      problemas.push(`${t.id}: largura_util_m >= largura_total_m (útil deve ser menor)`);
+      problemas.push(`${eu}: largura útil maior ou igual à largura total.`);
+    }
+    if (Array.isArray(t.faixas_preco)) {
+      const abertas = t.faixas_preco.filter((f) => f.ate_m2 == null);
+      if (t.faixas_preco.length && abertas.length !== 1) {
+        problemas.push(`${eu}: as faixas de preço precisam de exatamente uma faixa final (sem limite). Hoje são ${abertas.length}.`);
+      }
     }
   }
+
+  // ── COMPLEMENTOS (acabamento e fixação) ───────────────────────────
+  for (const c of (catalogo.complementos || []).filter((x) => x.ativo !== false)) {
+    const eu = `Complemento ${c.nome || c.id}`;
+    if (!preco(c)) problemas.push(`${eu}: sem preço cadastrado.`);
+    if (!c.codigo) alertas.push(`${eu}: sem código do ERP.`);
+    if (c.venda_por === 'barra' && !(Number(c.comprimento_barra_m) > 0)) {
+      problemas.push(`${eu}: vendido por barra mas sem o tamanho da barra.`);
+    }
+    if (c.tipo === 'acabamento' && !c.aplica_em) {
+      problemas.push(`${eu}: não está vinculado a onde se aplica (cumeeira, frontal, lateral ou interno) — não entra no cálculo automático.`);
+    }
+    if (c.tipo === 'fixacao' && !(Number(c.consumo_por_m2) > 0)) {
+      problemas.push(`${eu}: sem consumo por m² — a quantidade não é calculada sozinha.`);
+    }
+    if (c.aplica_em && c.venda_por !== 'metro' && c.venda_por !== 'barra'
+        && !(Number(c.rendimento_m) > 0)) {
+      alertas.push(`${eu}: sem rendimento por metro — o sistema assume 1 peça por metro.`);
+    }
+  }
+
+  // ── PERFIS (estrutura) ────────────────────────────────────────────
+  for (const p of (catalogo.perfis || []).filter((x) => x.ativo !== false)) {
+    const eu = `Perfil ${p.nome || p.id}`;
+    if (!preco(p)) problemas.push(`${eu}: sem preço cadastrado.`);
+    if (!p.tipo) problemas.push(`${eu}: sem tipo (terça ou viga) — não entra no cálculo da estrutura.`);
+    if (!(Number(p.vao_maximo_m) > 0)) problemas.push(`${eu}: sem vão máximo.`);
+    if (p._confirmar) alertas.push(`${eu}: marcado como PROVISÓRIO — confirmar preço e medidas com a fábrica.`);
+    if (!p.codigo) alertas.push(`${eu}: sem código do ERP.`);
+  }
+
+  // ── UNIDADES (origem do material → distância e frete) ─────────────
+  const ativas = (catalogo.unidades || []).filter((u) => u.ativa !== false);
+  if (!ativas.length) problemas.push('Nenhuma unidade ativa cadastrada — não dá para medir a distância da obra.');
+  for (const u of ativas) {
+    if (!(Number.isFinite(u.lat) && Number.isFinite(u.lon))) {
+      problemas.push(`Unidade ${u.nome || u.cidade}: sem coordenadas — fica de fora do cálculo de distância.`);
+    }
+    const codigos = (catalogo.telhas || []).map((t) => t.codigo).filter(Boolean);
+    if (Array.isArray(u.produtos) && u.produtos.length) {
+      const orfaos = u.produtos.filter((c) => !codigos.includes(String(c)));
+      if (orfaos.length) alertas.push(`Unidade ${u.nome || u.cidade}: códigos sem produto correspondente (${orfaos.join(', ')}).`);
+    }
+  }
+
   if (problemas.length) {
-    console.warn('\n⚠️  CATÁLOGO INCOMPLETO — o cálculo por ambiente pode falhar:\n   - ' +
+    console.warn('\n⚠️  CADASTRO INCOMPLETO — pode travar ou distorcer orçamentos:\n   - ' +
       problemas.join('\n   - ') + '\n');
   }
-  return problemas;
+  const r = problemas.slice();
+  r.problemas = problemas;
+  r.alertas = alertas;
+  return r;
 }
 
 // Cache simples (5 min) pra não bater na API/disco a cada mensagem
@@ -112,4 +178,4 @@ async function getCatalogo() {
 /** Zera o cache — usado após importar planilhas pelo painel. */
 function limparCache() { cache = null; cacheAt = 0; }
 
-module.exports = { getCatalogo, limparCache };
+module.exports = { getCatalogo, limparCache, validarCatalogo };

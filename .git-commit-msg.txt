@@ -1,0 +1,50 @@
+Conferência da lista, painel novo e WhatsApp alinhado ao site
+
+Wizard web
+- Tela inicial volta a ser a escolha entre os dois caminhos; nenhum
+  deles começa aberto por cima do outro.
+- Novo passo "Confira sua lista": mostra tudo que vai no orçamento SEM
+  PREÇO, com ajuste de quantidade, exclusão e inclusão de item.
+- Tamanho da telha deixou de ser digitável: sai de comprimentos_padrao
+  (lista suspensa) ou do romaneio calculado.
+- Campo de CEP da obra, preenchendo a cidade automaticamente.
+
+Núcleo compartilhado
+- Novo lista.js: montarLista (pedido -> linhas editáveis),
+  aplicarLista (linhas -> pedido) e complementosSugeridos. Fonte única
+  do site e do WhatsApp, para o total não divergir entre os canais.
+- engine.js: regra de quantidade de complemento extraída para
+  quantidadeDoComplemento(), usada pelo cálculo do preço e pela lista.
+- server.js: montarPedido() compartilhado, GET /api/cep/:cep,
+  POST /api/lista; complemento vendido por metro não é mais
+  arredondado; erro de preenchimento volta como 400.
+
+WhatsApp (flow.js, conversa.js, roteiro.js, state.js)
+- CORRIGE: orçamento pelo WhatsApp saía sem acabamentos e parafusos.
+  O motor passa a receber complementos nos dois caminhos.
+- Pergunta de acabamentos, com perímetro vindo do ambiente ou
+  perguntado quando o cliente trouxe a lista de cortes.
+- Tamanho fora dos comprimentos_padrao é recusado, tanto no menu
+  quanto no modo com IA (o código é o juiz, não a IA).
+- Conferência editável antes de gerar; da conferência em diante a IA
+  não interfere.
+- Pergunta de CEP, resolvendo a cidade pela base.
+- Escolha do perfil de estrutura quando há mais de uma terça.
+
+Painel (identidade visual do site novo)
+- painel-ui.css / painel-ui.js: menu fixo, tipografia Barlow, gaveta
+  de detalhe e helpers compartilhados pelas páginas internas.
+- Orçamentos: filtros, indicadores e ficha completa na gaveta.
+- Clientes: página nova. Lista com pendências de cadastro, edição e
+  os orçamentos de cada cliente. O cadastro nasce do orçamento.
+- Produtos: três abas (telhas, acabamentos e fixação, estrutura) com
+  cadastro completo ao abrir o item.
+- CRUD de complementos, que não existia — exige aplica_em no
+  acabamento e consumo_por_m2 na fixação, senão o item nunca entra
+  num orçamento automático.
+- Passam a ser salvos largura_total_m e promocao_ate_m; tamanhos de
+  fábrica viraram obrigatórios.
+- clientes.js: listar, atualizar e pendencias.
+- pricing.js: validação ampliada (complementos, perfis, faixas de
+  preço, tamanhos, unidades), separando o que impede orçamento do que
+  só pede atenção. Exposta em /api/painel/diagnostico.
