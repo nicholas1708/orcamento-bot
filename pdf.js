@@ -185,7 +185,23 @@ async function gerarPDF({ cliente, pedido, orcamento, catalogo }, destino) {
     const yLin = y + h / 2 - 3;
     doc.text(it.unidade, col.und, yLin);
     doc.text(NUM(it.qtd), col.qtd, yLin, { width: col.qtdW, align: 'right' });
-    doc.text(NUM(it.precoUnit), col.vr, yLin, { width: col.vrW, align: 'right' });
+
+    // DE / POR — preço de tabela riscado em cima do preço praticado
+    const temDesconto = it.precoBase > it.precoUnit + 0.001;
+    if (temDesconto) {
+      const de = NUM(it.precoBase);
+      doc.fillColor('#888').text(de, col.vr, yLin - 4, { width: col.vrW, align: 'right' });
+      const larguraDe = doc.widthOfString(de);
+      const xFim = col.vr + col.vrW;
+      doc.moveTo(xFim - larguraDe, yLin - 1).lineTo(xFim, yLin - 1)
+        .strokeColor('#888').lineWidth(0.5).stroke();
+      doc.fillColor('#0a7a3d').font('Helvetica-Bold')
+        .text(NUM(it.precoUnit), col.vr, yLin + 4, { width: col.vrW, align: 'right' });
+      doc.font('Helvetica').fillColor('#000');
+    } else {
+      doc.text(NUM(it.precoUnit), col.vr, yLin, { width: col.vrW, align: 'right' });
+    }
+
     doc.font('Helvetica-Bold').text(BRL(it.subtotal), col.sub, yLin, { width: col.subW, align: 'right' });
     doc.font('Helvetica');
     doc.y = y + h;
@@ -200,35 +216,20 @@ async function gerarPDF({ cliente, pedido, orcamento, catalogo }, destino) {
   doc.text(BRL(orcamento.totalAvista), col.sub, yTot + 4, { width: col.subW, align: 'right' });
   doc.y = yTot + 20;
 
-  // ── DESCONTO POR VOLUME — aparece SÓ aqui, no orçamento ───────────
-  const comDesc = (orcamento.resumoPorProduto || []).filter((p) => p.descontoPct > 0);
-  if (comDesc.length) {
-    doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#0a7a3d')
-      .text('DESCONTO POR VOLUME APLICADO', M, doc.y);
-    doc.font('Helvetica').fontSize(6.8).fillColor('#0a7a3d');
-    for (const p of comDesc) {
-      doc.text(
-        `${p.nome}: ${p.metros} mts · de ${BRL(p.precoBase)} por ${BRL(p.precoUnit)} o metro ` +
-        `(${String(p.descontoPct).replace('.', ',')}% — economia de R$ ${BRL(p.economia)})`,
-        M, doc.y, { width: W }
-      );
-    }
-    if (orcamento.economiaTotal > 0) {
-      doc.font('Helvetica-Bold').fontSize(7.5)
-        .text(`Economia total nesta compra: R$ ${BRL(orcamento.economiaTotal)}`, M, doc.y + 1, { width: W });
-    }
-    if (orcamento.descontoOnline) {
-      doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#0a7a3d')
-        .text('★ CONDIÇÃO EXCLUSIVA DO ORÇAMENTO ONLINE — faixa de desconto liberada por proximidade.',
-          M, doc.y + 2, { width: W });
-    }
-    doc.fillColor('#000');
-    doc.y += 6;
+  // ── TOTAIS: frete é cobrado À PARTE, em linha própria ─────────────
+  // O desconto por volume entra como VALOR, não como texto explicativo:
+  // o "de/por" já aparece riscado na linha de cada produto.
+  if (orcamento.economiaTotal > 0) {
+    doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#555')
+      .text(`SUBTOTAL: ${BRL(orcamento.totalProdutos + orcamento.economiaTotal)}`,
+        M, doc.y, { width: W - 4, align: 'right' });
+    doc.fillColor('#0a7a3d')
+      .text(`DESCONTO: - ${BRL(orcamento.economiaTotal)}`,
+        M, doc.y + 1, { width: W - 4, align: 'right' });
   }
 
-  // ── TOTAIS: frete é cobrado À PARTE, em linha própria ─────────────
   doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000')
-    .text(`PRODUTOS: ${BRL(orcamento.totalProdutos)}`, M, doc.y, { width: W - 4, align: 'right' });
+    .text(`PRODUTOS: ${BRL(orcamento.totalProdutos)}`, M, doc.y + 1, { width: W - 4, align: 'right' });
 
   const fr = orcamento.frete;
   if (fr) {

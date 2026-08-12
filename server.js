@@ -334,13 +334,6 @@ app.post('/api/painel/produto', exigirSenha, (req, res) => {
     if (!(Number(p.largura_util_m) > 0)) return res.status(400).json({ error: 'Largura útil é obrigatória — sem ela não dá pra calcular a quantidade de peças.' });
     if (!(Number(p.comprimento_maximo_m) > 0)) return res.status(400).json({ error: 'Informe o comprimento máximo de fabricação.' });
 
-    // O cliente escolhe o tamanho numa lista: sem tamanho cadastrado ele
-    // não consegue montar pedido no caminho "já sei o que quero".
-    const tamanhos = (Array.isArray(p.comprimentos_padrao) ? p.comprimentos_padrao : [])
-      .map(Number).filter((x) => x > 0);
-    if (!tamanhos.length) {
-      return res.status(400).json({ error: 'Informe os tamanhos de fábrica — é a lista que o cliente escolhe na tela.' });
-    }
     if (Number(p.largura_total_m) > 0 && Number(p.largura_util_m) >= Number(p.largura_total_m)) {
       return res.status(400).json({ error: 'A largura útil precisa ser menor que a largura total.' });
     }
@@ -370,7 +363,7 @@ app.post('/api/painel/produto', exigirSenha, (req, res) => {
       comprimento_maximo_m: Number(p.comprimento_maximo_m),
       comprimento_minimo_m: Number(p.comprimento_minimo_m) || 0.5,
       transpasse_m: Number(p.transpasse_m) || null,
-      comprimentos_padrao: tamanhos,
+      comprimentos_padrao: null,   // não existe tamanho padrão: corte é livre
       promocao_ate_m: Number(p.promocao_ate_m) || null,
       vao_maximo_m: Number(p.vao_maximo_m) || 1.8,
       inclinacao_minima_pct: Number(p.inclinacao_minima_pct) || 10,
@@ -431,7 +424,6 @@ app.get('/api/catalogo', async (_req, res) => {
         largura_util_m: t.largura_util_m,
         comprimento_maximo_m: t.comprimento_maximo_m,
         comprimento_minimo_m: t.comprimento_minimo_m,
-        comprimentos_padrao: t.comprimentos_padrao || null,
         promocao_ate_m: t.promocao_ate_m || null,
         forro_integrado: t.forro_integrado,
       })),
@@ -547,6 +539,9 @@ function montarPedido(pedido, catalogo) {
       larguraGalpaoM: pedido.larguraGalpaoM,
       quedas: pedido.quedas,
       comEstrutura: !!pedido.querEstrutura,
+      // emenda escolhida pelo cliente quando a água passa do máximo de fábrica
+      opcaoCorte: pedido.opcaoCorte || null,
+      tamanhoPreferidoM: pedido.tamanhoPreferidoM || null,
     }, telha, catalogo);
 
     grupos = [{ telhaId: telha.id, nome: telha.nome, cortes: rom.cortes,

@@ -44,6 +44,18 @@ async function escolhaInteligente(txt, lista, nomes, contexto) {
 const BRL = (v) => Number(v).toFixed(2).replace('.', ',');
 const metrosDe = (cortes) => cortes.reduce((s, c) => s + c.quantidade * c.comprimentoM, 0);
 
+/**
+ * LIMITE DE CORTE de uma telha. A largura é fixa de fábrica; o comprimento é
+ * o cliente quem escolhe, e a única fronteira é o que a máquina corta.
+ */
+function limitesDeCorte(telha, catalogo) {
+  const eng = catalogo.engenharia || {};
+  return {
+    min: Number(telha?.comprimento_minimo_m) || Number(eng.comprimento_minimo_fabricacao_m) || 0.5,
+    max: Number(telha?.comprimento_maximo_m) || Number(eng.comprimento_maximo_fabricacao_m) || 12,
+  };
+}
+
 async function processar(chatId, textoRaw) {
   const texto = String(textoRaw || '').trim();
   const catalogo = await getCatalogo();
@@ -244,7 +256,7 @@ async function processar(chatId, textoRaw) {
 
       if (dimJa) { ficha.etapa = 'AMBIENTE'; return processarDireto(); }
       if (sabe === true || texto === '1') {
-        say(R.T.pedeCortes(telhaAtual?.comprimentos_padrao || []));
+        say(R.T.pedeCortes(limitesDeCorte(telhaAtual, catalogo)));
         ficha.etapa = 'CORTES';
         break;
       }
@@ -269,19 +281,15 @@ async function processar(chatId, textoRaw) {
       const cortes = R.interpretarCortes(texto);
       if (!cortes.length) { erro(R.T.erroCortes); break; }
 
-      // TAMANHO É DE FÁBRICA: quando a telha tem tamanhos cadastrados, o
-      // cliente escolhe entre eles. Medida fora da lista não é orçada aqui —
-      // quem precisa de corte diferente vai pelo cálculo automático.
-      const padrao = (telha?.comprimentos_padrao || []).map(Number).filter((x) => x > 0);
-      if (padrao.length) {
-        const fora = [...new Set(cortes
-          .map((c) => Number(c.comprimentoM))
-          .filter((c) => !padrao.some((p) => Math.abs(p - c) < 0.005))
-          .map((c) => String(c).replace('.', ',')))];
-        if (fora.length) {
-          erro(R.T.erroTamanhoForaDoPadrao(telha.nome, padrao, fora));
-          break;
-        }
+      // A LARGURA é fixa de fábrica; o COMPRIMENTO é livre. O único limite é
+      // o que a máquina corta — acima do máximo a peça precisa de emenda, e
+      // isso é conta do romaneio, não do cliente.
+      const lim = limitesDeCorte(telha, catalogo);
+      const curtos = cortes.filter((c) => c.comprimentoM < lim.min);
+      const longos = cortes.filter((c) => c.comprimentoM > lim.max);
+      if (curtos.length || longos.length) {
+        erro(R.T.erroForaDoLimite(telha.nome, lim, curtos, longos));
+        break;
       }
 
       ficha.tentativasErro = 0;

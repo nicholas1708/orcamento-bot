@@ -30,14 +30,15 @@ const T = {
     `*1* — Sim, tenho a lista de medidas\n` +
     `*2* — Não, prefiro passar as medidas do local`,
 
-  /** Os tamanhos são os de fábrica — o cliente escolhe, não inventa medida. */
-  pedeCortes: (tamanhos = []) =>
-    '📏 Manda a *lista* — quantas peças de cada tamanho.\n\n' +
-    (tamanhos.length
-      ? `_Tamanhos de fábrica desta telha:_ ${tamanhos.map((t) => String(t).replace('.', ',') + 'm').join(' · ')}\n\n` +
-        `_Ex:_ \`10 de ${String(tamanhos[0]).replace('.', ',')}m e 4 de ${String(tamanhos[tamanhos.length - 1]).replace('.', ',')}m\`\n\n` +
-        '_Precisa de outra medida? Responda *calcular* que eu monto o corte pelas medidas do telhado._'
-      : '_Ex:_ `3 de 4m, 9 de 4,75 e 5 de 6,20`\n\n_Pode mandar tudo de uma vez._'),
+  /**
+   * A largura é fixa de fábrica; o comprimento é o cliente quem diz —
+   * qualquer medida, quebrada inclusive. O único limite é o corte da máquina.
+   */
+  pedeCortes: (lim = null) =>
+    '📏 Manda a *lista* — quantas peças de cada comprimento.\n\n' +
+    '_Ex:_ `3 de 4m, 9 de 4,75 e 5 de 6,5`\n\n' +
+    (lim ? `_Cortamos de ${String(lim.min).replace('.', ',')}m até ${String(lim.max).replace('.', ',')}m, na medida que você pedir._\n` : '') +
+    '\n_Não sabe a medida? Responda *calcular* que eu monto pelo tamanho do local._',
 
   pedeAmbiente:
     '📐 Quais as *medidas do local*?\n\n' +
@@ -109,14 +110,18 @@ const T = {
   erroDimensoes: 'Me diga as medidas como `comprimento x largura`, ex: `20x10`.',
   erroEndereco: 'Preciso do endereço completo com *rua, número e bairro*.',
 
-  /** Tamanho é de fábrica: o cliente escolhe da lista, não digita qualquer medida. */
-  erroTamanhoForaDoPadrao: (nome, tamanhos, pedidos) =>
-    `📏 A *${nome}* é cortada nos tamanhos de fábrica:\n\n` +
-    tamanhos.map((t) => `• ${String(t).replace('.', ',')}m`).join('\n') +
-    `\n\n${pedidos.length > 1 ? `Os tamanhos *${pedidos.join('m, ')}m* não estão nessa lista.` :
-      `O tamanho *${pedidos[0]}m* não está nessa lista.`}\n\n` +
-    `Me manda a lista de novo usando esses tamanhos — ou responda *calcular* que eu monto ` +
-    `o corte a partir das medidas do telhado.`,
+  /** Único limite do comprimento: o que a máquina corta. */
+  erroForaDoLimite: (nome, lim, curtos, longos) => {
+    const lista = (arr) => arr.map((c) => String(c.comprimentoM).replace('.', ',') + 'm').join(', ');
+    let t = `📏 A *${nome}* é cortada de *${String(lim.min).replace('.', ',')}m* a ` +
+      `*${String(lim.max).replace('.', ',')}m*.\n\n`;
+    if (longos.length) {
+      t += `${lista(longos)} passa do máximo de fábrica — peça maior precisa de *emenda com transpasse*.\n` +
+        `Me diga as medidas do local (ex: \`20x10\`) que eu monto a emenda no cálculo.\n\n`;
+    }
+    if (curtos.length) t += `${lista(curtos)} está abaixo do mínimo de corte.\n\n`;
+    return t + 'Pode mandar a lista de novo com as medidas ajustadas.';
+  },
 
   handoffPedido: 'Sem problemas! Um dos nossos vendedores te atende por aqui em instantes 👍',
   handoffErro: 'Vou te passar pra um vendedor pra te ajudar melhor. Já já alguém te chama 😉',

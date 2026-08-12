@@ -95,9 +95,6 @@ function validarCatalogo(catalogo) {
     if (!(Number(t.vao_maximo_m) > 0)) problemas.push(`${eu}: falta o vão máximo.`);
     if (!preco(t)) problemas.push(`${eu}: sem preço cadastrado.`);
     if (!t.codigo) alertas.push(`${eu}: sem código — não dá para vincular ao ERP nem às unidades.`);
-    if (!(t.comprimentos_padrao || []).length) {
-      problemas.push(`${eu}: sem tamanhos de fábrica cadastrados — o cliente não consegue escolher a medida.`);
-    }
     if (!t.imagem) alertas.push(`${eu}: sem foto.`);
     if (t.largura_total_m && Number(t.largura_util_m) >= Number(t.largura_total_m)) {
       problemas.push(`${eu}: largura útil maior ou igual à largura total.`);

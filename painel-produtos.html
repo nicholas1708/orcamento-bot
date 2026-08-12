@@ -108,10 +108,9 @@ function pintarTelhas(){
   g('conteudo').innerHTML=`
     <div class="tabela"><table>
       <thead><tr><th>Produto</th><th>Família</th><th>Preço por metro</th>
-        <th>Tamanhos de fábrica</th><th>Dados técnicos</th><th>Situação</th><th></th></tr></thead>
+        <th>Corte</th><th>Dados técnicos</th><th>Situação</th><th></th></tr></thead>
       <tbody>${lista.map(p=>{
         const fx=p.faixas_preco?.length?p.faixas_preco:[{ate_m2:null,preco:p.preco}];
-        const tam=p.comprimentos_padrao||[];
         return `<tr class="clicavel" onclick="editarTelha('${esc(p.id)}')">
           <td><div class="linhaprod">${foto(p)}
             <span><span class="prim">${esc(p.nome)}</span>
@@ -120,10 +119,10 @@ function pintarTelhas(){
           <td><span class="tag">${esc(p.familia||'—')}</span></td>
           <td>${fx.map(f=>`<div class="sec">${f.ate_m2?'até '+NUM(f.ate_m2,0)+' m²':'acima disso'}:
             <b style="color:var(--brand-dd)">R$ ${BRL(f.preco)}</b></div>`).join('')}</td>
-          <td>${tam.length?tam.map(m=>`<span class="tag brand">${NUM(m,0)}m</span> `).join('')
-            :'<span class="tag bad">nenhum</span>'}</td>
+          <td><div class="sec">sob medida, de ${p.comprimento_minimo_m?NUM(p.comprimento_minimo_m,2):'—'} m</div>
+            <div class="sec">até ${p.comprimento_maximo_m?NUM(p.comprimento_maximo_m,2):'—'} m</div></td>
           <td><div class="sec">largura útil ${p.largura_util_m?NUM(p.largura_util_m,3)+' m':'—'}</div>
-            <div class="sec">até ${p.comprimento_maximo_m||'—'} m · vão ${p.vao_maximo_m||'—'} m</div></td>
+            <div class="sec">vão ${p.vao_maximo_m||'—'} m · promo até ${p.promocao_ate_m||'—'} m</div></td>
           <td>${p.ativo===false?'<span class="tag off">inativo</span>':'<span class="tag ok">ativo</span>'}</td>
           <td class="acao" onclick="event.stopPropagation()">
             <button class="btn g sm" onclick="editarTelha('${esc(p.id)}')">Abrir</button>
@@ -255,16 +254,6 @@ function editarTelha(id){
      </div>
 
      <div class="card">
-       <h2>Tamanhos de fábrica <i style="color:var(--brand);font-style:normal">*</i></h2>
-       <p class="d">São os únicos tamanhos que o cliente pode escolher no
-         "já sei o que quero" — medida não se digita. Quem precisa de outro
-         corte usa o cálculo automático.</p>
-       <div class="campo"><label>Tamanhos, separados por vírgula</label>
-         <input id="pr-tamanhos" value="${(p?.comprimentos_padrao||[]).join(', ')}" placeholder="3, 4, 5, 6, 7, 8">
-         <small>em metros</small></div>
-     </div>
-
-     <div class="card">
        <h2>Dados técnicos</h2>
        <p class="d">É com isso que o sistema calcula quantas peças o telhado precisa.
          Sem largura útil, o cálculo automático nem roda.</p>
@@ -360,8 +349,6 @@ async function salvarTelha(){
   if(!dec(v('pr-lu')))return aviso('pr-msg','bad','Largura útil é obrigatória — sem ela não dá para calcular a quantidade de peças.');
   if(!dec(v('pr-cmax')))return aviso('pr-msg','bad','Informe o comprimento máximo de fabricação.');
   if(!fx.length)return aviso('pr-msg','bad','Informe ao menos um preço.');
-  const tam=v('pr-tamanhos').split(',').map(dec).filter(x=>x>0);
-  if(!tam.length)return aviso('pr-msg','bad','Informe os tamanhos de fábrica — é o que o cliente escolhe na tela.');
 
   const corpo={
     id:v('pr-id')||null, codigo:v('pr-codigo')||null, nome:v('pr-nome'),
@@ -369,7 +356,6 @@ async function salvarTelha(){
     atributos:v('pr-cor')?{cor:v('pr-cor')}:{},
     descricao_completa:v('pr-desccompleta')||null,
     faixas_preco:fx,
-    comprimentos_padrao:tam,
     largura_util_m:dec(v('pr-lu')), largura_total_m:dec(v('pr-lt')),
     comprimento_maximo_m:dec(v('pr-cmax')), comprimento_minimo_m:dec(v('pr-cmin')),
     transpasse_m:dec(v('pr-transp')), vao_maximo_m:dec(v('pr-vao')),

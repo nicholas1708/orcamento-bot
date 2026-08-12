@@ -20,8 +20,8 @@ const metrosDe = (cortes) => cortes.reduce((s, c) => s + c.quantidade * c.compri
 function secaoTelhas(catalogo, ficha) {
   const todas = catalogo.telhas;
   const fam = ficha.pedido.familiaFoco;
-  const tam = (t) => (t.comprimentos_padrao || []).length
-    ? ` · tamanhos de fábrica: ${t.comprimentos_padrao.join('m, ')}m` : '';
+  // sem "tamanhos sugeridos": o comprimento é livre, só o máximo limita
+  const tam = () => '';
   if (todas.length <= LIMITE_TELHAS_NO_PROMPT) {
     return 'TELHAS:\n' + todas.map((t) =>
       `- id "${t.id}": ${t.nome} — ${fmt(t.preco)}/metro (largura útil ${t.largura_util_m}m, máx ${t.comprimento_maximo_m}m)${tam(t)}`
@@ -83,7 +83,7 @@ Para cada produto existem dois caminhos:
  (A) cliente JÁ SABE os tamanhos → {"telhaId":"...","cortes":[{"comprimentoM":4.75,"quantidade":9}, ...]}
  (B) cliente NÃO SABE → peça as medidas e envie {"telhaId":"...","comprimentoGalpaoM":20,"larguraGalpaoM":10,"quedas":2}. O SISTEMA calcula o romaneio — você NÃO calcula.
 
-TAMANHOS: no caminho (A) só valem os TAMANHOS DE FÁBRICA listados em cada telha. Se o cliente pedir uma medida fora da lista, ofereça os tamanhos disponíveis OU o caminho (B), onde o sistema calcula o corte. Nunca aceite uma medida fora do cadastro.
+TAMANHOS: a LARGURA é fixa de fábrica; o COMPRIMENTO o cliente escolhe livremente, em qualquer medida, inclusive quebrada (6,5m · 4,75m · 7,2m). NUNCA sugira uma lista de tamanhos nem diga que existem tamanhos padrão. O único limite é o comprimento máximo de cada telha — acima dele a peça precisa de emenda, e aí use o caminho (B) para o sistema montar o corte.
 
 REGRAS INEGOCIÁVEIS:
 1. NUNCA calcule quantidade de telhas, metragem ou valor total. Pode citar o preço por metro do catálogo.
@@ -143,21 +143,18 @@ async function aplicarCampos(ficha, campos, catalogo, acoes) {
         .map((x) => ({ comprimentoM: Number(x.comprimentoM), quantidade: Math.floor(Number(x.quantidade)) }))
         .filter((x) => okNum(x.comprimentoM, eng.comprimento_minimo_fabricacao_m, 30) && okNum(x.quantidade, 1, 500));
 
-      // TAMANHO É DE FÁBRICA: a IA pode ter aceitado uma medida inventada.
-      // O código recusa e devolve a lista — quem quer outro corte usa o
-      // caminho B (medidas do telhado), onde o sistema é que calcula.
-      const padrao = (telha.comprimentos_padrao || []).map(Number).filter((x) => x > 0);
-      const dentro = padrao.length
-        ? validos.filter((x) => padrao.some((t) => Math.abs(t - x.comprimentoM) < 0.005))
-        : validos;
-      const fora = validos.filter((x) => !dentro.includes(x));
+      // A largura é fixa; o comprimento é livre, limitado só pelo que a
+      // máquina corta. Peça acima do máximo precisa de emenda — e emenda
+      // quem calcula é o romaneio, pelo caminho B.
+      const max = Number(telha.comprimento_maximo_m) || Number(eng.comprimento_maximo_fabricacao_m) || 12;
+      const dentro = validos.filter((x) => x.comprimentoM <= max);
+      const fora = validos.filter((x) => x.comprimentoM > max);
 
       if (fora.length) {
         acoes.push({ type: 'text', text:
-          `📏 A *${telha.nome}* sai nos tamanhos de fábrica: ` +
-          `${padrao.map((t) => String(t).replace('.', ',') + 'm').join(' · ')}.\n\n` +
-          `${fora.map((x) => String(x.comprimentoM).replace('.', ',') + 'm').join(', ')} não está nessa lista — ` +
-          `me diga as medidas do telhado que eu monto o corte, ou escolha um dos tamanhos acima.` });
+          `📏 A *${telha.nome}* é cortada até *${String(max).replace('.', ',')}m* de fábrica.\n\n` +
+          `${fora.map((x) => String(x.comprimentoM).replace('.', ',') + 'm').join(', ')} passa disso — ` +
+          `dá pra fazer com emenda, mas aí preciso das medidas do local pra montar o corte certo.` });
       }
       if (dentro.length) {
         p.grupos.push({ telhaId: telha.id, nome: telha.nome, cortes: dentro, ambiente: null });

@@ -134,7 +134,9 @@ let cat=null, modo=null, passo=0;
 const hist=[];
 // Acabamentos, fixação e estrutura entram por PADRÃO — o cliente desmarca.
 const A={telhaId:null,cg:'',lg:'',quedas:2,famAberta:null,busca:'',
-         sel:{}, selPronta:false};
+         sel:{}, selPronta:false,
+         // emenda: quando a água passa do comprimento de fábrica
+         opcoes:[], opcaoCorte:null, tamanhoPreferidoM:null, compAgua:null, tamCustom:''};
 const B={itens:[],busca:''};                                   // modo B
 // Conferência final: a lista que vai ser cobrada, SEM PREÇO, montada pelo servidor.
 const R={linhas:null,carregando:false,busca:'',ambiente:null,addAberto:false};
@@ -146,9 +148,9 @@ const el=h=>{T.innerHTML=h;window.scrollTo(0,0);};
 const err=m=>{const x=g('e');x.textContent=m||'';x.style.display=m?'block':'none';};
 const BRL=v=>Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const telhaA=()=>cat.telhas.find(x=>x.id===A.telhaId);
-const totalPassos=()=>modo==='B'?5:7;
+const totalPassos=()=>modo==='B'?5:8;
 /** Passo da conferência em cada caminho — o resto se conta a partir dele. */
-const passoConferir=()=>modo==='B'?2:4;
+const passoConferir=()=>modo==='B'?2:5;
 
 function ocupado(on,txt){
   let o=g('load');
@@ -318,28 +320,25 @@ function desenhar(){
       ${B.itens.length?`<div class="cab" style="margin-top:16px"><span>Produto</span><span>Quantas</span><span>Tamanho</span><span></span></div>
         ${B.itens.map((it,i)=>{
           const p=todos.find(x=>x.id===it.id)||{};
-          const tam=p.comprimentos_padrao||[];
+          // ⚠️ NÃO chamar render() aqui: redesenhar a tela a cada tecla
+          // destrói o campo e o cursor pula fora. Só a legenda é atualizada.
           return `<div class="linha">
-            <span><b>${p.nome||it.id}</b><small>${p.codigo?p.codigo+' · ':''}${
-              it.tipo==='telha'
-                ? (it.qtd&&it.comp?`${it.qtd} telhas de ${String(it.comp).replace('.',',')}m = ${(it.qtd*it.comp).toFixed(2).replace('.',',')} metros`
-                   :'escolha o tamanho de fábrica')
-                : rotuloUnidade(it.tipo)}</small></span>
-            <input type="number" value="${it.qtd}" placeholder="qtd" oninput="B.itens[${i}].qtd=this.value;render()">
-            ${it.tipo!=='telha'
-              ?'<span style="text-align:center;color:#cbd5e1">—</span>'
-              :tam.length
-                ?`<select onchange="B.itens[${i}].comp=this.value;render()"
-                    style="width:100%;padding:11px 6px;border:1.5px solid var(--line);background:#fff;
-                    font-family:inherit;font-size:15px;text-align:center;cursor:pointer">
-                    <option value="">tamanho</option>
-                    ${tam.map(m=>`<option value="${m}" ${+it.comp===m?'selected':''}>${String(m).replace('.',',')}m</option>`).join('')}
-                  </select>`
-                :'<span style="text-align:center;color:#c62828;font-size:12px">sem tamanho cadastrado</span>'}
-            <button class="x" onclick="B.itens.splice(${i},1);render()">✕</button></div>`;
+            <span><b>${p.nome||it.id}</b><small id="leg-${i}">${legendaItem(it,p)}</small></span>
+            <input type="number" value="${it.qtd}" placeholder="qtd"
+              oninput="B.itens[${i}].qtd=this.value;legenda(${i})">
+            ${it.tipo==='telha'
+              ?`<input type="number" step="0.01" inputmode="decimal" value="${it.comp||''}" placeholder="6,5"
+                  oninput="B.itens[${i}].comp=this.value;legenda(${i})">`
+              :'<span style="text-align:center;color:#cbd5e1">—</span>'}
+            <button class="x" onclick="B.itens.splice(${i},1);render()">✕</button></div>
+            ${it.tipo==='telha'&&!B.itens.some((o,j)=>j>i&&o.id===it.id)?`
+              <button onclick="addItem('${it.id}','telha')"
+                style="background:none;border:none;color:var(--brand-dd);font-family:inherit;font-size:12.5px;
+                font-weight:600;cursor:pointer;padding:0 0 10px 13px;margin-top:-4px">
+                + outro comprimento desta telha</button>`:''}`;
         }).join('')}
-        <p class="dica" style="margin-top:2px">Os tamanhos são os de fábrica — não dá para digitar
-          uma medida fora do cadastro. Precisa de outra medida?
+        <p class="dica" style="margin-top:2px">A largura é fixa de fábrica; o comprimento é você quem
+          diz — inteiro ou quebrado, como 6,5m. ${limiteTexto()} Não sabe a medida?
           <a href="#" onclick="irParaCalculo();return false" style="color:var(--brand);font-weight:600">deixe eu calcular</a>.</p>`:''}
 
       <input class="busca" style="margin-top:16px" placeholder="🔎 Buscar produto"
@@ -389,11 +388,43 @@ function desenhar(){
     atualizaMaquete();
   }
 
-  /* 3 — o que vai junto: todas as opções listadas e já marcadas */
+  /* 3 — EMENDA: a água passou do comprimento de fábrica */
   if(passo===3&&modo==='A'){
+    const t=telhaA();
+    el(`<h1>Sua água é comprida</h1>
+      <p class="sub">De cima a baixo dá <b>${BRL(A.compAgua)}m</b>, e a
+        ${t.nome} sai de fábrica até ${BRL(t.comprimento_maximo_m)}m.
+        Isso não é problema: emenda-se com transpasse. <b>Como você prefere?</b></p>
+
+      ${A.opcoes.map(o=>`
+        <button class="op ${A.opcaoCorte===o.id?'on':''}" style="padding:14px"
+          onclick="A.opcaoCorte='${o.id}';render()">
+          <span style="width:22px;height:22px;border:2px solid ${A.opcaoCorte===o.id?'var(--brand)':'var(--line)'};
+            background:${A.opcaoCorte===o.id?'var(--brand)':'#fff'};color:#fff;flex-shrink:0;display:flex;
+            align-items:center;justify-content:center;font-size:13px;font-weight:700">${A.opcaoCorte===o.id?'✓':''}</span>
+          <span style="flex:1"><b style="font-size:15px;text-transform:none;letter-spacing:0">${o.titulo}</b>
+            <small>${o.detalhe}</small>
+            <small style="color:var(--brand-dd);font-weight:600;margin-top:3px">
+              ${BRL(o.materialM)}m de material por fileira</small></span>
+        </button>`).join('')}
+
+      <span class="eyebrow" style="margin-top:20px">Prefere um tamanho específico?</span>
+      <div class="l2" style="align-items:end">
+        <div class="campo" style="margin-bottom:0"><label>Peças de quantos metros</label>
+          <input id="tc" type="number" step="0.01" value="${A.tamCustom}" placeholder="10"
+            oninput="A.tamCustom=this.value"></div>
+        <button class="btn" style="margin-top:0" onclick="usarTamanho()">Calcular</button>
+      </div>
+      <p class="dica" style="margin-top:8px">Eu completo o restante da água com uma peça menor.</p>
+
+      <button class="btn" onclick="ir(4)">Continuar →</button>`);
+  }
+
+  /* 4 — o que vai junto: todas as opções listadas e já marcadas */
+  if(passo===4&&modo==='A'){
     inicializarSelecao();
-    const acab=(cat.complementos||[]).filter(c=>c.tipo==='acabamento');
-    const fix=(cat.complementos||[]).filter(c=>c.tipo==='fixacao');
+    const acab=complementosAplicaveis().filter(c=>c.tipo==='acabamento');
+    const fix=complementosAplicaveis().filter(c=>c.tipo==='fixacao');
     const perfis=(cat.perfis||[]).filter(p=>p.ativo!==false);
 
     const item=(x,marcado,onclick,detalhe)=>`
@@ -415,6 +446,7 @@ function desenhar(){
         :c.aplica_em==='frontal'?'fecha a frente'
         :c.aplica_em==='lateral'?'fecha as laterais'
         :c.aplica_em==='interno'?'acabamento por dentro':'')).join('')}
+      ${A.quedas===1?'<p class="dica">Telhado de 1 água não leva cumeeira — não existe encontro de águas no topo.</p>':''}
 
       <span class="eyebrow" style="margin-top:22px">Parafusos</span>
       ${fix.map(c=>item(c,A.sel[c.id]!==false,`toggleSel('${c.id}')`,
@@ -444,20 +476,31 @@ function desenhar(){
     const telhas=R.linhas.filter(l=>l.tipo==='telha');
     const mts=telhas.reduce((s,l)=>s+(+l.qtd||0)*(+l.comp||0),0);
 
-    const linha=(l,i)=>`<div class="linha" style="grid-template-columns:56px 1fr 88px 34px">
-        ${mini({imagem:l.imagem,aplica_em:l.desenho},52)}
+    const linha=(l,i)=>`<div class="linha" style="grid-template-columns:52px 1fr 74px 74px 34px">
+        ${mini({imagem:l.imagem,aplica_em:l.desenho},48)}
         <span><b style="font-size:14px;text-transform:none;letter-spacing:0">${l.nome}</b>
           <small>${l.codigo?l.codigo+' · ':''}${l.tipo==='telha'
-            ? `peças de <span style="color:var(--brand-dd);font-weight:700">${(+l.comp).toFixed(2).replace('.',',')}m</span>`
+            ? 'quantas peças e de que comprimento'
             : l.rotulo}${l.detalhe&&l.tipo!=='telha'?' · '+l.detalhe:''}</small></span>
         <input type="number" ${l.tipo==='telha'?'step="1"':'step="0.01"'} value="${l.qtd}"
           oninput="R.linhas[${i}].qtd=this.value;totConferir()">
+        ${l.tipo==='telha'
+          ?`<input type="number" step="0.01" value="${l.comp}"
+              oninput="R.linhas[${i}].comp=this.value;totConferir()">`
+          :'<span style="text-align:center;color:#cbd5e1">—</span>'}
         <button class="x" onclick="R.linhas.splice(${i},1);render()">✕</button>
-      </div>`;
+      </div>
+      ${l.tipo==='telha'&&!R.linhas.some((o,j)=>j>i&&o.id===l.id)?`
+        <button onclick="addNaLista('${l.id}')"
+          style="background:none;border:none;color:var(--brand-dd);font-family:inherit;font-size:12.5px;
+          font-weight:600;cursor:pointer;padding:0 0 10px 13px;margin-top:-4px">
+          + outro comprimento desta telha</button>`:''}`;
 
     el(`<h1>Confira sua lista</h1>
       <p class="sub">É isso que vai no orçamento. <b>Ajuste as quantidades, tire ou adicione o que quiser.</b></p>
 
+      ${telhas.length?`<div class="cab" style="grid-template-columns:52px 1fr 74px 74px 34px">
+        <span></span><span>Produto</span><span>Quantas</span><span>Metros</span><span></span></div>`:''}
       ${R.linhas.length?R.linhas.map(linha).join('')
         :'<div class="caixa" style="text-align:center;color:var(--muted)">Sua lista está vazia — adicione um item abaixo.</div>'}
 
@@ -480,8 +523,6 @@ function desenhar(){
         :`<button class="op" style="justify-content:center;padding:14px" onclick="R.addAberto=true;render()">
           <span><b style="color:var(--brand)">+ Adicionar outro produto</b></span></button>`}
 
-      <p class="dica" style="margin-top:12px">O tamanho da telha é de fábrica e não pode ser digitado.
-        Precisa de outra medida? Volte e deixe o sistema calcular.</p>
       <button class="btn" onclick="okConferir()">Continuar →</button>`);
   }
 
@@ -527,6 +568,17 @@ function desenhar(){
  * Acabamentos e fixação: todos. Estrutura: um perfil de cada tipo — marcar
  * duas terças diferentes cobraria a estrutura em dobro.
  */
+/**
+ * O que faz sentido no telhado escolhido.
+ * Cumeeira fecha o encontro das duas águas — em 1 água ela não existe,
+ * e o cálculo do perímetro já devolve zero metro pra ela. Some da tela
+ * pra não parecer que o cliente está levando uma peça que não vai no PDF.
+ */
+function complementosAplicaveis(){
+  return (cat.complementos||[]).filter(c=>
+    c.ativo!==false && !(c.aplica_em==='cumeeira' && A.quedas!==2));
+}
+
 function inicializarSelecao(){
   if(A.selPronta)return;
   for(const c of (cat.complementos||[]))A.sel[c.id]=true;
@@ -539,18 +591,108 @@ function inicializarSelecao(){
 }
 function toggleSel(id){A.sel[id]=!A.sel[id];render();}
 
-function okMedidas(){
+/**
+ * Antes de seguir, pergunta ao servidor se a água cabe numa peça só.
+ * Se não couber, o cliente escolhe COMO emendar — em vez de o sistema
+ * decidir sozinho pelo plano de menos emendas.
+ */
+async function okMedidas(){
   const c=parseFloat(String(A.cg).replace(',','.')),l=parseFloat(String(A.lg).replace(',','.'));
   if(!c||!l||c<=0||l<=0)return err('Preencha comprimento e largura em metros.');
+
+  ocupado(true,'Calculando o corte...');
+  const d=await fetch('/api/romaneio',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({telhaId:A.telhaId,comprimentoGalpaoM:c,larguraGalpaoM:l,quedas:A.quedas})})
+    .then(r=>r.json()).catch(()=>null);
+  ocupado(false);
+
+  if(!d||d.error)return err(d?.error||'Não consegui calcular o corte — tente de novo.');
+
+  A.compAgua=d.compTelha;
+  A.opcoes=d.opcoes||[];
+  if(!d.precisaEscolher){                 // cabe numa peça só: nada a decidir
+    A.opcaoCorte=null;A.tamanhoPreferidoM=null;
+    return ir(4);
+  }
+  A.opcaoCorte=A.opcaoCorte||A.opcoes[0]?.id||null;
   ir(3);
 }
+
+/** Cliente quer peças de um tamanho específico — o servidor monta o plano. */
+async function usarTamanho(){
+  const v=parseFloat(String(A.tamCustom).replace(',','.'));
+  if(!v||v<=0)return err('Informe o tamanho da peça em metros.');
+  ocupado(true,'Montando o corte...');
+  const d=await fetch('/api/opcoes-corte',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({telhaId:A.telhaId,comprimentoM:A.compAgua,tamanhoPreferidoM:v})})
+    .then(r=>r.json()).catch(()=>null);
+  ocupado(false);
+  if(!d||d.error)return err(d?.error||'Não consegui montar esse corte.');
+  if(!d.personalizada||d.personalizada.erro)return err(d.personalizada?.erro||'Esse tamanho não fecha a água.');
+
+  A.opcoes=[d.personalizada,...(d.opcoes||[])];
+  A.opcaoCorte=d.personalizada.id;
+  A.tamanhoPreferidoM=v;
+  err('');render();
+}
+/**
+ * Legenda da linha do pedido. Fica fora do render justamente pra poder ser
+ * reescrita sozinha enquanto o cliente digita, sem derrubar o foco do campo.
+ */
+function legendaItem(it,p){
+  const cod=p.codigo?p.codigo+' · ':'';
+  if(it.tipo!=='telha')return cod+rotuloUnidade(it.tipo);
+  const qtd=+it.qtd, comp=parseFloat(String(it.comp).replace(',','.'));
+  if(!(qtd>0)||!(comp>0))return cod+'quantas peças e de que comprimento';
+  return `${cod}${qtd} telhas de ${String(it.comp).replace('.',',')}m = `+
+    `${(qtd*comp).toFixed(2).replace('.',',')} metros`;
+}
+function legenda(i){
+  const el=g('leg-'+i);if(!el)return;
+  const it=B.itens[i];if(!it)return;
+  el.textContent=legendaItem(it,itensDoCatalogo().find(x=>x.id===it.id)||{});
+}
+
+/**
+ * A MESMA TELHA PODE ENTRAR VÁRIAS VEZES — uma linha por comprimento.
+ * É assim que o orçamento da empresa é montado: o mesmo produto repetido
+ * em 4m, 4,75m, 6,20m... O que não se repete é acabamento e perfil, que
+ * têm uma quantidade só.
+ */
 function addItem(id,tipo){
-  if(B.itens.some(x=>x.id===id))return err('Esse item já está na lista.');
+  if(tipo!=='telha'&&B.itens.some(x=>x.id===id))
+    return err('Esse item já está na lista — é só ajustar a quantidade.');
   B.itens.push({id,tipo,qtd:'',comp:''});B.busca='';err('');render();
 }
+/**
+ * LIMITE DE CORTE — a largura é fixa de fábrica, o comprimento é livre.
+ * A única fronteira é o que a máquina corta: do mínimo ao máximo cadastrado.
+ */
+function limitesDaTelha(id){
+  const t=(cat.telhas||[]).find(x=>x.id===id)||{};
+  const min=+t.comprimento_minimo_m||+cat.engenharia?.comprimento_minimo_fabricacao_m||0.5;
+  const max=+t.comprimento_maximo_m||+cat.engenharia?.comprimento_maximo_fabricacao_m||12;
+  return {min,max,nome:t.nome||'telha'};
+}
+/** Limite da telha que está no pedido — não do catálogo inteiro. */
+function limiteTexto(){
+  const t=B.itens.find(x=>x.tipo==='telha');
+  if(!t)return '';
+  const {min,max}=limitesDaTelha(t.id);
+  return `Cortamos de ${String(min).replace('.',',')}m até ${String(max).replace('.',',')}m.`;
+}
+
 function okItens(){
   const v=B.itens.filter(x=>+x.qtd>0&&(x.tipo!=='telha'||+x.comp>0));
-  if(!v.length)return err('Preencha a quantidade — e escolha o tamanho, no caso das telhas.');
+  if(!v.length)return err('Preencha a quantidade — e o comprimento, no caso das telhas.');
+  for(const x of v){
+    if(x.tipo!=='telha')continue;
+    const {min,max,nome}=limitesDaTelha(x.id);
+    const c=+x.comp;
+    if(c<min)return err(`${nome}: o menor corte é ${String(min).replace('.',',')}m.`);
+    if(c>max)return err(`${nome}: a fábrica corta até ${String(max).replace('.',',')}m. `+
+      `Para peça maior, é emenda com transpasse — deixe eu calcular pelas medidas do local.`);
+  }
   B.itens=v;irConferir();
 }
 /** Sem itens ainda? Oferece o cálculo automático em vez de deixar o cliente travado. */
@@ -565,12 +707,17 @@ function irConferir(){R.linhas=null;R.addAberto=false;R.busca='';ir(passoConferi
 function corpoDoPedido(){
   if(modo==='A'){
     const marcados=Object.keys(A.sel).filter(k=>A.sel[k]);
+    // se o cliente voltou e trocou de 2 águas para 1, a cumeeira marcada
+    // antes não pode ir junto
+    const aplicaveis=complementosAplicaveis().map(c=>c.id);
     return {modo:'auto',
       telhaId:A.telhaId,
       comprimentoGalpaoM:parseFloat(String(A.cg).replace(',','.')),
       larguraGalpaoM:parseFloat(String(A.lg).replace(',','.')),
       quedas:A.quedas,
-      complementosIds:marcados.filter(id=>(cat.complementos||[]).some(c=>c.id===id)),
+      opcaoCorte:A.opcaoCorte,               // como emendar, quando a água é longa
+      tamanhoPreferidoM:A.tamanhoPreferidoM,
+      complementosIds:marcados.filter(id=>aplicaveis.includes(id)),
       perfisIds:marcados.filter(id=>(cat.perfis||[]).some(p=>p.id===id))};
   }
   return {modo:'itens',itens:B.itens.map(x=>({id:x.id,tipo:x.tipo,qtd:+x.qtd,comp:+x.comp||null}))};
@@ -617,17 +764,17 @@ function totConferir(){
     <b>${pecas} peças · ${mts.toFixed(2).replace('.',',')} metros</b>`;
 }
 function addNaLista(id){
-  if(R.linhas.some(l=>l.id===id))return err('Esse produto já está na lista.');
   const x=itensDoCatalogo().find(y=>y.id===id);if(!x)return;
   const ehTelha=x._tipo==='telha';
+  // telha repete (um comprimento por linha); acabamento e perfil, não
+  if(!ehTelha&&R.linhas.some(l=>l.id===id))
+    return err('Esse produto já está na lista — é só ajustar a quantidade.');
   const ehPerfil=(cat.perfis||[]).some(p=>p.id===id);
-  if(ehTelha&&!(x.comprimentos_padrao||[]).length)
-    return err('Essa telha está sem tamanho cadastrado — fale com o comercial.');
   R.linhas.push({
     id, tipo:ehTelha?'telha':ehPerfil?'perfil':'complemento',
     nome:x.nome, codigo:x.codigo||null, imagem:x.imagem||null,
     desenho:x.aplica_em||x.tipo||null,
-    qtd:'', comp:ehTelha?x.comprimentos_padrao[0]:null,
+    qtd:'', comp:ehTelha?'':null,
     rotulo:ehTelha?'peças':x.venda_por==='metro'||(ehPerfil&&x.unidade!=='UN')?'metros'
       :x.venda_por==='barra'?'barras':'peças',
     detalhe:null,
@@ -638,6 +785,14 @@ function okConferir(){
   // Telha não é obrigatória: dá pra orçar só acabamento, parafuso ou estrutura.
   const v=(R.linhas||[]).filter(l=>+l.qtd>0);
   if(!v.length)return err('Coloque ao menos um produto com quantidade.');
+  for(const l of v){
+    if(l.tipo!=='telha')continue;
+    const {min,max,nome}=limitesDaTelha(l.id);
+    const c=+l.comp;
+    if(!(c>0))return err(`${nome}: informe o comprimento da peça.`);
+    if(c<min)return err(`${nome}: o menor corte é ${String(min).replace('.',',')}m.`);
+    if(c>max)return err(`${nome}: a fábrica corta até ${String(max).replace('.',',')}m — peça maior precisa de emenda.`);
+  }
   R.linhas=v;ir(passoConferir()+1);
 }
 

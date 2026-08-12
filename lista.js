@@ -104,7 +104,12 @@ function aplicarLista(linhas, catalogo, ambiente) {
       if (!porTelha.has(telha.id)) {
         porTelha.set(telha.id, { telhaId: telha.id, nome: telha.nome, cortes: [] });
       }
-      porTelha.get(telha.id).cortes.push({ quantidade: Math.floor(qtd), comprimentoM: comp });
+      // a mesma telha entra várias vezes, uma linha por comprimento.
+      // Dois pedidos do MESMO comprimento viram uma linha só.
+      const cortes = porTelha.get(telha.id).cortes;
+      const igual = cortes.find((c) => Math.abs(c.comprimentoM - comp) < 0.001);
+      if (igual) igual.quantidade += Math.floor(qtd);
+      else cortes.push({ quantidade: Math.floor(qtd), comprimentoM: comp });
       continue;
     }
 

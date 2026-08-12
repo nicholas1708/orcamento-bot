@@ -167,6 +167,11 @@ function calcularOrcamento(pedido, catalogo) {
       throw new Error(`Preço não cadastrado para ${telha.nome}.`);
     }
 
+    // preço de tabela (primeira faixa) — vai na linha do PDF como "de/por"
+    const precoBase = Array.isArray(telha.faixas_preco) && telha.faixas_preco.length
+      ? [...telha.faixas_preco].sort((a, b) => (a.ate_m2 ?? Infinity) - (b.ate_m2 ?? Infinity))[0].preco
+      : telha.preco;
+
     let metrosProduto = 0;
     let pecasProduto = 0;
 
@@ -205,6 +210,7 @@ function calcularOrcamento(pedido, catalogo) {
         qtd,
         comprimentoM: comp,
         precoUnit: money(precoUnit),
+        precoBase: money(precoBase),          // riscado no PDF quando há desconto
         subtotal: money(metros * precoUnit),
       });
     }
@@ -212,9 +218,6 @@ function calcularOrcamento(pedido, catalogo) {
     metragemTotal = m3(metragemTotal + metrosProduto);
     totalPecas += pecasProduto;
     // desconto por volume, para aparecer no PDF (não na tela do cliente)
-    const precoBase = Array.isArray(telha.faixas_preco) && telha.faixas_preco.length
-      ? [...telha.faixas_preco].sort((a, b) => (a.ate_m2 ?? Infinity) - (b.ate_m2 ?? Infinity))[0].preco
-      : telha.preco;
     const descontoPct = precoBase > 0
       ? Math.round((1 - precoUnit / precoBase) * 1000) / 10 : 0;
 
