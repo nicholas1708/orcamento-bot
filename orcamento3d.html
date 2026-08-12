@@ -12,6 +12,7 @@
   /* topo */
   .topo{position:fixed;top:0;left:0;right:0;padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;
         background:linear-gradient(#0f172acc,#0f172a00);display:flex;align-items:center;gap:10px;z-index:5}
+  .topo img{height:26px;width:auto;opacity:.95}
   .topo b{font-size:15px}
   .topo .sp{flex:1}
   .pill{background:#1e293bcc;border:1px solid #334155;border-radius:20px;padding:6px 12px;font-size:12px;color:#94a3b8}
@@ -19,43 +20,63 @@
   .abas{position:fixed;top:calc(env(safe-area-inset-top) + 52px);left:50%;transform:translateX(-50%);
         display:flex;gap:4px;background:#1e293bcc;border:1px solid #334155;border-radius:22px;padding:4px;z-index:5;backdrop-filter:blur(8px)}
   .abas button{background:none;border:none;color:#94a3b8;font-size:12.5px;font-weight:600;padding:7px 15px;border-radius:18px;cursor:pointer}
-  .abas button.on{background:#0ea5e9;color:#fff}
-  /* painel inferior */
+  .abas button.on{background:#01A79D;color:#fff}
+  /* painel — lateral no desktop, gaveta no celular */
   .sheet{position:fixed;left:0;right:0;bottom:0;background:#0f172af2;backdrop-filter:blur(14px);
          border-top:1px solid #1e293b;border-radius:20px 20px 0 0;z-index:6;transition:transform .28s;
          padding-bottom:env(safe-area-inset-bottom);max-height:78vh;overflow-y:auto}
   .sheet.min{transform:translateY(calc(100% - 116px - env(safe-area-inset-bottom)))}
   .puxador{width:38px;height:4px;background:#475569;border-radius:2px;margin:9px auto 4px;cursor:pointer}
   .resumo{display:flex;align-items:center;gap:12px;padding:6px 18px 12px;cursor:pointer}
-  .resumo .v{font-size:23px;font-weight:800;color:#38bdf8;line-height:1.1}
+  .resumo .v{font-size:23px;font-weight:800;color:#2FC3B9;line-height:1.1}
   .resumo .d{font-size:11.5px;color:#94a3b8;margin-top:2px}
   .resumo .sp{flex:1}
   .resumo .seta{color:#64748b;font-size:13px}
   .corpo{padding:0 18px 18px}
+
+  @media(min-width:900px){
+    .sheet{left:auto;right:0;top:0;bottom:0;width:352px;max-height:none;border-radius:0;
+           border-top:none;border-left:1px solid #1e293b;transform:none !important;
+           display:flex;flex-direction:column;padding-bottom:0}
+    .puxador{display:none}
+    .resumo{order:2;margin-top:auto;border-top:1px solid #1e293b;padding:14px 20px;cursor:default;
+            background:#0b1220}
+    .resumo .seta{display:none}
+    .resumo .v{font-size:27px}
+    .corpo{order:1;overflow-y:auto;padding:22px 20px 8px;flex:1}
+    .topo{right:352px}
+    .abas{left:calc(50% - 176px)}
+    #cena{right:352px}
+    /* telhas em coluna, não em carrossel */
+    .telhas{flex-direction:column;overflow:visible}
+    .telhas button{flex:none;width:100%;display:flex;align-items:center;gap:10px}
+    .telhas img{width:74px;height:52px;flex-shrink:0}
+    .telhas .n{padding:0 10px 0 0;font-size:12px}
+  }
   .lb{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.4px;font-weight:700;margin:14px 0 7px}
   /* sliders */
   .sl{margin-bottom:14px}
   .sl .cab{display:flex;justify-content:space-between;font-size:13px;margin-bottom:7px}
-  .sl .cab b{color:#e2e8f0}.sl .cab span{color:#38bdf8;font-weight:700}
+  .sl .cab b{color:#e2e8f0}.sl .cab span{color:#2FC3B9;font-weight:700}
   input[type=range]{width:100%;height:32px;-webkit-appearance:none;background:none}
   input[type=range]::-webkit-slider-runnable-track{height:5px;background:#1e293b;border-radius:3px}
-  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;background:#0ea5e9;
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;background:#01A79D;
     border-radius:50%;margin-top:-10px;border:3px solid #0f172a;box-shadow:0 2px 6px #0006}
   input[type=range]::-moz-range-track{height:5px;background:#1e293b;border-radius:3px}
-  input[type=range]::-moz-range-thumb{width:22px;height:22px;background:#0ea5e9;border:3px solid #0f172a;border-radius:50%}
+  input[type=range]::-moz-range-thumb{width:22px;height:22px;background:#01A79D;border:3px solid #0f172a;border-radius:50%}
   /* chips de opção */
   .ops{display:flex;gap:7px;flex-wrap:wrap}
   .ops button{flex:1;min-width:82px;background:#1e293b;border:1px solid #334155;color:#cbd5e1;
     border-radius:11px;padding:11px 8px;font-size:12.5px;font-weight:600;cursor:pointer;display:flex;
     flex-direction:column;align-items:center;gap:3px}
-  .ops button.on{background:#0c4a6e;border-color:#0ea5e9;color:#e0f2fe}
+  .ops button.on{background:#04463F;border-color:#01A79D;color:#D7F5F2}
   .ops button small{font-size:10px;font-weight:400;color:#64748b}
-  .ops button.on small{color:#7dd3fc}
+  .ops button.on small{color:#68D8CF}
   /* telhas */
   .telhas{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
   .telhas button{flex:0 0 128px;background:#1e293b;border:1px solid #334155;border-radius:12px;
     padding:0;overflow:hidden;cursor:pointer;text-align:left}
-  .telhas button.on{border-color:#0ea5e9}
+  .telhas button.on{border-color:#01A79D;box-shadow:0 0 0 1px #01A79D}
   .telhas img{width:100%;height:60px;object-fit:cover;display:block;background:#0f172a}
   .telhas .n{padding:7px 9px;font-size:11px;color:#cbd5e1;line-height:1.3}
   /* lista de itens (aba 2) */
@@ -66,20 +87,20 @@
   .item .n small{color:#64748b;display:block;font-size:10.5px}
   .item input{width:56px;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:8px;
     padding:8px;text-align:center;font-size:13px;outline:none}
-  .item input:focus{border-color:#0ea5e9}
+  .item input:focus{border-color:#01A79D}
   .item .x{background:#7f1d1d;color:#fecaca;border:none;width:30px;height:30px;border-radius:8px;cursor:pointer;flex-shrink:0}
   .add{width:100%;background:#1e293b;border:1px dashed #475569;color:#94a3b8;border-radius:12px;
        padding:12px;font-size:13px;cursor:pointer;margin-top:4px}
   .busca{width:100%;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:11px;
          padding:12px 14px;font-size:13.5px;outline:none;margin-bottom:9px}
-  .busca:focus{border-color:#0ea5e9}
-  .btn{width:100%;background:#0ea5e9;color:#fff;border:none;border-radius:13px;padding:15px;
+  .busca:focus{border-color:#01A79D}
+  .btn{width:100%;background:#01A79D;color:#fff;border:none;border-radius:13px;padding:15px;
        font-size:15.5px;font-weight:700;cursor:pointer;margin-top:14px}
-  .btn:active{background:#0284c7}
+  .btn:active,.btn:hover{background:#00897F}
   .nota{font-size:11px;color:#64748b;text-align:center;margin-top:9px;line-height:1.5}
   .carregando{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
-    background:#0f172a;z-index:20;color:#38bdf8;font-size:14px;flex-direction:column;gap:14px}
-  .sp3{width:36px;height:36px;border:3px solid #1e293b;border-top-color:#0ea5e9;border-radius:50%;animation:g .8s linear infinite}
+    background:#0f172a;z-index:20;color:#2FC3B9;font-size:14px;flex-direction:column;gap:14px}
+  .sp3{width:36px;height:36px;border:3px solid #1e293b;border-top-color:#01A79D;border-radius:50%;animation:g .8s linear infinite}
   @keyframes g{to{transform:rotate(360deg)}}
 </style>
 </head>
@@ -87,6 +108,8 @@
 <div id="cena"></div>
 
 <div class="topo">
+  <img src="https://d4polyhz8pjtz.cloudfront.net/5223/logo-3768-20221005184441-06-15-2023-15-51-14-000000.png"
+       alt="4A Representação" style="background:#fff;padding:3px 5px;border-radius:4px">
   <b>Orçamento 3D</b><span class="pill" id="dica">arraste para girar</span>
   <span class="sp"></span>
   <a href="/orcamento" class="pill" style="text-decoration:none">versão simples</a>
@@ -134,10 +157,12 @@ function initTres(){
   scene.background=new THREE.Color(0x0f172a);
   scene.fog=new THREE.Fog(0x0f172a,60,190);
 
-  camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,.1,600);
+  const larguraCena=()=>innerWidth>=900?innerWidth-352:innerWidth;   // painel lateral no desktop
+  camera=new THREE.PerspectiveCamera(42,larguraCena()/innerHeight,.1,600);
   renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});
   renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-  renderer.setSize(innerWidth,innerHeight);
+  renderer.setSize(larguraCena(),innerHeight);
+  window._larguraCena=larguraCena;
   renderer.shadowMap.enabled=true;
   renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   el.appendChild(renderer.domElement);
@@ -188,8 +213,9 @@ function eventos(){
   c.addEventListener('touchend',()=>{arrastando=false;pinch=0;});
   c.addEventListener('wheel',e=>{alvoDist=Math.max(.55,Math.min(2.2,alvoDist+e.deltaY*.0011));},{passive:true});
   addEventListener('resize',()=>{
-    camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
-    renderer.setSize(innerWidth,innerHeight);
+    const w=window._larguraCena();
+    camera.aspect=w/innerHeight;camera.updateProjectionMatrix();
+    renderer.setSize(w,innerHeight);
   });
 }
 const dist2=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
@@ -202,7 +228,9 @@ function animar(){
     Math.sin(girY)*Math.cos(girX)*raio,
     Math.sin(girX)*raio+3,
     Math.cos(girY)*Math.cos(girX)*raio);
-  camera.lookAt(0,Math.min(S.larg,S.comp)*0.12+2,0);
+  // no desktop o painel ocupa a direita: desloca o alvo para centralizar na área livre
+  const desloc=innerWidth>=900?Math.max(S.comp,S.larg)*0.10:0;
+  camera.lookAt(-desloc,Math.min(S.larg,S.comp)*0.12+2,0);
   renderer.render(scene,camera);
 }
 
@@ -295,7 +323,7 @@ function construir(){
 function construirItens(){
   const validos=ITENS.filter(i=>+i.qtd>0);
   if(!validos.length)return;
-  const matPeca=new THREE.MeshStandardMaterial({color:0x38bdf8,roughness:.45,metalness:.5});
+  const matPeca=new THREE.MeshStandardMaterial({color:0x01A79D,roughness:.45,metalness:.5});
   let x=0;
   const total=validos.reduce((s,i)=>s+Math.min(+i.qtd,40),0);
   const larg=.9;
@@ -366,14 +394,17 @@ function atualizarPreco(){
 }
 
 /* ── Interface ────────────────────────────────────────────────────── */
+const noDesktop=()=>innerWidth>=900;   // no desktop o painel é fixo na lateral
+
 function setAba(a){
   aba=a;
   document.getElementById('ab1').className=a==='calc'?'on':'';
   document.getElementById('ab2').className=a==='itens'?'on':'';
-  if(!aberto)toggleSheet();
+  if(!aberto&&!noDesktop())toggleSheet();
   painel();construir();
 }
 function toggleSheet(){
+  if(noDesktop())return;               // lateral não recolhe
   aberto=!aberto;
   document.getElementById('sheet').className='sheet'+(aberto?'':' min');
   document.getElementById('seta').textContent=aberto?'▼':'▲';

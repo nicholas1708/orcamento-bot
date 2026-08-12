@@ -205,6 +205,8 @@ app.post('/api/painel/produto', exigirSenha, (req, res) => {
       comprimento_maximo_m: Number(p.comprimento_maximo_m),
       comprimento_minimo_m: Number(p.comprimento_minimo_m) || 0.5,
       transpasse_m: Number(p.transpasse_m) || null,
+      comprimentos_padrao: Array.isArray(p.comprimentos_padrao) && p.comprimentos_padrao.length
+        ? p.comprimentos_padrao.map(Number).filter((x) => x > 0) : null,
       vao_maximo_m: Number(p.vao_maximo_m) || 1.8,
       inclinacao_minima_pct: Number(p.inclinacao_minima_pct) || 10,
       forro_integrado: !!p.forro_integrado,
@@ -264,6 +266,7 @@ app.get('/api/catalogo', async (_req, res) => {
         largura_util_m: t.largura_util_m,
         comprimento_maximo_m: t.comprimento_maximo_m,
         comprimento_minimo_m: t.comprimento_minimo_m,
+        comprimentos_padrao: t.comprimentos_padrao || null,
         promocao_ate_m: t.promocao_ate_m || null,
         forro_integrado: t.forro_integrado,
       })),
@@ -377,21 +380,30 @@ app.post('/api/orcamento', async (req, res) => {
       grupos = [{ telhaId: telha.id, nome: telha.nome, cortes: rom.cortes,
         ambiente: { comprimentoGalpaoM: pedido.comprimentoGalpaoM, larguraGalpaoM: pedido.larguraGalpaoM, quedas: pedido.quedas } }];
 
-      if (pedido.querAcabamento) {
-        complementos = (rom.complementos || []).map((c) => ({ produtoId: c.produtoId, metros: c.metros }));
-        // fixação entra junto: quantidade sai do consumo por m²
-        for (const c of (catalogo.complementos || [])) {
-          if (c.ativo !== false && c.tipo === 'fixacao' && c.consumo_por_m2) {
-            complementos.push({ produtoId: c.id });
-          }
-        }
+      // O cliente escolheu item a item na tela (tudo vem marcado por padrão).
+      // Sem lista? Cai no comportamento antigo (querAcabamento/querEstrutura).
+      const idsComp = Array.isArray(pedido.complementosIds) ? pedido.complementosIds : null;
+      const idsPerf = Array.isArray(pedido.perfisIds) ? pedido.perfisIds : null;
+
+      const querComp = idsComp || (pedido.querAcabamento
+        ? (catalogo.complementos || []).filter((c) => c.ativo !== false).map((c) => c.id) : []);
+
+      for (const id of querComp) {
+        const item = (catalogo.complementos || []).find((c) => c.id === id);
+        if (!item) continue;
+        const sug = (rom.complementos || []).find((c) => c.produtoId === id);
+        if (sug) complementos.push({ produtoId: id, metros: sug.metros });      // pelo perímetro
+        else if (item.consumo_por_m2) complementos.push({ produtoId: id });     // por m²
       }
-      if (pedido.querEstrutura) {
-        // perfil escolhido pelo cliente (ou o padrão do catálogo)
+
+      const querPerf = idsPerf || (pedido.querEstrutura && pedido.perfilId ? [pedido.perfilId] : []);
+      if (querPerf.length) {
         const { calcularEstruturaPerfis } = require('./romaneio');
         const maior = Math.max(...rom.cortes.map((c) => c.comprimentoM));
-        const est = calcularEstruturaPerfis(maior, pedido.comprimentoGalpaoM, [telha], catalogo, pedido.perfilId);
-        perfis = est.perfis || [];
+        for (const id of querPerf) {
+          const est = calcularEstruturaPerfis(maior, pedido.comprimentoGalpaoM, [telha], catalogo, id);
+          perfis.push(...(est.perfis || []));
+        }
       }
 
     } else if (pedido?.modo === 'itens') {

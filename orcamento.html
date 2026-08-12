@@ -3,74 +3,117 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Orçamento de Telhas</title>
+<title>Orçamento de Telhas — 4A Representação</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif}
-  body{background:#f1f5f9;min-height:100vh;display:flex;justify-content:center;color:#0f172a}
-  .app{width:100%;max-width:560px;padding:16px 16px 48px}
-  .topo{display:flex;align-items:center;gap:10px;margin-bottom:18px}
-  .voltar{background:none;border:none;font-size:22px;cursor:pointer;color:#64748b;padding:2px 6px;visibility:hidden}
+  /* ═══ Identidade visual do site novo da 4A ═══
+     Marca #01A79D · Barlow (texto) + Barlow Condensed (títulos, caixa alta) */
+  :root{
+    --brand:#01A79D; --brand-d:#00897F; --brand-dd:#036C62; --brand-tint:#E6F7F5;
+    --ink:#0E1416; --ink-2:#28353A; --muted:#6B7A7E;
+    --line:#E2E7E8; --line-2:#F1F4F4; --bg:#FFFFFF; --bg-soft:#F5F7F7;
+    --wa:#25D366; --e:cubic-bezier(.19,.66,.28,1);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg-soft);min-height:100vh;display:flex;justify-content:center;color:var(--ink);
+       font-family:'Barlow',system-ui,-apple-system,sans-serif;font-size:16px;line-height:1.6;
+       -webkit-font-smoothing:antialiased}
+  h1,h2,b{font-family:'Barlow Condensed',sans-serif}
+  .app{width:100%;max-width:600px;padding:16px 18px 52px}
+  /* topo */
+  .marca{display:flex;align-items:center;gap:11px;margin-bottom:14px}
+  .marca img{height:40px;width:auto}
+  .marca span{font-family:'Barlow Condensed';font-weight:700;text-transform:uppercase;font-size:13.5px;
+    letter-spacing:.06em;line-height:1.1;color:var(--ink);border-left:2px solid var(--brand);padding-left:11px}
+  .marca span i{display:block;font-style:normal;color:var(--brand)}
+  .topo{display:flex;align-items:center;gap:10px;margin-bottom:20px}
+  .voltar{background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);padding:2px 6px;visibility:hidden}
   .voltar.on{visibility:visible}
-  .barra{flex:1;height:6px;background:#e2e8f0;border-radius:99px;overflow:hidden}
-  .barra i{display:block;height:100%;background:#0ea5e9;transition:width .35s}
-  h1{font-size:22px;margin-bottom:6px;line-height:1.25}
-  .sub{font-size:14px;color:#64748b;margin-bottom:18px;line-height:1.5}
-  /* cartões de escolha */
-  .op{display:flex;gap:12px;align-items:center;background:#fff;border:2px solid #e2e8f0;border-radius:14px;
-      padding:16px;cursor:pointer;width:100%;text-align:left;margin-bottom:11px;transition:.15s}
-  .op:hover{border-color:#7dd3fc;transform:translateY(-1px)}
-  .op.on{border-color:#0ea5e9;background:#f0f9ff}
-  .op .ico{font-size:28px;flex-shrink:0}
-  .op b{display:block;font-size:15px;margin-bottom:2px}
-  .op small{color:#64748b;font-size:12.5px;line-height:1.45;display:block}
-  .op img{width:64px;height:50px;object-fit:contain;border-radius:9px;flex-shrink:0;background:#f8fafc;padding:3px}
-  .chip{display:inline-block;background:#f1f5f9;color:#475569;font-size:10.5px;padding:2px 7px;border-radius:20px;margin:3px 3px 0 0}
+  .barra{flex:1;height:4px;background:var(--line);overflow:hidden}
+  .barra i{display:block;height:100%;background:var(--brand);transition:width .4s var(--e)}
+  h1{font-size:clamp(26px,5vw,34px);text-transform:uppercase;line-height:1;letter-spacing:-.005em;margin-bottom:8px}
+  .sub{font-size:15px;color:var(--muted);margin-bottom:20px;line-height:1.6}
+  .eyebrow{display:block;font-size:11.5px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--brand);margin-bottom:10px}
+  /* cartões */
+  .op{display:flex;gap:14px;align-items:center;background:#fff;border:1px solid var(--line);
+      padding:16px;cursor:pointer;width:100%;text-align:left;margin-bottom:10px;transition:.25s var(--e)}
+  .op:hover{border-color:var(--brand);transform:translateY(-1px);box-shadow:0 12px 28px -18px rgba(14,20,22,.4)}
+  .op.on{border-color:var(--brand);background:var(--brand-tint);border-left:3px solid var(--brand)}
+  .op .ico{font-size:26px;flex-shrink:0}
+  .op b{display:block;font-size:17px;text-transform:uppercase;letter-spacing:.01em;margin-bottom:3px;font-weight:700}
+  .op small{color:var(--muted);font-size:13px;line-height:1.5;display:block}
+  .op img{width:64px;height:50px;object-fit:contain;flex-shrink:0;background:var(--bg-soft);padding:4px}
+  .chip{display:inline-block;background:var(--line-2);color:var(--ink-2);font-size:10.5px;font-weight:500;
+    padding:3px 9px;margin:3px 3px 0 0;letter-spacing:.02em}
   /* campos */
-  .campo{margin-bottom:14px}
-  .campo label{display:block;font-size:13px;font-weight:600;color:#334155;margin-bottom:5px}
-  .campo input{width:100%;padding:13px 14px;border:2px solid #e2e8f0;border-radius:10px;font-size:15px;outline:none}
-  .campo input:focus{border-color:#0ea5e9}
-  .l2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
-  .dica{font-size:12px;color:#94a3b8;margin-top:-8px;margin-bottom:14px}
-  .busca{width:100%;padding:12px 14px;border:2px solid #e2e8f0;border-radius:10px;font-size:14px;outline:none;margin-bottom:12px}
-  /* carrinho / itens */
-  .linha{display:grid;grid-template-columns:1fr 78px 78px auto;gap:8px;align-items:center;
-         background:#fff;border:1px solid #e2e8f0;border-radius:11px;padding:10px 12px;margin-bottom:8px}
-  .linha b{font-size:13px;display:block;line-height:1.3}
-  .linha small{color:#94a3b8;font-size:11px}
-  .linha input{padding:9px;border:1px solid #cbd5e1;border-radius:8px;font-size:13.5px;outline:none;width:100%;text-align:center}
-  .linha input:focus{border-color:#0ea5e9}
-  .linha .x{background:#fee2e2;color:#b91c1c;border:none;width:34px;height:34px;border-radius:8px;cursor:pointer}
-  .cab{display:grid;grid-template-columns:1fr 78px 78px auto;gap:8px;padding:0 12px 4px;
-       font-size:10.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:.3px}
+  .campo{margin-bottom:15px}
+  .campo label{display:block;font-family:'Barlow Condensed';font-size:14px;font-weight:600;
+    text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2);margin-bottom:6px}
+  .campo input{width:100%;padding:14px;border:1px solid var(--line);font-size:16px;outline:none;
+    font-family:inherit;background:#fff;transition:.2s}
+  .campo input:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-tint)}
+  .l2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .dica{font-size:12.5px;color:var(--muted);margin-top:-9px;margin-bottom:16px}
+  .busca{width:100%;padding:14px;border:1px solid var(--line);font-size:15px;outline:none;
+    margin-bottom:12px;font-family:inherit}
+  .busca:focus{border-color:var(--brand)}
+  /* itens */
+  .linha{display:grid;grid-template-columns:1fr 74px 74px auto;gap:8px;align-items:center;
+         background:#fff;border:1px solid var(--line);padding:11px 13px;margin-bottom:8px}
+  .linha b{font-size:14px;display:block;line-height:1.25;text-transform:none;font-weight:600}
+  .linha small{color:var(--muted);font-size:11.5px}
+  .linha input{padding:9px;border:1px solid var(--line);font-size:14px;outline:none;width:100%;
+    text-align:center;font-family:inherit}
+  .linha input:focus{border-color:var(--brand)}
+  .linha .x{background:#FEECEC;color:#B42318;border:none;width:34px;height:34px;cursor:pointer;font-size:14px}
+  .cab{display:grid;grid-template-columns:1fr 74px 74px auto;gap:8px;padding:0 13px 5px;
+       font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-weight:600}
   .cab span:nth-child(n+2){text-align:center}
   /* botões */
-  .btn{width:100%;margin-top:16px;padding:15px;background:#0ea5e9;color:#fff;border:none;border-radius:12px;
-       font-size:16px;font-weight:700;cursor:pointer}
-  .btn:hover{background:#0284c7}
-  .btn.sec{background:#fff;color:#0369a1;border:2px solid #bae6fd;margin-top:10px}
-  .btn:disabled{background:#cbd5e1;cursor:not-allowed}
-  .erro{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;border-radius:10px;padding:10px 14px;font-size:13.5px;margin-top:12px;display:none}
-  .aviso{background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:11px 14px;border-radius:10px;font-size:13px;margin:12px 0}
-  .caixa{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:12px}
+  .btn{width:100%;margin-top:18px;padding:16px;background:var(--brand);color:#fff;border:2px solid var(--brand);
+       font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;text-transform:uppercase;
+       letter-spacing:.05em;cursor:pointer;transition:.3s var(--e)}
+  .btn:hover{background:var(--brand-dd);border-color:var(--brand-dd)}
+  .btn.sec{background:#fff;color:var(--ink);border-color:var(--ink);margin-top:10px}
+  .btn.sec:hover{background:var(--ink);color:#fff}
+  .btn:disabled{background:var(--line);border-color:var(--line);color:var(--muted);cursor:not-allowed}
+  .erro{background:#FEECEC;color:#B42318;border-left:3px solid #B42318;padding:12px 15px;font-size:14px;margin-top:14px;display:none}
+  .aviso{background:#FFF8E6;border-left:3px solid #D9A400;color:#7A5C00;padding:12px 15px;font-size:13.5px;margin:14px 0}
+  .caixa{background:#fff;border:1px solid var(--line);padding:15px;margin-bottom:12px}
   /* resumo e final */
-  .res .it{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px dashed #e2e8f0;font-size:13.5px}
+  .res .it{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line-2);font-size:14px}
   .res .it:last-child{border:none}
-  .res .it span:first-child{color:#64748b}
+  .res .it span:first-child{color:var(--muted)}
   .res .it span:last-child{font-weight:600;text-align:right;max-width:62%}
-  .fim{text-align:center;padding:24px 8px}
-  .fim .ok{font-size:52px}.fim h2{margin:8px 0 2px}
-  .fim .tt{font-size:32px;font-weight:800;color:#0284c7;margin:6px 0 2px}
-  .fim .met{font-size:13px;color:#64748b;margin-bottom:14px}
-  .parc{background:#fff;border-radius:12px;padding:12px 14px;text-align:left;font-size:13px}
-  .parc div{display:flex;justify-content:space-between;padding:4px 0}
-  .fim a.pdf{display:block;margin-top:14px;padding:15px;background:#0ea5e9;color:#fff;border-radius:12px;font-weight:700;text-decoration:none}
-  .fim a.zap{display:block;margin-top:12px;padding:15px;background:#25d366;color:#fff;border-radius:12px;font-weight:700;text-decoration:none}
-  .fim button{margin-top:12px;background:none;border:none;color:#64748b;cursor:pointer;font-size:13px;text-decoration:underline}
+  .fim{text-align:center;padding:28px 8px}
+  .fim .ok{font-size:50px}
+  .fim h2{margin:10px 0 2px;font-size:30px;text-transform:uppercase;line-height:1}
+  .fim .tt{font-family:'Barlow Condensed';font-size:46px;font-weight:700;color:var(--brand);margin:8px 0 0;line-height:1}
+  .fim .met{font-size:13.5px;color:var(--muted);margin-bottom:16px}
+  .parc{background:#fff;border:1px solid var(--line);padding:14px 16px;text-align:left;font-size:14px}
+  .parc div{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line-2)}
+  .parc div:last-child{border:none}
+  .fim a.pdf{display:block;margin-top:16px;padding:16px;background:var(--brand);color:#fff;font-weight:700;
+    text-decoration:none;font-family:'Barlow Condensed';font-size:18px;text-transform:uppercase;letter-spacing:.05em}
+  .fim a.pdf:hover{background:var(--brand-dd)}
+  .fim a.zap{display:block;margin-top:12px;padding:16px;background:var(--wa);color:#fff;font-weight:700;
+    text-decoration:none;font-family:'Barlow Condensed';font-size:18px;text-transform:uppercase;letter-spacing:.05em}
+  .fim button{margin-top:14px;background:none;border:none;color:var(--muted);cursor:pointer;
+    font-size:13.5px;text-decoration:underline;font-family:inherit}
+  a{color:inherit;text-decoration:none}
+  :focus-visible{outline:3px solid var(--brand);outline-offset:2px}
 </style>
 </head>
 <body>
 <div class="app">
+  <div class="marca">
+    <img src="https://d4polyhz8pjtz.cloudfront.net/5223/logo-3768-20221005184441-06-15-2023-15-51-14-000000.png"
+         alt="4A Comércio e Representação de Materiais de Construção">
+    <span>Orçamento<i>de telhas</i></span>
+  </div>
   <div class="topo">
     <button class="voltar" id="bv" onclick="voltar()">←</button>
     <div class="barra"><i id="pg"></i></div>
@@ -89,9 +132,9 @@
 // Abre direto no "já sei o que quero"; o cálculo automático fica lá dentro.
 let cat=null, modo='B', passo=0;
 const hist=[];
-// Acabamentos e estrutura entram por PADRÃO — o cliente remove se não quiser.
+// Acabamentos, fixação e estrutura entram por PADRÃO — o cliente desmarca.
 const A={telhaId:null,cg:'',lg:'',quedas:2,famAberta:null,busca:'',
-         querAcabamento:true,querEstrutura:true,perfilId:null,trocandoPerfil:false};
+         sel:{}, selPronta:false};
 const B={itens:[],busca:''};                                   // modo B
 const cliente={nome:'',telefone:'',cidade:'',endereco:''};
 
@@ -107,11 +150,11 @@ function ocupado(on,txt){
   let o=g('load');
   if(on){
     if(!o){o=document.createElement('div');o.id='load';
-      o.style.cssText='position:fixed;inset:0;background:rgba(241,245,249,.9);display:flex;align-items:center;'+
-        'justify-content:center;z-index:99;color:#0369a1;font-weight:600;font-size:15px';
+      o.style.cssText='position:fixed;inset:0;background:rgba(245,247,247,.94);display:flex;align-items:center;'+
+        'justify-content:center;z-index:99;color:#036C62;font-weight:600;font-size:15px';
       document.body.appendChild(o);}
-    o.innerHTML=`<div style="text-align:center"><div style="width:34px;height:34px;border:3px solid #bae6fd;
-      border-top-color:#0ea5e9;border-radius:50%;margin:0 auto 10px;animation:gi .8s linear infinite"></div>
+    o.innerHTML=`<div style="text-align:center"><div style="width:34px;height:34px;border:3px solid #E6F7F5;
+      border-top-color:#01A79D;border-radius:50%;margin:0 auto 12px;animation:gi .8s linear infinite"></div>
       ${txt||'Processando...'}</div><style>@keyframes gi{to{transform:rotate(360deg)}}</style>`;
   }else if(o)o.remove();
 }
@@ -126,6 +169,28 @@ function barra(){
   g('pg').style.width=((passo+1)/totalPassos()*100)+'%';
   g('bv').className='voltar'+(passo>0?' on':'');
 }
+/**
+ * ILUSTRAÇÕES DOS COMPLEMENTOS.
+ * A 4A não tem foto desses itens no site (só no PDF do ERP), então desenhamos
+ * o perfil de cada peça. Se um dia entrar foto no cadastro, ela tem prioridade.
+ */
+const DESENHO={
+  cumeeira:`<svg viewBox="0 0 64 48"><path d="M6 34 L32 16 L58 34 L58 40 L32 22 L6 40 Z" fill="#01A79D" stroke="#00897F" stroke-width="1.2" stroke-linejoin="round"/><path d="M6 40 L32 22 L58 40" fill="none" stroke="#036C62" stroke-width="1"/></svg>`,
+  frontal:`<svg viewBox="0 0 64 48"><path d="M6 30 L58 30 L58 36 L6 36 Z" fill="#E2E7E8" stroke="#9AA8AC" stroke-width="1.1"/><path d="M10 30 l4-8 6 8 M24 30 l4-8 6 8 M38 30 l4-8 6 8" fill="none" stroke="#01A79D" stroke-width="1.6" stroke-linejoin="round"/></svg>`,
+  lateral:`<svg viewBox="0 0 64 48"><path d="M12 8 L18 8 L18 34 L54 34 L54 40 L12 40 Z" fill="#E2E7E8" stroke="#9AA8AC" stroke-width="1.1" stroke-linejoin="round"/><path d="M18 34 L54 34" stroke="#01A79D" stroke-width="2"/></svg>`,
+  interno:`<svg viewBox="0 0 64 48"><path d="M10 12 L54 12 L54 18 L16 18 L16 38 L10 38 Z" fill="#E2E7E8" stroke="#9AA8AC" stroke-width="1.1" stroke-linejoin="round"/><path d="M10 12 L54 12" stroke="#01A79D" stroke-width="2"/></svg>`,
+  terca:`<svg viewBox="0 0 64 48"><path d="M14 10 L40 10 L40 16 L20 16 L20 32 L40 32 L40 38 L14 38 Z" fill="#C9D2D4" stroke="#8B989C" stroke-width="1.1" stroke-linejoin="round"/><path d="M44 10 L50 13 L50 41 L44 38 Z" fill="#E2E7E8" stroke="#8B989C" stroke-width="1"/></svg>`,
+  viga:`<svg viewBox="0 0 64 48"><path d="M10 12 L54 12 L54 18 L36 18 L36 30 L54 30 L54 36 L10 36 Z" fill="#C9D2D4" stroke="#8B989C" stroke-width="1.1" stroke-linejoin="round"/></svg>`,
+  padrao:`<svg viewBox="0 0 64 48"><rect x="12" y="18" width="40" height="12" rx="1" fill="#E2E7E8" stroke="#9AA8AC" stroke-width="1.1"/></svg>`,
+};
+/** Miniatura do item: foto quando existe, senão o desenho do perfil. */
+function mini(item,tam=54){
+  const est=`width:${tam}px;height:${Math.round(tam*.78)}px;flex-shrink:0;background:var(--bg-soft);object-fit:contain;padding:3px`;
+  if(item.imagem)return `<img src="${item.imagem}" loading="lazy" style="${est}">`;
+  const d=DESENHO[item.aplica_em]||DESENHO[item.tipo]||DESENHO.padrao;
+  return `<span style="${est};display:flex;align-items:center;justify-content:center">${d}</span>`;
+}
+
 /** Todos os itens vendáveis, com a mesma foto usada nos dois caminhos. */
 function itensDoCatalogo(){
   return [
@@ -134,9 +199,8 @@ function itensDoCatalogo(){
     ...(cat.perfis||[]).filter(p=>p.ativo!==false).map(p=>({...p,_tipo:'metro'})),
   ];
 }
-const rotuloUnidade=t=>t==='telha'?'informe quantidade e comprimento'
-  :t==='barra'?'vendido por barra':t==='metro'?'vendido por metro':'vendido por peça';
-const iconePor=t=>t==='telha'?'🏠':t==='barra'?'📏':t==='metro'?'🔩':'🔧';
+const rotuloUnidade=t=>t==='telha'?'cortada no tamanho que você pedir'
+  :t==='barra'?'vendida em barras':t==='metro'?'vendido por metro':'vendido por peça';
 
 const chips=t=>{const a=t.atributos||{},c=[];
   if(a.nucleo)c.push(`${a.nucleo}${a.espessura_isolamento_mm?' '+a.espessura_isolamento_mm+'mm':''}`);
@@ -180,13 +244,13 @@ function maquete(L,W,q,larguraUtil){
   for(let x=passoF;x<L-0.01;x+=passoF){
     const seg=q===2?[[P(x,0,hP),P(x,W/2,hP+hT)],[P(x,W,hP),P(x,W/2,hP+hT)]]:[[P(x,W,hP),P(x,0,hP+hT)]];
     seg.forEach(r=>{rip+=`<line x1="${X(r[0])[0]}" y1="${X(r[0])[1]}" x2="${X(r[1])[0]}" y2="${X(r[1])[1]}"
-      stroke="#0369a1" stroke-width=".7" opacity=".4"/>`;});
+      stroke="#036C62" stroke-width=".7" opacity=".4"/>`;});
   }
   return `<svg viewBox="0 0 ${VW} ${VH}" width="100%" height="190" style="display:block">
     <polygon points="${poly([b[0],b[1],t[1],t[0]])}" fill="#e2e8f0" stroke="#cbd5e1"/>
     <polygon points="${poly([b[1],b[2],t[2],t[1]])}" fill="#eef2f7" stroke="#cbd5e1"/>
-    <polygon points="${poly(q===2?[t[0],t[1],cu[1],cu[0]]:[t[3],t[2],cu[1],cu[0]])}" fill="#38bdf8" stroke="#0284c7" stroke-width="1.4"/>
-    ${q===2?`<polygon points="${poly([t[3],t[2],cu[1],cu[0]])}" fill="#0ea5e9" stroke="#0284c7" stroke-width="1.4"/>`:''}
+    <polygon points="${poly(q===2?[t[0],t[1],cu[1],cu[0]]:[t[3],t[2],cu[1],cu[0]])}" fill="#2FC3B9" stroke="#00897F" stroke-width="1.4"/>
+    ${q===2?`<polygon points="${poly([t[3],t[2],cu[1],cu[0]])}" fill="#01A79D" stroke="#00897F" stroke-width="1.4"/>`:''}
     ${rip}
     ${q===2?`<line x1="${X(cu[0])[0]}" y1="${X(cu[0])[1]}" x2="${X(cu[1])[0]}" y2="${X(cu[1])[1]}"
       stroke="#f59e0b" stroke-width="3.5" stroke-linecap="round"/>`:''}
@@ -218,34 +282,45 @@ function desenhar(){
     const q=B.busca.toLowerCase();
     const todos=itensDoCatalogo();
     const lista=q?todos.filter(x=>(x.nome+' '+(x.codigo||'')).toLowerCase().includes(q)):todos;
-    el(`<h1>Monte seu orçamento</h1>
-      <p class="sub">Escolha os itens e informe as quantidades.</p>
+    el(`<h1>Seu orçamento</h1>
+      <p class="sub">Escolha os produtos e diga quanto precisa de cada um.</p>
 
-      <button class="op" style="background:#f0f9ff;border-color:#bae6fd" onclick="modo='A';ir(1)">
-        <span class="ico">📐</span><span><b>Não sei as quantidades</b>
-        <small>Me diga as medidas do telhado que eu calculo tudo — telhas, acabamentos e estrutura.</small></span></button>
+      <button class="op" style="background:var(--brand-tint);border-color:var(--brand)" onclick="modo='A';ir(1)">
+        <span class="ico">📐</span><span><b>Não sei quanto preciso</b>
+        <small>Me diga o tamanho do telhado que eu faço a conta pra você.</small></span></button>
 
-      ${B.itens.length?`<div class="cab" style="margin-top:16px"><span>Item</span><span>Qtd</span><span>Compr.</span><span></span></div>
+      ${B.itens.length?`<div class="cab" style="margin-top:16px"><span>Produto</span><span>Quantas</span><span>Tamanho</span><span></span></div>
         ${B.itens.map((it,i)=>{
           const p=todos.find(x=>x.id===it.id)||{};
           return `<div class="linha">
-            <span><b>${p.nome||it.id}</b><small>${p.codigo?p.codigo+' · ':''}${rotuloUnidade(it.tipo)}</small></span>
-            <input type="number" value="${it.qtd}" placeholder="qtd" oninput="B.itens[${i}].qtd=this.value">
+            <span><b>${p.nome||it.id}</b><small>${p.codigo?p.codigo+' · ':''}${
+              it.tipo==='telha'
+                ? (it.qtd&&it.comp?`${it.qtd} telhas de ${it.comp}m = ${(it.qtd*it.comp).toFixed(2)} metros`
+                   :'quantas telhas e de que tamanho')
+                : rotuloUnidade(it.tipo)}</small></span>
+            <input type="number" value="${it.qtd}" placeholder="qtd" oninput="B.itens[${i}].qtd=this.value;render()">
             ${it.tipo==='telha'
-              ?`<input type="number" step="0.01" value="${it.comp||''}" placeholder="m" oninput="B.itens[${i}].comp=this.value">`
+              ?`<input type="number" step="0.01" value="${it.comp||''}" placeholder="m" oninput="B.itens[${i}].comp=this.value;render()">`
               :'<span style="text-align:center;color:#cbd5e1">—</span>'}
-            <button class="x" onclick="B.itens.splice(${i},1);render()">✕</button></div>`;
+            <button class="x" onclick="B.itens.splice(${i},1);render()">✕</button></div>
+            ${it.tipo==='telha'&&p.comprimentos_padrao?.length?`
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 10px 12px">
+                <span style="font-size:11px;color:#94a3b8;align-self:center">tamanhos comuns:</span>
+                ${p.comprimentos_padrao.map(m=>`<button onclick="B.itens[${i}].comp=${m};render()"
+                  style="background:${+it.comp===m?'var(--brand)':'#fff'};color:${+it.comp===m?'#fff':'var(--brand-dd)'};
+                  border:1px solid ${+it.comp===m?'var(--brand)':'var(--line)'};padding:5px 12px;
+                  font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">${m}m</button>`).join('')}
+              </div>`:''}`;
         }).join('')}`:''}
 
-      <input class="busca" style="margin-top:16px" placeholder="🔎 Buscar telha, acabamento ou parafuso"
+      <input class="busca" style="margin-top:16px" placeholder="🔎 Buscar produto"
         value="${B.busca}" oninput="B.busca=this.value;render();document.querySelector('.busca').focus()">
       ${lista.slice(0,q?24:10).map(x=>`<button class="op" style="padding:10px 12px" onclick="addItem('${x.id}','${x._tipo}')">
-        ${x.imagem
-          ?`<img src="${x.imagem}" loading="lazy" style="width:56px;height:44px">`
-          :`<span class="ico" style="font-size:20px">${iconePor(x._tipo)}</span>`}
-        <span><b style="font-size:13.5px">${x.nome}</b><small>${x.codigo?x.codigo+' · ':''}${rotuloUnidade(x._tipo)}</small></span>
+        ${mini(x,56)}
+        <span><b style="font-size:13.5px;text-transform:none;letter-spacing:0">${x.nome}</b>
+          <small>${x.codigo?x.codigo+' · ':''}${rotuloUnidade(x._tipo)}</small></span>
       </button>`).join('')}
-      ${!q&&todos.length>10?'<p class="dica" style="margin-top:8px">Use a busca para ver todos os itens.</p>':''}
+      ${!q&&todos.length>10?'<p class="dica" style="margin-top:8px">Busque para ver todos os produtos.</p>':''}
       ${B.itens.length?'<button class="btn" onclick="okItens()">Continuar →</button>':''}`);
   }
 
@@ -254,7 +329,7 @@ function desenhar(){
   if(passo===1&&modo==='A'){
     const q=A.busca.toLowerCase();
     const lista=q?cat.telhas.filter(t=>(t.nome+' '+t.familia).toLowerCase().includes(q)):cat.telhas;
-    el(`<h1>Qual telha?</h1><p class="sub">Cortadas sob medida no comprimento que você precisar.</p>
+    el(`<h1>Qual telha?</h1><p class="sub">Cortamos no tamanho que você precisar.</p>
       ${cat.telhas.length>6?`<input class="busca" placeholder="🔎 Buscar" value="${A.busca}"
         oninput="A.busca=this.value;render();document.querySelector('.busca').focus()">`:''}
       ${lista.map(t=>`<button class="op" onclick="A.telhaId='${t.id}';ir(2)">
@@ -265,7 +340,7 @@ function desenhar(){
 
   /* 2 — medidas */
   if(passo===2&&modo==='A'){
-    el(`<h1>Medidas do telhado</h1><p class="sub">Em metros. É só isso que eu preciso pra calcular tudo.</p>
+    el(`<h1>Tamanho do telhado</h1><p class="sub">Só isso que eu preciso saber. Em metros.</p>
       <div class="l2">
         <div class="campo"><label>Comprimento</label>
           <input id="mc" type="number" inputmode="decimal" placeholder="20" value="${A.cg}"
@@ -274,53 +349,50 @@ function desenhar(){
           <input id="ml" type="number" inputmode="decimal" placeholder="10" value="${A.lg}"
             oninput="A.lg=this.value;atualizaMaquete()"></div>
       </div>
-      <p class="dica">Comprimento = lado da cumeeira · Largura = lado onde a água escorre</p>
-      ${opcaoQueda(1,'1 queda','Água escorre para um lado só','📐')}
-      ${opcaoQueda(2,'2 quedas','Duas caídas com cumeeira no topo','⛰️')}
+      <p class="dica">Não precisa ser exato — o vendedor confere depois.</p>
+      ${opcaoQueda(1,'1 água','A chuva escorre para um lado só','📐')}
+      ${opcaoQueda(2,'2 águas','A chuva escorre para os dois lados','⛰️')}
       <div class="caixa" id="maq" style="padding:6px 8px"></div>
       <button class="btn" onclick="okMedidas()">Continuar →</button>`);
     atualizaMaquete();
   }
 
-  /* 3 — o que vai junto (tudo já incluído por padrão) */
+  /* 3 — o que vai junto: todas as opções listadas e já marcadas */
   if(passo===3&&modo==='A'){
-    const tercas=(cat.perfis||[]).filter(p=>p.tipo==='terca'&&p.ativo!==false);
-    const escolhida=tercas.find(p=>p.id===A.perfilId)||tercas[0];
-    el(`<h1>O que vai junto</h1>
-      <p class="sub">Já incluí o necessário no seu orçamento. Ajuste se quiser.</p>
+    inicializarSelecao();
+    const acab=(cat.complementos||[]).filter(c=>c.tipo==='acabamento');
+    const fix=(cat.complementos||[]).filter(c=>c.tipo==='fixacao');
+    const perfis=(cat.perfis||[]).filter(p=>p.ativo!==false);
 
-      <div class="caixa" style="border-color:${A.querAcabamento!==false?'#6ee7b7':'#e2e8f0'};
-        background:${A.querAcabamento!==false?'#f0fdf4':'#fff'}">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-          <span><b style="font-size:14px">${A.querAcabamento!==false?'✅':'➖'} Acabamentos</b>
-            <div style="font-size:12.5px;color:#64748b;margin-top:2px">Cumeeira e arremates das bordas —
-              quantidades calculadas pelo seu telhado</div></span>
-          <button onclick="A.querAcabamento=(A.querAcabamento===false);render()"
-            style="background:none;border:1px solid #cbd5e1;border-radius:8px;padding:7px 12px;font-size:12.5px;
-            cursor:pointer;white-space:nowrap;color:#475569">${A.querAcabamento!==false?'Remover':'Incluir'}</button>
-        </div></div>
+    const item=(x,marcado,onclick,detalhe)=>`
+      <button class="op ${marcado?'on':''}" style="padding:12px 14px;margin-bottom:8px" onclick="${onclick}">
+        <span style="width:22px;height:22px;border:2px solid ${marcado?'var(--brand)':'var(--line)'};
+          background:${marcado?'var(--brand)':'#fff'};color:#fff;flex-shrink:0;display:flex;
+          align-items:center;justify-content:center;font-size:13px;font-weight:700">${marcado?'✓':''}</span>
+        ${mini(x,52)}
+        <span style="flex:1"><b style="font-size:14px;text-transform:none;letter-spacing:0">${x.nome}</b>
+          <small>${detalhe}</small></span>
+      </button>`;
 
-      <div class="caixa" style="border-color:${A.querEstrutura!==false?'#6ee7b7':'#e2e8f0'};
-        background:${A.querEstrutura!==false?'#f0fdf4':'#fff'}">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-          <span><b style="font-size:14px">${A.querEstrutura!==false?'✅':'➖'} Estrutura</b>
-            <div style="font-size:12.5px;color:#64748b;margin-top:2px">
-              ${A.querEstrutura!==false&&escolhida?escolhida.nome:'As terças que sustentam as telhas'}</div></span>
-          <button onclick="A.querEstrutura=(A.querEstrutura===false);render()"
-            style="background:none;border:1px solid #cbd5e1;border-radius:8px;padding:7px 12px;font-size:12.5px;
-            cursor:pointer;white-space:nowrap;color:#475569">${A.querEstrutura!==false?'Remover':'Incluir'}</button>
-        </div>
-        ${A.querEstrutura!==false&&tercas.length>1?`
-          <button onclick="A.trocandoPerfil=!A.trocandoPerfil;render()"
-            style="background:none;border:none;color:#0369a1;font-size:12.5px;text-decoration:underline;
-            cursor:pointer;padding:8px 0 0">${A.trocandoPerfil?'fechar':'trocar o perfil'}</button>
-          ${A.trocandoPerfil?tercas.map(p=>`
-            <button class="op" style="margin:8px 0 0;padding:11px 13px;background:${p.id===escolhida?.id?'#e0f2fe':'#fff'}"
-              onclick="A.perfilId='${p.id}';A.trocandoPerfil=false;render()">
-              <span class="ico" style="font-size:19px">🔩</span>
-              <span><b style="font-size:13px">${p.nome}</b><small>vence até ${p.vao_maximo_m}m entre apoios</small></span>
-            </button>`).join(''):''}`:''}
-      </div>
+    el(`<h1>Já separei tudo</h1>
+      <p class="sub">Isso é o que seu telhado precisa. <b>Tire o que você não quiser.</b></p>
+
+      <span class="eyebrow">Peças de acabamento</span>
+      ${acab.map(c=>item(c,A.sel[c.id]!==false,`toggleSel('${c.id}')`,
+        c.aplica_em==='cumeeira'?'fecha o topo do telhado'
+        :c.aplica_em==='frontal'?'fecha a frente'
+        :c.aplica_em==='lateral'?'fecha as laterais'
+        :c.aplica_em==='interno'?'acabamento por dentro':'')).join('')}
+
+      <span class="eyebrow" style="margin-top:22px">Parafusos</span>
+      ${fix.map(c=>item(c,A.sel[c.id]!==false,`toggleSel('${c.id}')`,
+        'quantidade calculada pelo tamanho do telhado')).join('')}
+
+      <span class="eyebrow" style="margin-top:22px">Estrutura</span>
+      ${perfis.length
+        ? perfis.map(p=>item(p,A.sel[p.id]===true,`toggleSel('${p.id}')`,
+            `aguenta até ${String(p.vao_maximo_m).replace('.',',')}m sem apoio`)).join('')
+        : '<p class="dica">Nenhuma estrutura cadastrada ainda.</p>'}
 
       <button class="btn" onclick="ir(4)">Continuar →</button>`);
   }
@@ -328,12 +400,12 @@ function desenhar(){
   /* ═══════ COMUM ═══════ */
   /* dados */
   if((passo===4&&modo==='A')||(passo===2&&modo==='B')){
-    el(`<h1>Seus dados</h1><p class="sub">Precisamos do endereço para a entrega do material.</p>
-      <div class="campo"><label>Nome ou empresa</label><input id="dn" value="${cliente.nome}" placeholder="Seu nome"></div>
+    el(`<h1>Seus dados</h1><p class="sub">Precisamos do endereço para entregar o material.</p>
+      <div class="campo"><label>Seu nome</label><input id="dn" value="${cliente.nome}" placeholder="Nome ou empresa"></div>
       <div class="campo"><label>WhatsApp</label><input id="dt" inputmode="tel" value="${cliente.telefone}" placeholder="(17) 99999-9999"></div>
       <div class="campo"><label>Cidade</label><input id="dc" value="${cliente.cidade}" placeholder="São José do Rio Preto - SP"></div>
-      <div class="campo"><label>Endereço da obra</label><input id="de" value="${cliente.endereco}" placeholder="Rua Exemplo, 120 - Centro"></div>
-      <button class="btn" onclick="okDados()">Gerar orçamento 📄</button>`);
+      <div class="campo"><label>Onde entregar</label><input id="de" value="${cliente.endereco}" placeholder="Rua Exemplo, 120 - Centro"></div>
+      <button class="btn" onclick="okDados()">Ver meu orçamento</button>`);
   }
 
   /* resultado */
@@ -351,7 +423,7 @@ function desenhar(){
     }
     el(`<div class="fim"><div class="ok">🎉</div><h2>Orçamento ${r.numero}</h2>
       <div class="tt">R$ ${BRL(r.totalAvista)}</div>
-      <div class="met">à vista · ${r.totalPecas} peças · ${r.metragemTotal} mts · <b style="color:#059669">frete grátis</b></div>
+      <div class="met">à vista · ${r.totalPecas} peças · ${r.metragemTotal} mts · <b style="color:var(--brand)">frete grátis</b></div>
       <div class="parc">${r.pagamentos.map(p=>`<div><span>${p.parcelas}x</span>
         <span>R$ ${BRL(p.valorParcela)}</span></div>`).join('')}</div>
       <a class="pdf" href="${r.pdf}" target="_blank">📄 Baixar orçamento completo</a>
@@ -360,6 +432,23 @@ function desenhar(){
 }
 
 /* ══════════════ AÇÕES ══════════════ */
+/**
+ * Marca tudo na primeira vez que a tela abre.
+ * Acabamentos e fixação: todos. Estrutura: um perfil de cada tipo — marcar
+ * duas terças diferentes cobraria a estrutura em dobro.
+ */
+function inicializarSelecao(){
+  if(A.selPronta)return;
+  for(const c of (cat.complementos||[]))A.sel[c.id]=true;
+  const vistos={};
+  for(const p of (cat.perfis||[]).filter(x=>x.ativo!==false)){
+    A.sel[p.id]=!vistos[p.tipo];
+    vistos[p.tipo]=true;
+  }
+  A.selPronta=true;
+}
+function toggleSel(id){A.sel[id]=!A.sel[id];render();}
+
 function okMedidas(){
   const c=parseFloat(String(A.cg).replace(',','.')),l=parseFloat(String(A.lg).replace(',','.'));
   if(!c||!l||c<=0||l<=0)return err('Preencha comprimento e largura em metros.');
@@ -371,7 +460,7 @@ function addItem(id,tipo){
 }
 function okItens(){
   const v=B.itens.filter(x=>+x.qtd>0&&(x.tipo!=='telha'||+x.comp>0));
-  if(!v.length)return err('Adicione ao menos um item com quantidade (e comprimento, no caso das telhas).');
+  if(!v.length)return err('Preencha a quantidade — e o tamanho, no caso das telhas.');
   B.itens=v;ir(2);
 }
 function okDados(){
@@ -389,14 +478,14 @@ async function gerar(){
   ocupado(true,'Montando seu orçamento...');
   let corpo;
   if(modo==='A'){
+    const marcados=Object.keys(A.sel).filter(k=>A.sel[k]);
     corpo={modo:'auto',
       telhaId:A.telhaId,
       comprimentoGalpaoM:parseFloat(String(A.cg).replace(',','.')),
       larguraGalpaoM:parseFloat(String(A.lg).replace(',','.')),
       quedas:A.quedas,
-      querAcabamento:A.querAcabamento!==false,
-      querEstrutura:A.querEstrutura!==false,
-      perfilId:A.perfilId||null};
+      complementosIds:marcados.filter(id=>(cat.complementos||[]).some(c=>c.id===id)),
+      perfisIds:marcados.filter(id=>(cat.perfis||[]).some(p=>p.id===id))};
   }else{
     corpo={modo:'itens',itens:B.itens.map(x=>({id:x.id,tipo:x.tipo,qtd:+x.qtd,comp:+x.comp||null}))};
   }

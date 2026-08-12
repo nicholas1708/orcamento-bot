@@ -91,6 +91,8 @@
       <div><label>Comprimento máximo (m) <i>*</i></label><input id="comprimento_maximo_m" type="number" step="0.01" placeholder="12"><small>maior peça que a fábrica corta</small></div>
       <div><label>Comprimento mínimo (m)</label><input id="comprimento_minimo_m" type="number" step="0.01" placeholder="0,50"></div>
       <div><label>Transpasse na emenda (m)</label><input id="transpasse_m" type="number" step="0.01" placeholder="0,20"><small>sobreposição entre duas peças</small></div>
+      <div><label>Tamanhos mais vendidos</label><input id="comprimentos_padrao" placeholder="3, 4, 5, 6">
+        <small>viram botões de atalho no orçamento — a telha continua sob medida</small></div>
     </div>
 
     <div class="sec">Aplicação no telhado</div>
@@ -208,6 +210,7 @@ async function salvar(){
     atributos:v('cor')?{cor:v('cor')}:{},descricao_completa:v('desc')||null,faixas_preco:fx,
     largura_util_m:nu(v('largura_util_m')),comprimento_maximo_m:nu(v('comprimento_maximo_m')),
     comprimento_minimo_m:nu(v('comprimento_minimo_m')),transpasse_m:nu(v('transpasse_m')),
+    comprimentos_padrao:v('comprimentos_padrao').split(',').map(x=>nu(x)).filter(x=>x>0),
     vao_maximo_m:nu(v('vao_maximo_m')),inclinacao_minima_pct:nu(v('inclinacao_minima_pct')),
     forro_integrado:g('forro_integrado').value==='sim',ativo:g('ativo').value==='sim',
     imagem:v('imagem')||null,observacao:v('observacao')||null};
@@ -222,7 +225,8 @@ async function salvar(){
 function limpar(){
   editandoId=null;
   ['desc','codigo','nome','familia','cor','largura_util_m','comprimento_maximo_m','comprimento_minimo_m',
-   'transpasse_m','vao_maximo_m','inclinacao_minima_pct','imagem','observacao'].forEach(i=>g(i).value='');
+   'transpasse_m','comprimentos_padrao','vao_maximo_m','inclinacao_minima_pct','imagem','observacao']
+   .forEach(i=>g(i).value='');
   g('forro_integrado').value='nao';g('ativo').value='sim';
   faixas=[{ate_m2:50,preco:''},{ate_m2:100,preco:''},{ate_m2:200,preco:''},{ate_m2:'',preco:''}];
   pintarFaixas();g('tituloForm').textContent='Novo produto';g('achou').style.display='none';
@@ -235,6 +239,7 @@ function editar(id){
   g('cor').value=p.atributos?.cor||'';g('desc').value=p.descricao_completa||'';
   g('largura_util_m').value=p.largura_util_m||'';g('comprimento_maximo_m').value=p.comprimento_maximo_m||'';
   g('comprimento_minimo_m').value=p.comprimento_minimo_m||'';g('transpasse_m').value=p.transpasse_m||'';
+  g('comprimentos_padrao').value=(p.comprimentos_padrao||[]).join(', ');
   g('vao_maximo_m').value=p.vao_maximo_m||'';g('inclinacao_minima_pct').value=p.inclinacao_minima_pct||'';
   g('forro_integrado').value=p.forro_integrado?'sim':'nao';g('ativo').value=p.ativo===false?'nao':'sim';
   g('imagem').value=p.imagem||'';g('observacao').value=p.observacao||'';

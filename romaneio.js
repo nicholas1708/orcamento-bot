@@ -290,8 +290,10 @@ function complementosPorPerimetro(comprimentoGalpaoM, compTelhaM, quedas, catalo
  * Mesma regra do WhatsApp: nº de terças = maior corte ÷ vão máximo + 1.
  */
 function calcularEstruturaPerfis(maiorCorteM, comprimentoGalpaoM, telhas, catalogo, perfilId) {
-  const disponiveis = (catalogo.perfis || []).filter((p) => p.tipo === 'terca' && p.ativo !== false);
-  const perfil = disponiveis.find((p) => p.id === perfilId) || disponiveis[0];
+  const ativos = (catalogo.perfis || []).filter((p) => p.ativo !== false);
+  // com id, usa exatamente o perfil pedido (pode ser viga, ripa, etc.)
+  const perfil = ativos.find((p) => p.id === perfilId)
+    || ativos.find((p) => p.tipo === 'terca');
   if (!perfil) return { perfis: [], descricao: 'Perfil de terça não cadastrado — estrutura não incluída.' };
 
   const vaoMax = Math.min(...telhas.map((t) => t.vao_maximo_m || catalogo.engenharia.vao_maximo_terca_padrao_m));
