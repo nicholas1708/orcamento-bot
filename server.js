@@ -521,6 +521,35 @@ app.get('/api/cep/:cep', async (req, res) => {
 function erroCliente(msg) { const e = new Error(msg); e.publico = true; return e; }
 
 /**
+ * CPF ou CNPJ com dígito verificador conferido.
+ * Validado também aqui, e não só na tela: a tela pode ser burlada.
+ */
+function documentoValido(v) {
+  const d = String(v || '').replace(/\D/g, '');
+  if (d.length === 11) {
+    if (/^(\d)\1{10}$/.test(d)) return false;
+    const dig = (base, peso) => {
+      let s = 0;
+      for (let i = 0; i < base; i++) s += +d[i] * (peso - i);
+      const r = (s * 10) % 11;
+      return r === 10 ? 0 : r;
+    };
+    return dig(9, 10) === +d[9] && dig(10, 11) === +d[10];
+  }
+  if (d.length === 14) {
+    if (/^(\d)\1{13}$/.test(d)) return false;
+    const dig = (base) => {
+      let p = base - 7, s = 0;
+      for (let i = base - 1; i >= 0; i--) { s += +d[i] * p; p = (--p < 2) ? 9 : p; }
+      const r = s % 11;
+      return r < 2 ? 0 : 11 - r;
+    };
+    return dig(12) === +d[12] && dig(13) === +d[13];
+  }
+  return false;
+}
+
+/**
  * TRADUZ O QUE VEIO DA TELA para o formato do motor.
  * Fonte única: usada pelo /api/orcamento (que gera o PDF) e pelo /api/lista
  * (que mostra a lista sem preço para o cliente conferir). Assim a tela de
@@ -628,6 +657,14 @@ app.post('/api/orcamento', async (req, res) => {
     }
     if (!cliente?.telefone || String(cliente.telefone).replace(/\D/g, '').length < 10) {
       return res.status(400).json({ error: 'Informe um telefone/WhatsApp válido com DDD.' });
+    }
+    // CEP define a unidade de origem e a regra dos 600 km
+    if (String(cliente.cep || '').replace(/\D/g, '').length !== 8) {
+      return res.status(400).json({ error: 'Informe o CEP da obra.' });
+    }
+    // documento vai no orçamento e na nota
+    if (!documentoValido(cliente.documento)) {
+      return res.status(400).json({ error: 'Informe um CPF ou CNPJ válido.' });
     }
     const catalogo = await getCatalogo();
 

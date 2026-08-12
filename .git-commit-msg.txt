@@ -1,49 +1,35 @@
-Corte livre, telha repetida, escolha da emenda e desconto no formato de/por
+Cadastro completo do cliente: CPF/CNPJ, e-mail, CEP e estado
 
-Comprimento volta a ser livre
-- A largura e fixa de fabrica; o comprimento o cliente escolhe, em
-  qualquer medida (6,5m, 4,75m). O unico limite e o minimo e o maximo
-  de corte da telha.
-- Removida a trava por comprimentos_padrao que eu tinha colocado, no
-  site, no WhatsApp, no modo com IA e na validacao do painel.
-- "Tamanhos mais pedidos" saiu de tudo: botoes de atalho, campo do
-  cadastro, coluna do painel, texto do WhatsApp, prompt da IA e
-  catalogo.json. A rota do catalogo nao envia mais o campo.
+O PDF ja tinha os campos, mas o sistema nao coletava: CNPJ/CPF, CEP,
+Estado e E-mail saiam em branco no orcamento.
 
-Mesma telha varias vezes
-- No "ja sei o que quero" e na conferencia, a mesma telha entra quantas
-  vezes for preciso, uma linha por comprimento (modelo do orcamento
-  oficial da empresa). Atalho "+ outro comprimento desta telha".
-- Acabamento e perfil continuam sem repetir: ali a quantidade e uma so.
-- Duas linhas da mesma telha no mesmo comprimento viram uma, somando as
-  quantidades.
+Site
+- Tela de dados ganhou CPF/CNPJ, e-mail e estado.
+- CEP virou obrigatorio e preenche cidade e estado sozinho.
+- Documento validado pelo digito verificador (CPF e CNPJ).
+- E-mail opcional, validado quando preenchido.
 
-Escolha da emenda no site
-- Quando a agua passa do comprimento de fabrica, o site passa a mostrar
-  os planos de divisao (opcoesDeCorte) em vez de pegar o primeiro em
-  silencio, com campo para pedir um tamanho especifico de peca.
-- A escolha (opcaoCorte / tamanhoPreferidoM) vai no pedido e o romaneio
-  final respeita. O WhatsApp ja fazia isso.
+WhatsApp
+- Nova etapa de CPF/CNPJ depois do nome.
+- CEP perdeu o "pular": e ele que escolhe a unidade de origem e aplica
+  a regra dos 600 km.
+- Pergunta de cidade aceita "Cedral - SP" e separa o estado.
+
+Modo com IA
+- documento e cep entram na lista de obrigatorios da ficha.
+- O codigo valida o documento; a IA so transcreve. Errou, o bot pede
+  para conferir.
+- Campos documento e email no schema.
+
+Compartilhado
+- documentoValido() no roteiro.js, usado pelos tres canais, e repetido
+  no server.js porque a tela pode ser burlada.
+- interpretarCidade() separa "cidade - UF".
+- clientes.completo() passa a exigir documento e CEP, entao cliente
+  antigo e perguntado uma vez em vez de gerar outro PDF pela metade.
+- clientes.salvar() e o registro do orcamento passam a gravar
+  documento, email, cep e estado, que antes se perdiam mesmo quando
+  existiam.
 
 Desconto no PDF
-- Sai o bloco de texto "DESCONTO POR VOLUME APLICADO".
-- Preco de tabela riscado em cima do preco praticado, na linha de cada
-  produto (de/por).
-- Nos totais: SUBTOTAL, DESCONTO como valor, PRODUTOS.
-- O motor passa a carregar precoBase em cada linha de telha.
-
-Pedido sem telha
-- Da para orcar so acabamento, parafuso ou estrutura. Frete cai na
-  regra do minimo, rateado proporcional ao valor de cada item, ja que
-  nao ha metro de telha onde embutir.
-- Removida a trava metragem > 0 no frete.js.
-- WhatsApp: opcao "So acabamento, parafuso ou estrutura" na primeira
-  pergunta. Modo IA: campo avulsos.
-
-Correcoes
-- Foco saltava do campo a cada tecla no "ja sei o que quero": o oninput
-  chamava render() e recriava o input. Agora so a legenda da linha e
-  atualizada.
-- Cumeeira aparecia marcada em telhado de 1 agua. O calculo ja ignorava
-  (perimetro zero), mas a tela dava a entender que estava no pedido.
-- Erro de /api/lista mostra o motivo real em vez de mensagem generica.
+- "DESCONTO POR VOLUME" virou so "DESCONTO" na linha de totais.

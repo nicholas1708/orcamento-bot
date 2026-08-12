@@ -53,6 +53,8 @@ function faltantes(ficha) {
   if (temTelha && (p.comAcabamento === null || p.comAcabamento === undefined)) f.push('comAcabamento (true/false) — se leva cumeeira, acabamentos e parafusos');
   if (temTelha && (p.comEstrutura === null || p.comEstrutura === undefined)) f.push('comEstrutura (true/false)');
   if (!c.nome) f.push('nome');
+  if (!c.documento) f.push('documento (CPF ou CNPJ — OBRIGATÓRIO, vai na nota)');
+  if (!c.cep) f.push('cep da obra (OBRIGATÓRIO — define a unidade de origem)');
   if (!c.cidade) f.push('cidade');
   if (!c.endereco) f.push('endereco (rua, número e bairro — OBRIGATÓRIO)');
   return f;
@@ -91,8 +93,8 @@ REGRAS INEGOCIÁVEIS:
 3. Quando o cliente disser que não quer mais nada, envie "maisProdutos": false.
 4. Pergunte se leva os ACABAMENTOS E PARAFUSOS (cumeeira, frontal, lateral e parafusagem) → comAcabamento (true/false). O sistema calcula as quantidades.
 5. Pergunte se quer só telhas ou telhas + estrutura → comEstrutura (true/false).
-6. Endereço completo (rua, número, bairro) e cidade são OBRIGATÓRIOS. Sem eles não há orçamento.
-7. Peça o CEP da obra → cep. É ele que mede a distância até a unidade mais próxima. Se o cliente não souber, siga sem o CEP.
+6. Endereço completo (rua, número, bairro), cidade, CEP e CPF/CNPJ são OBRIGATÓRIOS. Sem eles não há orçamento.
+7. Peça o CEP da obra → cep (é ele que mede a distância até a unidade) e o CPF/CNPJ → documento (vai no orçamento e na nota). E-mail é opcional → email.
 8. Se pedir humano, fugir do assunto ou pedir algo que não vendemos → "handoff": true.
 9. Foto enviada pelo cliente: agradeça e diga que fica anexada pro vendedor. NUNCA tire medidas de fotos.
 10. Não invente dado técnico. Se não souber, diga que o vendedor confirma.
@@ -100,7 +102,7 @@ REGRAS INEGOCIÁVEIS:
 FOTOS: pode pedir o envio de imagens com "fotos": ["id1","id2"] (ids do catálogo, máx 4).
 
 PRODUTOS JÁ NA FICHA: ${jaTem.length ? jaTem.join(' | ') : 'nenhum ainda'}
-CLIENTE: ${JSON.stringify({ nome: ficha.cliente.nome, cidade: ficha.cliente.cidade, endereco: ficha.cliente.endereco })}
+CLIENTE: ${JSON.stringify({ nome: ficha.cliente.nome, documento: ficha.cliente.documento, cep: ficha.cliente.cep, cidade: ficha.cliente.cidade, endereco: ficha.cliente.endereco })}
 ${ficha.clienteConhecido ? '⚠️ CLIENTE JÁ CADASTRADO: cumprimente pelo nome, NÃO peça nome/cidade/endereço de novo. Apenas confirme a entrega no mesmo endereço; só atualize se ele pedir para mudar.' : ''}
 comEstrutura: ${ficha.pedido.comEstrutura} · comAcabamento: ${ficha.pedido.comAcabamento} · maisProdutos: ${ficha.pedido.maisProdutos}
 
@@ -108,7 +110,7 @@ AINDA FALTA: ${falta.length ? falta.join(', ') : 'nada — ficha completa'}
 
 RESPONDA APENAS JSON:
 {"reply":"sua mensagem","campos":{...},"fotos":[],"handoff":false}
-Campos possíveis: familiaFoco, novosProdutos (array, ver caminhos A/B), avulsos (array), maisProdutos (bool), comAcabamento (bool), comEstrutura (bool), nome, cep, cidade, endereco.
+Campos possíveis: familiaFoco, novosProdutos (array, ver caminhos A/B), avulsos (array), maisProdutos (bool), comAcabamento (bool), comEstrutura (bool), nome, documento, email, cep, cidade, endereco.
 Envie em "novosProdutos" APENAS produtos ainda não listados acima.
 Pedido SEM TELHA (só parafuso, acabamento ou perfil) é permitido: use
 "avulsos": [{"produtoId":"...","quantidade":12}] com os ids da lista de avulsos.
@@ -213,6 +215,15 @@ async function aplicarCampos(ficha, campos, catalogo, acoes) {
   }
 
   if (typeof campos.nome === 'string' && campos.nome.trim().length >= 2) c.nome = campos.nome.trim();
+  // documento e e-mail: o CÓDIGO valida, a IA só transcreve
+  if (typeof campos.documento === 'string') {
+    const R = require('./roteiro');
+    if (R.documentoValido(campos.documento)) c.documento = campos.documento.replace(/\D/g, '');
+    else acoes.push({ type: 'text', text: 'Esse CPF/CNPJ não confere 🤔 Pode conferir os números?' });
+  }
+  if (typeof campos.email === 'string' && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(campos.email.trim())) {
+    c.email = campos.email.trim();
+  }
   if (typeof campos.cidade === 'string' && campos.cidade.trim().length >= 2) c.cidade = campos.cidade.trim();
   if (typeof campos.endereco === 'string' && campos.endereco.trim().length >= 8 && /\d/.test(campos.endereco)) {
     c.endereco = campos.endereco.trim();

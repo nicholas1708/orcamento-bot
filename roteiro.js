@@ -72,17 +72,20 @@ const T = {
     '*1* — Só as telhas\n*2* — Telhas + estrutura',
 
   pedeNome: '🙂 Quase lá! Qual o seu *nome* (ou o da empresa)?',
+  pedeDocumento: '📄 Qual o *CPF* ou *CNPJ*?\n\n_Vai no orçamento e é o que a nota precisa._',
+  erroDocumento: 'Esse CPF/CNPJ não confere 🤔 Pode mandar de novo? _(só os números já serve)_',
   pedeCep:
     '📮 Qual o *CEP* da obra?\n\n' +
     '_É o que define a distância até a unidade mais próxima._\n' +
     'Se não souber, responda *pular*.',
-  pedeCidade: '🏙️ Qual a *cidade* de entrega?',
+  pedeCidade: '🏙️ Qual a *cidade* de entrega? _Com o estado, ex: `Cedral - SP`_',
   pedeEndereco: '📍 E o *endereço da obra* (rua, número e bairro)?\n\n_Necessário para a entrega._',
 
   confirmaDados: (c) =>
     `📋 Confirma os dados de entrega?\n\n` +
-    `*Nome:* ${c.nome}\n${c.cep ? `*CEP:* ${c.cep}\n` : ''}` +
-    `*Cidade:* ${c.cidade}\n*Endereço:* ${c.endereco}\n\n` +
+    `*Nome:* ${c.nome}\n${c.documento ? `*CPF/CNPJ:* ${c.documento}\n` : ''}` +
+    `${c.cep ? `*CEP:* ${c.cep}\n` : ''}` +
+    `*Cidade:* ${c.cidade}${c.estado ? ' - ' + c.estado : ''}\n*Endereço:* ${c.endereco}\n\n` +
     `*1* — Confirmar\n*2* — Entregar em outro endereço`,
 
   // ── Conferência da lista ────────────────────────────────────────────
@@ -200,6 +203,43 @@ function interpretarCortes(texto) {
   return out;
 }
 
+/**
+ * CPF ou CNPJ com dígito verificador conferido.
+ * Mora aqui porque os três canais precisam da mesma regra.
+ */
+function documentoValido(v) {
+  const d = String(v || '').replace(/\D/g, '');
+  if (d.length === 11) {
+    if (/^(\d)\1{10}$/.test(d)) return false;
+    const dig = (base, peso) => {
+      let s = 0;
+      for (let i = 0; i < base; i++) s += +d[i] * (peso - i);
+      const r = (s * 10) % 11;
+      return r === 10 ? 0 : r;
+    };
+    return dig(9, 10) === +d[9] && dig(10, 11) === +d[10];
+  }
+  if (d.length === 14) {
+    if (/^(\d)\1{13}$/.test(d)) return false;
+    const dig = (base) => {
+      let p = base - 7, s = 0;
+      for (let i = base - 1; i >= 0; i--) { s += +d[i] * p; p = (--p < 2) ? 9 : p; }
+      const r = s % 11;
+      return r < 2 ? 0 : 11 - r;
+    };
+    return dig(12) === +d[12] && dig(13) === +d[13];
+  }
+  return false;
+}
+
+/** "Cedral - SP", "cedral sp" → { cidade, uf } */
+function interpretarCidade(texto) {
+  const t = String(texto || '').trim().replace(/\s+/g, ' ');
+  const m = t.match(/^(.+?)[\s,\-/]+([A-Za-z]{2})$/);
+  if (m) return { cidade: m[1].trim(), uf: m[2].toUpperCase() };
+  return { cidade: t, uf: null };
+}
+
 /** "3 = 250", "item 3 250", "3: 250" → { item: 3, valor: 250 } */
 function interpretarAjuste(texto) {
   const t = String(texto || '').replace(/,(\d)/g, '.$1');
@@ -215,4 +255,5 @@ module.exports = {
   T,
   interpretarSimNao, interpretarDimensoes, interpretarQuedas,
   interpretarEscolha, interpretarCortes, interpretarAjuste,
+  documentoValido, interpretarCidade,
 };

@@ -39,6 +39,7 @@ function salvar(cliente) {
     telefone: tel,
     nome: cliente.nome || anterior.nome || null,
     cidade: cliente.cidade || anterior.cidade || null,
+    estado: cliente.estado || anterior.estado || null,
     endereco: cliente.endereco || anterior.endereco || null,
     cep: cliente.cep || anterior.cep || null,
     documento: cliente.documento || anterior.documento || null,
@@ -82,9 +83,13 @@ function listar() {
     String(b.ultimoOrcamentoEm || b.criadoEm || '').localeCompare(String(a.ultimoOrcamentoEm || a.criadoEm || '')));
 }
 
-/** true quando há dados suficientes para pular as perguntas. */
+/**
+ * true quando há dados suficientes para pular as perguntas.
+ * CPF/CNPJ e CEP entram na conta: sem eles o orçamento não fecha
+ * (documento vai na nota; CEP define a unidade de origem e o raio).
+ */
 function completo(c) {
-  return !!(c && c.nome && c.cidade && c.endereco);
+  return !!(c && c.nome && c.documento && c.cep && c.cidade && c.endereco);
 }
 
 /** O que ainda falta no cadastro — o painel mostra isso na lista. */

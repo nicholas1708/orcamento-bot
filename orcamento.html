@@ -140,7 +140,7 @@ const A={telhaId:null,cg:'',lg:'',quedas:2,famAberta:null,busca:'',
 const B={itens:[],busca:''};                                   // modo B
 // Conferência final: a lista que vai ser cobrada, SEM PREÇO, montada pelo servidor.
 const R={linhas:null,carregando:false,busca:'',ambiente:null,addAberto:false};
-const cliente={nome:'',telefone:'',cep:'',cidade:'',endereco:''};
+const cliente={nome:'',documento:'',telefone:'',email:'',cep:'',cidade:'',estado:'',endereco:''};
 
 const T=document.getElementById('t');
 const g=id=>document.getElementById(id);
@@ -528,13 +528,21 @@ function desenhar(){
 
   /* dados */
   if(passo===passoConferir()+1){
-    el(`<h1>Seus dados</h1><p class="sub">Precisamos do endereço para entregar o material.</p>
+    el(`<h1>Seus dados</h1><p class="sub">Precisamos do endereço para entregar e do documento para emitir.</p>
       <div class="campo"><label>Seu nome</label><input id="dn" value="${cliente.nome}" placeholder="Nome ou empresa"></div>
+      <div class="campo"><label>CPF ou CNPJ</label>
+        <input id="dd" inputmode="numeric" value="${cliente.documento}" placeholder="000.000.000-00"></div>
       <div class="campo"><label>WhatsApp</label><input id="dt" inputmode="tel" value="${cliente.telefone}" placeholder="(17) 99999-9999"></div>
+      <div class="campo"><label>E-mail <i style="font-style:normal;color:var(--muted);font-weight:400">(opcional)</i></label>
+        <input id="dm" type="email" value="${cliente.email}" placeholder="voce@email.com"></div>
       <div class="campo"><label>CEP da obra</label>
         <input id="dp" inputmode="numeric" value="${cliente.cep}" placeholder="15000-000"
           oninput="buscarCep(this.value)"><small id="cepmsg" class="dica"></small></div>
-      <div class="campo"><label>Cidade</label><input id="dc" value="${cliente.cidade}" placeholder="São José do Rio Preto - SP"></div>
+      <div class="l2">
+        <div class="campo"><label>Cidade</label><input id="dc" value="${cliente.cidade}" placeholder="São José do Rio Preto"></div>
+        <div class="campo"><label>Estado</label><input id="du" value="${cliente.estado}" placeholder="SP" maxlength="2"
+          style="text-transform:uppercase"></div>
+      </div>
       <div class="campo"><label>Onde entregar</label><input id="de" value="${cliente.endereco}" placeholder="Rua Exemplo, 120 - Centro"></div>
       <button class="btn" onclick="okDados()">Ver meu orçamento</button>`);
   }
@@ -808,20 +816,57 @@ function buscarCep(v){
     const r=await fetch('/api/cep/'+d).then(x=>x.json()).catch(()=>null);
     const m=g('cepmsg');
     if(r&&r.cidade){
-      cliente.cidade=`${r.cidade} - ${r.uf}`;
+      cliente.cidade=r.cidade;cliente.estado=r.uf||'';
       const c=g('dc');if(c)c.value=cliente.cidade;
+      const u=g('du');if(u)u.value=cliente.estado;
       if(m)m.textContent=`${r.cidade} - ${r.uf}`;
-    }else if(m)m.textContent='CEP não encontrado — confira a cidade abaixo.';
+    }else if(m)m.textContent='CEP não encontrado — confira cidade e estado abaixo.';
   },500);
 }
+/** CPF ou CNPJ com dígito verificador conferido — evita documento inventado. */
+function documentoValido(v){
+  const d=String(v||'').replace(/\D/g,'');
+  if(d.length===11){
+    if(/^(\d)\1{10}$/.test(d))return false;
+    const dig=(base,peso)=>{
+      let s=0;for(let i=0;i<base;i++)s+=+d[i]*(peso-i);
+      const r=(s*10)%11;return r===10?0:r;
+    };
+    return dig(9,10)===+d[9]&&dig(10,11)===+d[10];
+  }
+  if(d.length===14){
+    if(/^(\d)\1{13}$/.test(d))return false;
+    const dig=(base)=>{
+      let p=base-7,s=0;
+      for(let i=base-1;i>=0;i--){s+=+d[i]*p;p=(--p<2)?9:p;}
+      const r=s%11;return r<2?0:11-r;
+    };
+    return dig(12)===+d[12]&&dig(13)===+d[13];
+  }
+  return false;
+}
+
 function okDados(){
-  cliente.nome=g('dn').value.trim();cliente.telefone=g('dt').value.trim();
+  cliente.nome=g('dn').value.trim();
+  cliente.documento=g('dd').value.trim();
+  cliente.telefone=g('dt').value.trim();
+  cliente.email=g('dm').value.trim();
   cliente.cep=g('dp').value.trim();
-  cliente.cidade=g('dc').value.trim();cliente.endereco=g('de').value.trim();
+  cliente.cidade=g('dc').value.trim();
+  cliente.estado=g('du').value.trim().toUpperCase();
+  cliente.endereco=g('de').value.trim();
+
   if(cliente.nome.length<2)return err('Informe seu nome.');
+  if(!documentoValido(cliente.documento))
+    return err('Informe um CPF ou CNPJ válido — é o que vai no orçamento e na nota.');
   if(cliente.telefone.replace(/\D/g,'').length<10)return err('Informe um WhatsApp válido com DDD.');
+  if(cliente.email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cliente.email))return err('Esse e-mail não parece válido.');
+  if(cliente.cep.replace(/\D/g,'').length!==8)
+    return err('Informe o CEP da obra — é ele que define a unidade de entrega.');
   if(cliente.cidade.length<2)return err('Informe a cidade.');
+  if(cliente.estado.length!==2)return err('Informe o estado com 2 letras, ex: SP.');
   if(cliente.endereco.length<8||!/\d/.test(cliente.endereco))return err('Endereço completo com rua, número e bairro.');
+
   try{localStorage.setItem('cliente4a',JSON.stringify(cliente));}catch(e){}
   gerar();
 }

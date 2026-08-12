@@ -28,7 +28,7 @@ function novaFicha(chatId) {
       endereco: conhecido?.endereco || null,
       documento: conhecido?.documento || null,
       cep: conhecido?.cep || null,
-      estado: null,
+      estado: conhecido?.estado || null,
       email: conhecido?.email || null,
       telefone,
     },

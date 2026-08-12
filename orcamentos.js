@@ -28,8 +28,12 @@ function salvar({ numero, canal, origem, vendedor, cliente, orcamento, grupos, p
     status: 'novo',
     cliente: {
       nome: cliente.nome || null,
+      documento: cliente.documento || null,
       telefone: cliente.telefone || null,
+      email: cliente.email || null,
+      cep: cliente.cep || null,
       cidade: cliente.cidade || null,
+      estado: cliente.estado || null,
       endereco: cliente.endereco || null,
     },
     produtos: (orcamento.resumoPorProduto || []).map((p) => ({

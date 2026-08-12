@@ -568,6 +568,16 @@ async function processar(chatId, textoRaw) {
       if (texto.length < 2) { erro('Pode me dizer seu nome?'); break; }
       ficha.cliente.nome = texto;
       ficha.tentativasErro = 0;
+      say(R.T.pedeDocumento);
+      ficha.etapa = 'DOCUMENTO';
+      break;
+    }
+
+    // CPF/CNPJ vai no orçamento e na nota — conferido pelo dígito
+    case 'DOCUMENTO': {
+      if (!R.documentoValido(texto)) { erro(R.T.erroDocumento); break; }
+      ficha.cliente.documento = texto.replace(/\D/g, '');
+      ficha.tentativasErro = 0;
       say(R.T.pedeCep);
       ficha.etapa = 'CEP';
       break;
@@ -576,15 +586,9 @@ async function processar(chatId, textoRaw) {
     // CEP → cidade. É o CEP que mede a distância até a unidade mais próxima
     // (e a regra dos 600 km da fábrica depende disso).
     case 'CEP': {
-      if (/^(pular|pula|n[ãa]o sei|nao sei|-)$/i.test(texto)) {
-        ficha.tentativasErro = 0;
-        say(R.T.pedeCidade);
-        ficha.etapa = 'CIDADE';
-        break;
-      }
       const digitos = texto.replace(/\D/g, '');
       if (digitos.length !== 8) {
-        erro('O CEP tem 8 números, ex: *15130-000*. Ou responda *pular*.');
+        erro('O CEP tem 8 números, ex: *15130-000*. É por ele que eu sei de qual unidade sai o material.');
         break;
       }
       ficha.tentativasErro = 0;
@@ -593,7 +597,7 @@ async function processar(chatId, textoRaw) {
       const { cidadeDoCep } = require('./distancia');
       const info = await cidadeDoCep(digitos).catch(() => null);
       if (info) {
-        ficha.cliente.cidade = `${info.cidade} - ${info.uf}`;
+        ficha.cliente.cidade = info.cidade;
         ficha.cliente.estado = info.uf;
         say(`📍 *${info.cidade} - ${info.uf}* ✅`);
         say(R.T.pedeEndereco);
@@ -608,7 +612,9 @@ async function processar(chatId, textoRaw) {
 
     case 'CIDADE': {
       if (texto.length < 2) { erro('Qual a cidade de entrega?'); break; }
-      ficha.cliente.cidade = texto;
+      const { cidade, uf } = R.interpretarCidade(texto);
+      ficha.cliente.cidade = cidade;
+      if (uf) ficha.cliente.estado = uf;
       ficha.tentativasErro = 0;
       say(R.T.pedeEndereco);
       ficha.etapa = 'ENDERECO';
