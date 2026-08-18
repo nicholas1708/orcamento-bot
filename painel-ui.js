@@ -141,6 +141,114 @@ function fecharGaveta() {
   document.body.style.overflow = '';
 }
 
+/* ── campo de foto ────────────────────────────────────────────────
+   Enviar o arquivo direto, arrastar para a área, ou colar um link.
+
+   O arquivo é reduzido e convertido para JPEG AQUI no navegador, antes
+   de subir. Isso resolve três coisas de uma vez: chega leve no servidor,
+   sai sempre num formato que o PDF aceita (pdfkit só lê JPEG e PNG), e
+   uma foto de celular de 8 MB não trava o envio.                       */
+const FOTO_LADO_MAX = 1400;
+const FOTO_QUALIDADE = 0.82;
+
+/**
+ * @param {string} id     id do input que guarda o endereço da foto
+ * @param {string} valor  endereço atual (ou vazio)
+ * @param {string} ajuda  texto pequeno embaixo do campo
+ */
+function campoFoto(id, valor, ajuda) {
+  setTimeout(() => pintarFoto(id), 0);   // roda depois que este HTML entra na tela
+  return `
+    <div class="campo foto">
+      <label>Foto do produto</label>
+      <div class="foto-drop" id="${id}-drop" onclick="g('${id}-arq').click()"
+        ondragover="event.preventDefault();this.classList.add('over')"
+        ondragleave="this.classList.remove('over')"
+        ondrop="soltarFoto(event,'${id}')">
+        <span class="previa" id="${id}-previa"></span>
+        <span class="dizeres" id="${id}-dizeres"></span>
+      </div>
+      <input type="file" id="${id}-arq" accept="image/*" hidden
+        onchange="escolherFoto(this,'${id}')">
+      <div class="foto-acoes">
+        <button type="button" class="btn g sm" onclick="g('${id}-arq').click()">Enviar arquivo</button>
+        <button type="button" class="btn r sm" onclick="tirarFoto('${id}')">Remover</button>
+      </div>
+      <label style="margin-top:8px">ou cole um link</label>
+      <input id="${id}" value="${esc(valor || '')}" placeholder="https://..."
+        oninput="pintarFoto('${id}')">
+      ${ajuda ? `<small>${ajuda}</small>` : ''}
+    </div>`;
+}
+
+/** Redesenha prévia e legenda a partir do valor atual do campo. */
+function pintarFoto(id, recado) {
+  const campo = g(id), previa = g(id + '-previa'), diz = g(id + '-dizeres');
+  if (!campo || !previa || !diz) return;
+  const url = campo.value.trim();
+
+  // o ▤ fica atrás; a foto entra por cima e se remove se não carregar
+  previa.innerHTML = '<span class="vazia">▤</span>' +
+    (url ? `<img src="${esc(url)}" alt="" onerror="this.remove()">` : '');
+
+  diz.className = 'dizeres' + (recado && recado.erro ? ' erro' : '');
+  if (recado) {
+    diz.innerHTML = `<b>${esc(recado.titulo)}</b><small>${esc(recado.detalhe || '')}</small>`;
+  } else if (url) {
+    diz.innerHTML = `<b>Trocar imagem</b><small>${esc(url.replace(/^.*\//, ''))}</small>`;
+  } else {
+    diz.innerHTML = '<b>Escolher imagem</b><small>arraste o arquivo aqui ou clique</small>';
+  }
+}
+
+function escolherFoto(input, id) {
+  const arq = input.files && input.files[0];
+  input.value = '';                      // permite reenviar o mesmo arquivo
+  if (arq) mandarFoto(arq, id);
+}
+function soltarFoto(ev, id) {
+  ev.preventDefault();
+  g(id + '-drop').classList.remove('over');
+  const arq = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
+  if (arq) mandarFoto(arq, id);
+}
+function tirarFoto(id) { g(id).value = ''; pintarFoto(id); }
+
+async function mandarFoto(arq, id) {
+  if (!/^image\//.test(arq.type || '')) {
+    return pintarFoto(id, { erro: true, titulo: 'Isso não é uma imagem', detalhe: arq.name });
+  }
+  pintarFoto(id, { titulo: 'Enviando…', detalhe: arq.name });
+  try {
+    const dados = await reduzirImagem(arq);
+    const r = await enviar('/api/painel/imagem', { nome: arq.name, dados });
+    g(id).value = r.url;
+    pintarFoto(id);
+  } catch (e) {
+    pintarFoto(id, { erro: true, titulo: 'Não consegui enviar', detalhe: e.message });
+  }
+}
+
+/** Reduz para no máximo FOTO_LADO_MAX e devolve um data URL JPEG. */
+async function reduzirImagem(arq) {
+  let bmp;
+  try { bmp = await createImageBitmap(arq); }
+  catch { throw new Error('Não consegui abrir essa imagem. Salve como JPG ou PNG e tente de novo.'); }
+
+  const escala = Math.min(1, FOTO_LADO_MAX / Math.max(bmp.width, bmp.height));
+  const w = Math.max(1, Math.round(bmp.width * escala));
+  const h = Math.max(1, Math.round(bmp.height * escala));
+
+  const tela = document.createElement('canvas');
+  tela.width = w; tela.height = h;
+  const ctx = tela.getContext('2d');
+  ctx.fillStyle = '#fff';        // PNG transparente virando JPEG: fundo branco, não preto
+  ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(bmp, 0, 0, w, h);
+  if (bmp.close) bmp.close();
+  return tela.toDataURL('image/jpeg', FOTO_QUALIDADE);
+}
+
 /** Lista de rótulo + valor, usada nas fichas de detalhe. */
 const ficha = (pares) => `<dl class="ficha">${pares
   .filter(([, v]) => v !== undefined && v !== null && v !== '')

@@ -88,6 +88,24 @@ tr.clicavel{cursor:pointer}
 .thumb.vaga{display:flex;align-items:center;justify-content:center;color:#B9C4C6;font-size:16px}
 .linhaprod{display:flex;align-items:center;gap:12px}
 
+/* campo de foto: área de soltar + prévia */
+.campo.foto{gap:6px}
+.foto-drop{display:flex;align-items:center;gap:13px;padding:11px;cursor:pointer;
+  border:1px dashed var(--line);background:#fff;transition:.18s var(--e)}
+.foto-drop:hover,.foto-drop.over{border-color:var(--brand);background:var(--brand-tint)}
+.foto-drop .previa{position:relative;flex-shrink:0;width:88px;height:66px;background:var(--bg-soft);
+  border:1px solid var(--line-2);display:flex;align-items:center;justify-content:center}
+.foto-drop .previa .vazia{color:#B9C4C6;font-size:21px}
+.foto-drop .previa img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;
+  background:var(--bg-soft);padding:3px}
+.foto-drop .dizeres{min-width:0}
+.foto-drop .dizeres b{display:block;font-family:'Barlow Condensed';font-size:15px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.03em;color:var(--brand-dd)}
+.foto-drop .dizeres small{display:block;font-size:11.5px;color:var(--muted);margin-top:2px;
+  line-height:1.35;overflow-wrap:anywhere}
+.foto-drop .dizeres.erro b{color:var(--bad)}
+.foto-acoes{display:flex;gap:7px;flex-wrap:wrap}
+
 /* ── Etiquetas ────────────────────────────────────────────────────── */
 .tag{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.03em;padding:3px 9px;
   background:var(--line-2);color:var(--ink-2);white-space:nowrap}

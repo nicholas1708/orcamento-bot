@@ -198,6 +198,63 @@ const gravarCat = (c) => {
 
 app.get('/painel/produtos', exigirSenha, (_req, res) => res.sendFile(path.join(__dirname, 'painel-produtos.html')));
 
+/**
+ * UPLOAD DA FOTO DO PRODUTO.
+ * A equipe manda o arquivo direto pelo painel, sem precisar de link nem de
+ * subir nada no site. O navegador ja reduz e converte para JPEG antes de
+ * enviar (ver painel-ui.js), entao aqui chega um data URL pequeno.
+ *
+ * Mesmo assim conferimos tipo e tamanho: a tela pode ser burlada, e o PDF
+ * so aceita JPEG e PNG — arquivo de outro formato quebraria a geracao.
+ */
+const PNG_ASSINATURA = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+const FOTO_MAX_BYTES = 4 * 1024 * 1024;
+
+app.post('/api/painel/imagem', exigirSenha, (req, res) => {
+  try {
+    const { nome, dados } = req.body || {};
+    if (!dados) return res.status(400).json({ error: 'Nenhuma imagem recebida.' });
+
+    const m = String(dados).match(/^data:image\/(?:jpeg|jpg|png);base64,([A-Za-z0-9+/=]+)$/);
+    if (!m) return res.status(400).json({ error: 'Formato não aceito. Envie uma imagem JPG ou PNG.' });
+
+    const buf = Buffer.from(m[1], 'base64');
+    if (!buf.length) return res.status(400).json({ error: 'A imagem chegou vazia.' });
+    if (buf.length > FOTO_MAX_BYTES) {
+      return res.status(400).json({ error: `Imagem muito grande (${Math.round(buf.length / 1024)} KB). O limite é 4 MB.` });
+    }
+
+    // Assinatura do arquivo, não o que o navegador disse que era
+    const ehJpg = buf[0] === 0xFF && buf[1] === 0xD8;
+    const ehPng = buf.subarray(0, 8).equals(PNG_ASSINATURA);
+    if (!ehJpg && !ehPng) {
+      return res.status(400).json({ error: 'O arquivo não é uma imagem JPG ou PNG válida.' });
+    }
+
+    // Nome previsível a partir do original + sufixo aleatório, para trocar a
+    // foto de um produto não sobrescrever a de outro que tenha nome igual.
+    const base = String(nome || 'foto')
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .toLowerCase()
+      .replace(/\.[a-z0-9]+$/, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 48) || 'foto';
+    const arquivo = `${base}-${require('crypto').randomBytes(3).toString('hex')}${ehJpg ? '.jpg' : '.png'}`;
+
+    fsp.mkdirSync(path.join(__dirname, 'img'), { recursive: true });
+    fsp.writeFileSync(path.join(__dirname, 'img', arquivo), buf);
+
+    const url = '/img/' + arquivo;
+    require('./imagens').esquecer(url);   // o PDF passa a enxergar a foto na hora
+    console.log(`[PAINEL] Foto enviada: ${url} (${Math.round(buf.length / 1024)} KB)`);
+    res.json({ ok: true, url, bytes: buf.length });
+  } catch (e) {
+    console.error('Erro /api/painel/imagem:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/api/painel/produtos', exigirSenha, (_req, res) => {
   const c = lerCat();
   res.json({
@@ -238,6 +295,7 @@ app.post('/api/painel/perfil', exigirSenha, (req, res) => {
       barra_m: Number(p.barra_m) || 6,
       vao_maximo_m: Number(p.vao_maximo_m),
       peso_kg_m: Number(p.peso_kg_m) || null,
+      imagem: p.imagem || null,
       ativo: p.ativo !== false,
     };
     const i = c.perfis.findIndex((x) => x.id === id);
@@ -447,6 +505,7 @@ app.get('/api/catalogo', async (_req, res) => {
         unidade: p.unidade, barra_m: p.barra_m || null,
         // a tela mostra "aguenta até Xm sem apoio" — sem este campo saía "undefined"
         vao_maximo_m: p.vao_maximo_m || null,
+        imagem: p.imagem || null,
       })),
       temEstrutura: (c.perfis || []).some((p) => p.tipo === 'terca'),
       engenharia: {

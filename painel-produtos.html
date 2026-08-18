@@ -291,9 +291,7 @@ function editarTelha(id){
            <select id="pr-ativo"><option value="sim">Sim</option>
              <option value="nao" ${p?.ativo===false?'selected':''}>Não</option></select>
            <small>inativo não aparece para o cliente</small></div>
-         <div class="campo"><label>Link da foto</label>
-           <input id="pr-img" value="${esc(p?.imagem||'')}" placeholder="https://...">
-           <small>usada nas duas telas de orçamento e no PDF</small></div>
+         ${campoFoto('pr-img',p?.imagem,'aparece nas duas telas de orçamento e no PDF')}
          <div class="campo"><label>Observação interna</label>
            <input id="pr-obs" value="${esc(p?.observacao||'')}" placeholder="não aparece para o cliente"></div>
        </div>
@@ -394,8 +392,7 @@ function editarComplemento(id){
              <option value="acabamento" ${tipo==='acabamento'?'selected':''}>Acabamento (peça de fechamento)</option>
              <option value="fixacao" ${tipo==='fixacao'?'selected':''}>Fixação (parafuso, arruela)</option>
            </select></div>
-         <div class="campo"><label>Link da foto</label>
-           <input id="cp-img" value="${esc(c?.imagem||'')}" placeholder="https://..."></div>
+         ${campoFoto('cp-img',c?.imagem,'aparece na escolha do cliente e no PDF')}
        </div>
      </div>
 
@@ -511,6 +508,7 @@ function editarPerfil(id){
            </select></div>
          <div class="campo"><label>Código no ERP</label>
            <input id="pf-codigo" value="${esc(p?.codigo||'')}"></div>
+         ${campoFoto('pf-img',p?.imagem,'aparece na escolha do cliente e no PDF')}
        </div>
      </div>
 
@@ -545,6 +543,7 @@ async function salvarPerfil(){
   const corpo={id:v('pf-id')||null, nome:v('pf-nome'), tipo:g('pf-tipo').value,
     codigo:v('pf-codigo')||null, preco:dec(v('pf-preco')), vao_maximo_m:dec(v('pf-vao')),
     barra_m:dec(v('pf-barra'))||6, peso_kg_m:dec(v('pf-peso')),
+    imagem:v('pf-img')||null,
     ativo:g('pf-ativo').value==='sim'};
   if(!corpo.nome)return aviso('pf-msg','bad','Informe o nome do perfil.');
   if(!corpo.preco)return aviso('pf-msg','bad','Informe o preço por metro.');

@@ -44,7 +44,13 @@ async function garantirImagem(url) {
 
   const local = arquivoDoProjeto(url);
   if (local !== undefined) {
-    if (!local) console.warn(`[imagens] foto local não encontrada: ${url}`);
+    if (!local) {
+      // NÃO memoriza a ausência: o arquivo pode aparecer a qualquer momento
+      // (upload pelo painel, cópia na mão) e o PDF seguinte já tem que achar.
+      // Ler o disco é barato; ficar sem a foto até reiniciar não é.
+      console.warn(`[imagens] foto local não encontrada: ${url}`);
+      return null;
+    }
     memoria.set(url, local);
     return local;
   }
@@ -76,4 +82,15 @@ async function preCarregar(urls) {
   return new Map(pares);
 }
 
-module.exports = { garantirImagem, preCarregar };
+/**
+ * Esquece o que ficou guardado sobre uma URL.
+ * Sem isto, uma foto que faltava no momento em que o PDF rodou ficaria
+ * marcada como inexistente ate reiniciar o servidor — e o PDF seguiria
+ * saindo sem ela mesmo depois do upload pelo painel.
+ */
+function esquecer(url) {
+  if (url) memoria.delete(url);
+  else memoria.clear();
+}
+
+module.exports = { garantirImagem, preCarregar, esquecer };
