@@ -23,10 +23,31 @@ function caminhoLocal(url) {
   return path.join(DIR, hash + (EXT_OK.includes(ext) ? ext : '.jpg'));
 }
 
+/**
+ * FOTO PRÓPRIA DA EMPRESA (ex: "/img/cumeeira.jpg").
+ * O cadastro aceita tanto URL do CDN quanto arquivo servido pelo próprio
+ * sistema. No segundo caso não há nada para baixar: o arquivo já está em
+ * disco, é só apontar para ele.
+ */
+function arquivoDoProjeto(url) {
+  if (!String(url).startsWith('/img/')) return undefined;   // não é foto local
+  const nome = path.basename(url.split('?')[0]);            // barra a saída da pasta
+  const destino = path.join(__dirname, 'img', nome);
+  if (!EXT_OK.includes(path.extname(destino).toLowerCase())) return null;
+  return fs.existsSync(destino) ? destino : null;
+}
+
 /** Baixa (se ainda não houver) e devolve o caminho local, ou null se falhar. */
 async function garantirImagem(url) {
   if (!url) return null;
   if (memoria.has(url)) return memoria.get(url);
+
+  const local = arquivoDoProjeto(url);
+  if (local !== undefined) {
+    if (!local) console.warn(`[imagens] foto local não encontrada: ${url}`);
+    memoria.set(url, local);
+    return local;
+  }
 
   const ext = path.extname(new URL(url).pathname).toLowerCase();
   if (ext && !EXT_OK.includes(ext)) { memoria.set(url, null); return null; }

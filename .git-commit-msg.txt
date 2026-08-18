@@ -1,37 +1,39 @@
-Acrescimo de 30% em 2 aguas, logo no PDF e correcao do endereco
+Vitrine de produtos com foto grande e fotos proprias em /img
 
-Acrescimo de material para 2 aguas
-- Telhado de 2 aguas leva 30% a mais de material, em TODOS os itens:
-  telha, acabamentos de perimetro e estrutura. Parafusos herdam pelo
-  consumo por m2.
-- O fator SUBSTITUI o de inclinacao, para nao contar o caimento duas
-  vezes. Perimetro e tercas sao calculados pela geometria e o
-  acrescimo entra uma vez so, por cima.
-- Parametro em engenharia.acrescimo_2_quedas_pct, nao fixo no codigo.
-- Efeito: galpao 10x10 de 2 aguas passa de 102,40 para 132,60 mts.
-  ATENCAO: deixa de bater com o orcamento oficial 11454, que era a
-  referencia de calibracao do motor.
+Escolha de produto
+- A lista virou vitrine: foto na largura toda em cima e nome curto
+  embaixo. 1 coluna no celular (a foto passa de 44px para ~220px de
+  altura), 2 no desktop. Vale nas quatro telas de escolha: qual telha,
+  montar pedido, "ja separei tudo" e adicionar na conferencia.
+- nomeCurto() quebra o nome tecnico do ERP em titulo + variante:
+  "Confort PIR 30mm Trapezio 40/1000 - Galvalume / Branco" vira
+  "Confort PIR 30mm" com "Galvalume / Branco" embaixo. O nome completo
+  continua no title e e o que vai para o PDF e para a nota. Da para
+  mandar no cadastro preenchendo nome_curto no catalogo.json.
+- Sem nada depois do travessao, a medida retirada volta como variante:
+  senao Perfil C 150x60x20 e Perfil C 100x50x17 ficariam com o mesmo
+  nome na tela.
 
-PDF
-- Logo da empresa no cabecalho, pelo mesmo cache de imagens dos
-  produtos. Se o download falhar, o texto volta ao lugar e o cabecalho
-  nao quebra. URL em empresa.logo.
-- Frete grafado 4 vezes; agora aparece so na linha de totais. Abaixo
-  dela vai a origem ("sai da unidade de Cedral - SP (12 km)") em vez de
-  repetir a palavra.
-- Unidades saem como "UNIDADE - ANAPOLIS/GO" no lugar de "EST. 101".
-- Linha de entrega passa a mostrar cidade - UF.
+Fotos proprias
+- Nova pasta img/, servida em /img pelo server.js. Vale para o site E
+  para o PDF: imagens.js reconhece caminho local e usa o arquivo em
+  disco em vez de tentar baixar. O basename barra saida da pasta.
+- catalogo.json aponta os 6 itens para /img/*.jpg. ATENCAO: os arquivos
+  ainda nao subiram; ate la esses produtos mostram o desenho do perfil
+  no lugar da foto, inclusive as duas telhas, que antes vinham do CDN.
+- A foto entra POR CIMA do desenho e se remove no onerror. Foto que nao
+  carrega (arquivo ausente, CDN fora do ar) nunca vira icone quebrado.
+- img/ nao esta no .gitignore nem no .dockerignore, entao as fotos vao
+  junto na imagem Docker. Nao precisa volume nem mexer no stack.
 
-Endereco: corrige erro ao gerar orcamento
-- A regra exigia um digito no endereco, o que reprovava endereco sem
-  numero (comum em zona rural).
-- enderecoValido() aceita S/N e "sem numero", compartilhada pelos tres
-  canais via roteiro.js e repetida no server.js.
-- Na tela, o campo que falhou recebe foco e rola ate a vista, em vez de
-  so mostrar a mensagem no rodape.
+Correcoes
+- A busca escrevia de tras para frente: cada tecla redesenhava a tela e
+  o input recriado nascia com o cursor na posicao 0, entao a letra
+  seguinte entrava na frente da anterior ("cumeeira" virava "arieemuc").
+  digitouBusca() guarda e restaura a posicao do cursor. Eram tres campos
+  com o mesmo bug.
+- /api/catalogo nao devolvia vao_maximo_m dos perfis e a tela escrevia
+  "aguenta ate undefinedm sem apoio".
 
-Teste
-- teste-completo.js: roda o caminho inteiro sem navegador nem WhatsApp
-  (romaneio -> lista -> volta da conferencia -> preco -> PDF) e confere
-  que o total com e sem a tela de conferencia e identico, que 1 agua
-  nao leva cumeeira e que pedido sem telha rateia o frete minimo.
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01GAziYSwudnXnZZrNcb21H2

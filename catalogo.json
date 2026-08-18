@@ -3,7 +3,6 @@
   "moeda": "BRL",
   "validade_orcamento_dias": 1,
   "prazo_entrega_dias": 9,
-
   "empresa": {
     "razao_social": "4A COMERCIO E REPRESENTAÇÃO MATERIAIS DE CONSTRUÇÃO",
     "cnpj": "44.627.801/0001-57",
@@ -16,25 +15,39 @@
     "vendedor_padrao": "André Luis",
     "logo": "https://d4polyhz8pjtz.cloudfront.net/5223/logo-3768-20221005184441-06-15-2023-15-51-14-000000.png"
   },
-
   "pagamento": {
     "_como_funciona": "Acréscimo percentual sobre o total. Coeficientes extraídos do orçamento real nº 11247 — confirmar com o financeiro.",
     "aplicar_sobre": "total",
     "condicoes_avista": "À Vista (Data do Pedido 50% / CONTRA EMBARQUE 50%)",
     "opcoes": [
-      { "parcelas": 1,  "acrescimo_pct": 4.385,  "descricao": "1 x Cartão Crédito Via LINK de Pagamento" },
-      { "parcelas": 3,  "acrescimo_pct": 7.539,  "descricao": "3 x Cartão Crédito Via LINK de Pagamento" },
-      { "parcelas": 6,  "acrescimo_pct": 10.730, "descricao": "6 x Cartão Crédito Via LINK de Pagamento" },
-      { "parcelas": 10, "acrescimo_pct": 17.730, "descricao": "10 x Cartão Crédito Via LINK de Pagamento" }
+      {
+        "parcelas": 1,
+        "acrescimo_pct": 4.385,
+        "descricao": "1 x Cartão Crédito Via LINK de Pagamento"
+      },
+      {
+        "parcelas": 3,
+        "acrescimo_pct": 7.539,
+        "descricao": "3 x Cartão Crédito Via LINK de Pagamento"
+      },
+      {
+        "parcelas": 6,
+        "acrescimo_pct": 10.73,
+        "descricao": "6 x Cartão Crédito Via LINK de Pagamento"
+      },
+      {
+        "parcelas": 10,
+        "acrescimo_pct": 17.73,
+        "descricao": "10 x Cartão Crédito Via LINK de Pagamento"
+      }
     ]
   },
-
   "engenharia": {
     "_aviso": "⚠️ REGRAS CADASTRÁVEIS — validar com o responsável técnico. O sistema só APLICA, nunca inventa. Fora do padrão vai para o vendedor.",
-    "beiral_m": 0.10,
+    "beiral_m": 0.1,
     "_acrescimo_2_quedas": "Telhado de 2 águas leva 30% a mais de material. Substitui o fator de inclinação (não soma com ele).",
     "acrescimo_2_quedas_pct": 30,
-    "transpasse_longitudinal_m": 0.20,
+    "transpasse_longitudinal_m": 0.2,
     "comprimento_maximo_fabricacao_m": 12.0,
     "comprimento_minimo_fabricacao_m": 0.5,
     "arredondar_comprimento_para_m": 0.01,
@@ -42,152 +55,232 @@
     "vao_maximo_terca_padrao_m": 1.8,
     "barra_perfil_m": 6.0
   },
-
   "telhas": [
     {
-      "id": "P358769", "codigo": "358769", "gc_id": null,
+      "id": "P358769",
+      "codigo": "358769",
+      "gc_id": null,
       "familia": "Telha Termoisolante PIR",
       "nome": "Confort PIR 30mm Trapézio 40/1000 — Galvalume / Branco",
       "descricao_completa": "358769 - CONFORT PIR 30mm TRAPÉZIO 40/1000 ZCL 0,43mm GALVALUME Superior - FORRO RAL 9003 BRANCO SLIM Inferior - NCM: 73089090",
       "atributos": {
-        "linha": "CONFORT", "nucleo": "PIR", "espessura_isolamento_mm": 30,
-        "perfil": "Trapézio 40/1000", "onda_mm": 40, "espessura_chapa_mm": 0.43,
-        "face_superior": "Galvalume ZCL", "face_inferior": "Forro RAL 9003 Branco Slim",
+        "linha": "CONFORT",
+        "nucleo": "PIR",
+        "espessura_isolamento_mm": 30,
+        "perfil": "Trapézio 40/1000",
+        "onda_mm": 40,
+        "espessura_chapa_mm": 0.43,
+        "face_superior": "Galvalume ZCL",
+        "face_inferior": "Forro RAL 9003 Branco Slim",
         "ncm": "73089090"
       },
-      "tipo": "telha", "unidade": "M²", "venda_por": "metro",
-      "preco": 129.50,
+      "tipo": "telha",
+      "unidade": "M²",
+      "venda_por": "metro",
+      "preco": 129.5,
       "faixas_preco": [
-        { "ate_m2": 50,  "preco": 129.50 },
-        { "ate_m2": 100, "preco": 126.91 },
-        { "ate_m2": 200, "preco": 123.02 },
-        { "ate_m2": null, "preco": 120.73 }
+        {
+          "ate_m2": 50,
+          "preco": 129.5
+        },
+        {
+          "ate_m2": 100,
+          "preco": 126.91
+        },
+        {
+          "ate_m2": 200,
+          "preco": 123.02
+        },
+        {
+          "ate_m2": null,
+          "preco": 120.73
+        }
       ],
-      "largura_util_m": 1.00,
+      "largura_util_m": 1.0,
       "comprimento_maximo_m": 8.0,
       "comprimento_minimo_m": 0.5,
       "comprimentos_padrao": null,
       "_comprimentos_nota": "Atalhos dos tamanhos mais vendidos. A telha continua sendo cortada sob medida — o cliente pode informar qualquer comprimento entre o mínimo e o máximo.",
-      "transpasse_m": 0.20,
-      "vao_maximo_m": 2.00,
+      "transpasse_m": 0.2,
+      "vao_maximo_m": 2.0,
       "inclinacao_minima_pct": 10,
       "forro_integrado": true,
       "promocao_ate_m": 8.0,
       "_promocao_nota": "Os preços das faixas são PROMOCIONAIS e valem para peças de até 8m. Peça maior sai da promoção e entra em outra base de cálculo — o sistema encaminha ao vendedor.",
-      "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/telha-sanduiche-pir-20251028160541.jpeg",
+      "imagem": "/img/telha-confort-pir-galvalume-branco.jpg",
       "ativo": true
     },
     {
-      "id": "P358768", "codigo": "358768", "gc_id": null,
+      "id": "P358768",
+      "codigo": "358768",
+      "gc_id": null,
       "familia": "Telha Termoisolante PIR",
       "nome": "Confort PIR 30mm Trapézio 40/1000 — Branco / Branco",
       "descricao_completa": "358768 - CONFORT PIR 30mm TRAPÉZIO 40/1000 ZCL 0,38mm RAL 9003 BRANCO Superior - FORRO RAL 9003 BRANCO SLIM Inferior - NCM: 73089090",
       "atributos": {
-        "linha": "CONFORT", "nucleo": "PIR", "espessura_isolamento_mm": 30,
-        "perfil": "Trapézio 40/1000", "onda_mm": 40, "espessura_chapa_mm": 0.38,
-        "face_superior": "RAL 9003 Branco", "face_inferior": "Forro RAL 9003 Branco Slim",
+        "linha": "CONFORT",
+        "nucleo": "PIR",
+        "espessura_isolamento_mm": 30,
+        "perfil": "Trapézio 40/1000",
+        "onda_mm": 40,
+        "espessura_chapa_mm": 0.38,
+        "face_superior": "RAL 9003 Branco",
+        "face_inferior": "Forro RAL 9003 Branco Slim",
         "ncm": "73089090"
       },
-      "tipo": "telha", "unidade": "M²", "venda_por": "metro",
+      "tipo": "telha",
+      "unidade": "M²",
+      "venda_por": "metro",
       "preco": 139.73,
       "faixas_preco": [
-        { "ate_m2": 50,  "preco": 139.73 },
-        { "ate_m2": 100, "preco": 136.94 },
-        { "ate_m2": 200, "preco": 132.75 },
-        { "ate_m2": null, "preco": 131.35 }
+        {
+          "ate_m2": 50,
+          "preco": 139.73
+        },
+        {
+          "ate_m2": 100,
+          "preco": 136.94
+        },
+        {
+          "ate_m2": 200,
+          "preco": 132.75
+        },
+        {
+          "ate_m2": null,
+          "preco": 131.35
+        }
       ],
-      "largura_util_m": 1.00,
+      "largura_util_m": 1.0,
       "comprimento_maximo_m": 8.0,
       "comprimento_minimo_m": 0.5,
       "comprimentos_padrao": null,
       "_comprimentos_nota": "Atalhos dos tamanhos mais vendidos. A telha continua sendo cortada sob medida — o cliente pode informar qualquer comprimento entre o mínimo e o máximo.",
-      "transpasse_m": 0.20,
-      "vao_maximo_m": 2.00,
+      "transpasse_m": 0.2,
+      "vao_maximo_m": 2.0,
       "inclinacao_minima_pct": 10,
       "forro_integrado": true,
       "promocao_ate_m": 8.0,
       "_promocao_nota": "Os preços das faixas são PROMOCIONAIS e valem para peças de até 8m. Peça maior sai da promoção e entra em outra base de cálculo — o sistema encaminha ao vendedor.",
-      "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/quero-saber-mais-20250704164407.jpeg",
+      "imagem": "/img/telha-confort-pir-branco-branco.jpg",
       "ativo": true
     }
   ],
-
   "_complementos_nota": "REGRAS CONFERIDAS no orçamento oficial nº 11454 (galpão 10x10m, 2 águas, 100 m²): cumeeira 10 UN para 10m de cumeeira (1/m) · frontal 20 UN para 20m de beiral (1/m) · lateral 20 M² para 20m de borda (por metro) · parafuso fixação 300 un para 100 m² (3/m²) · costura 150 un (1,5/m²).",
   "complementos": [
     {
-      "id": "P148384", "codigo": "148384", "familia": "Acabamento",
+      "id": "P148384",
+      "codigo": "148384",
+      "familia": "Acabamento",
       "nome": "Cumeeira Galvalume Trapézio 40/1000 — Galvalume ZCL 0,43mm",
       "descricao_completa": "148384 - CUMEEIRA GALVALUME TRAPEZIO 40/1000 GALVALUME ZCL 0,43mm",
-      "imagem": null,
-      "tipo": "acabamento", "venda_por": "unidade", "rendimento_m": 1.0,
-      "unidade": "UN", "preco": 46.09,
-      "aplica_em": "cumeeira", "ativo": true
+      "imagem": "/img/cumeeira-trapezoidal.jpg",
+      "tipo": "acabamento",
+      "venda_por": "unidade",
+      "rendimento_m": 1.0,
+      "unidade": "UN",
+      "preco": 46.09,
+      "aplica_em": "cumeeira",
+      "ativo": true
     },
     {
-      "id": "P148474", "codigo": "148474", "familia": "Acabamento",
+      "id": "P148474",
+      "codigo": "148474",
+      "familia": "Acabamento",
       "nome": "Cumeeira Galvalume Trapézio 40/1000 — Branco RAL 9003",
       "descricao_completa": "148474 - CUMEEIRA GALVALUME TRAPEZIO 40/1000 RAL 9003 BRANCO",
-      "imagem": null,
-      "tipo": "acabamento", "venda_por": "unidade", "rendimento_m": 1.0,
-      "unidade": "UN", "preco": 53.88,
-      "aplica_em": "cumeeira", "ativo": false,
+      "imagem": "/img/cumeeira-trapezoidal.jpg",
+      "tipo": "acabamento",
+      "venda_por": "unidade",
+      "rendimento_m": 1.0,
+      "unidade": "UN",
+      "preco": 53.88,
+      "aplica_em": "cumeeira",
+      "ativo": false,
       "_nota": "alternativa branca da cumeeira — ative se for usada"
     },
     {
-      "id": "P143019", "codigo": "143019", "familia": "Acabamento",
+      "id": "P143019",
+      "codigo": "143019",
+      "familia": "Acabamento",
       "nome": "Acabamento Frontal TP 40/1000 p/ Telha 30mm — Branco",
       "descricao_completa": "143019 - ACABAMENTO FRONTAL TP 40/1000 P/ T-30mm RAL 9003 BRANCO",
-      "imagem": null,
-      "tipo": "acabamento", "venda_por": "unidade", "rendimento_m": 1.0,
-      "unidade": "UN", "preco": 25.10,
-      "aplica_em": "frontal", "ativo": true
+      "imagem": "/img/acabamento-frontal.jpg",
+      "tipo": "acabamento",
+      "venda_por": "unidade",
+      "rendimento_m": 1.0,
+      "unidade": "UN",
+      "preco": 25.1,
+      "aplica_em": "frontal",
+      "ativo": true
     },
     {
-      "id": "P152327", "codigo": "152327", "familia": "Acabamento",
+      "id": "P152327",
+      "codigo": "152327",
+      "familia": "Acabamento",
       "nome": "Acabamento Lateral Trapézio 40/1000 p/ Telha PIR 30mm — Branco",
       "descricao_completa": "152327 - ACABAMENTO LATERAL TRAPÉZIO 40/1000 TELHA PIR 30mm RAL 9003 BRANCO - Barras C/ 3mts",
-      "imagem": null,
-      "tipo": "acabamento", "venda_por": "metro",
-      "unidade": "M²", "preco": 27.48,
-      "aplica_em": "lateral", "ativo": true,
+      "imagem": "/img/acabamento-lateral.jpg",
+      "tipo": "acabamento",
+      "venda_por": "metro",
+      "unidade": "M²",
+      "preco": 27.48,
+      "aplica_em": "lateral",
+      "ativo": true,
       "_nota": "vendido em barras de 3m, mas COBRADO POR METRO (conferido no orçamento 11454: 20 m² x 27,48 = 549,60)"
     },
     {
-      "id": "P142962", "codigo": "142962", "familia": "Acabamento",
+      "id": "P142962",
+      "codigo": "142962",
+      "familia": "Acabamento",
       "nome": "Acabamento Interno Branco RAL 9003 — 3mts",
       "descricao_completa": "142962 - ACABAMENTO INTERNO RAL 9003 BRANCO INTERNO - 3mts",
-      "imagem": null,
-      "tipo": "acabamento", "venda_por": "metro",
-      "unidade": "M²", "preco": 47.95,
-      "aplica_em": "interno", "ativo": true
+      "imagem": "/img/acabamento-interno.jpg",
+      "tipo": "acabamento",
+      "venda_por": "metro",
+      "unidade": "M²",
+      "preco": 47.95,
+      "aplica_em": "interno",
+      "ativo": true
     },
     {
-      "id": "P6391P4", "codigo": "6391P4", "familia": "Fixação",
+      "id": "P6391P4",
+      "codigo": "6391P4",
+      "familia": "Fixação",
       "nome": "Parafuso Fixação Rosca Inteira c/ Vedação 4\" 12x4 — Aço Anticorrosão",
       "descricao_completa": "6391P4 - PARAFUSO FIXAÇÃO ROSCA INTEIRA C/ VEDAÇÃO 4\" 12x4 P/ AÇO ANTI CORROSÃO",
       "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/parafuso-fixacao-4-auto-broca-20240626195102.png",
-      "tipo": "fixacao", "venda_por": "unidade",
-      "unidade": "UN", "preco": 1.25,
-      "consumo_por_m2": 3, "ativo": true
+      "tipo": "fixacao",
+      "venda_por": "unidade",
+      "unidade": "UN",
+      "preco": 1.25,
+      "consumo_por_m2": 3,
+      "ativo": true
     },
     {
-      "id": "PPA-101", "codigo": "PA-101", "familia": "Fixação",
+      "id": "PPA-101",
+      "codigo": "PA-101",
+      "familia": "Fixação",
       "nome": "Parafuso Costura 12x7/8 — Anticorrosão",
       "descricao_completa": "PA-101 - PARAFUSO COSTURA 12x 7/8 ANTI CORROSÃO",
       "imagem": "https://d4polyhz8pjtz.cloudfront.net/5223/parafuso-costura-auto-brocante-20240626195627.png",
-      "tipo": "fixacao", "venda_por": "unidade",
-      "unidade": "UN", "preco": 0.45,
-      "consumo_por_m2": 1.5, "ativo": true
+      "tipo": "fixacao",
+      "venda_por": "unidade",
+      "unidade": "UN",
+      "preco": 0.45,
+      "consumo_por_m2": 1.5,
+      "ativo": true
     }
   ],
-
   "_perfis_nota": "ESTRUTURA (terças/caibros). ⚠️ PREÇOS E MEDIDAS PROVISÓRIOS — a 4A ainda não enviou esta tabela. O sistema usa o perfil com tipo 'terca' para calcular a estrutura: nº de terças = maior corte ÷ vao_maximo_m + 1. Cadastre pelo painel ou substitua aqui.",
   "perfis": [
     {
-      "id": "PF-TERCA-C150", "codigo": null, "gc_id": null,
+      "id": "PF-TERCA-C150",
+      "codigo": null,
+      "gc_id": null,
       "tipo": "terca",
       "nome": "Terça Galvanizada Perfil C 150x60x20 #1,55mm",
-      "unidade": "M", "preco": 48.00,
+      "unidade": "M",
+      "preco": 48.0,
       "barra_m": 6.0,
       "vao_maximo_m": 6.0,
       "peso_kg_m": 4.2,
@@ -195,10 +288,13 @@
       "_confirmar": true
     },
     {
-      "id": "PF-TERCA-C100", "codigo": null, "gc_id": null,
+      "id": "PF-TERCA-C100",
+      "codigo": null,
+      "gc_id": null,
       "tipo": "terca",
       "nome": "Terça Galvanizada Perfil C 100x50x17 #1,55mm",
-      "unidade": "M", "preco": 34.00,
+      "unidade": "M",
+      "preco": 34.0,
       "barra_m": 6.0,
       "vao_maximo_m": 4.0,
       "peso_kg_m": 2.9,
@@ -206,10 +302,13 @@
       "_confirmar": true
     },
     {
-      "id": "PF-VIGA-U200", "codigo": null, "gc_id": null,
+      "id": "PF-VIGA-U200",
+      "codigo": null,
+      "gc_id": null,
       "tipo": "viga",
       "nome": "Viga Galvanizada Perfil U 200x75 #2,00mm",
-      "unidade": "M", "preco": 92.00,
+      "unidade": "M",
+      "preco": 92.0,
       "barra_m": 6.0,
       "vao_maximo_m": 8.0,
       "peso_kg_m": 7.6,
@@ -217,34 +316,105 @@
       "_confirmar": true
     }
   ],
-
   "_unidades_nota": "lat/lon já preenchidos: sem eles o sistema faria 14 consultas externas a cada orçamento (uma por unidade), o que travava a geração por dezenas de segundos. Com as coordenadas fixas, só o endereço do cliente precisa ser consultado.",
   "unidades": [
-    { "nome": "Est. 101", "cep": "75132-105", "cidade": "Anápolis", "uf": "GO", "lat": -16.3332828, "lon": -48.9525756, "endereco": "Qd. 08 Módulo 14/16 - DAIA", "cnpj": "00.289.348/0001-40", "ativa": true, "produtos": [] },
-    { "nome": "Est. 103", "cep": "78134-302", "cidade": "Várzea Grande", "uf": "MT", "lat": -15.6458160, "lon": -56.1322180, "endereco": "Av. das Palmeiras, Lote C Industrial - Capão do Pequi", "cnpj": "00.289.348/0006-55", "ativa": true, "produtos": [] },
-    { "nome": "Est. 104", "cep": "55613-010", "cidade": "Vitória de Santo Antão", "uf": "PE", "lat": -8.1209019, "lon": -35.2944858, "endereco": "Rodovia Luiz Gonzaga BR-232 Km 51,8 - Distrito Industrial", "cnpj": "00.289.348/0005-74", "ativa": true, "produtos": [] },
-    { "nome": "Est. 105", "cep": "37600-000", "cidade": "Cambuí", "uf": "MG", "lat": -22.6122501, "lon": -46.0572137, "endereco": "Avenida dos Nascimento, 354 - Congonhal", "cnpj": "00.289.348/0007-36", "ativa": true, "produtos": [] },
-    { "nome": "Est. 106", "cep": "89245-000", "cidade": "Araquari", "uf": "SC", "lat": -26.3703324, "lon": -48.7210994, "endereco": "Rodovia BR-101, 17175 - Corveta", "cnpj": "00.289.348/0008-17", "ativa": true, "produtos": [] },
-    { "nome": "Est. 107", "cep": "37600-000", "cidade": "Cambuí", "uf": "MG", "lat": -22.6122501, "lon": -46.0572137, "endereco": "Avenida dos Nascimento, 354 Galpão 02 - Congonhal", "cnpj": "00.289.348/0009-06", "ativa": true, "produtos": [] },
-    { "nome": "Est. 1101", "cep": "89245-000", "cidade": "Araquari", "uf": "SC", "lat": -26.3703324, "lon": -48.7210994, "endereco": "Rodovia BR-101, 17175 Galpão 03 - Corveta", "cnpj": "37.076.760/0001-92", "ativa": true, "produtos": [] }
+    {
+      "nome": "Est. 101",
+      "cep": "75132-105",
+      "cidade": "Anápolis",
+      "uf": "GO",
+      "lat": -16.3332828,
+      "lon": -48.9525756,
+      "endereco": "Qd. 08 Módulo 14/16 - DAIA",
+      "cnpj": "00.289.348/0001-40",
+      "ativa": true,
+      "produtos": []
+    },
+    {
+      "nome": "Est. 103",
+      "cep": "78134-302",
+      "cidade": "Várzea Grande",
+      "uf": "MT",
+      "lat": -15.645816,
+      "lon": -56.132218,
+      "endereco": "Av. das Palmeiras, Lote C Industrial - Capão do Pequi",
+      "cnpj": "00.289.348/0006-55",
+      "ativa": true,
+      "produtos": []
+    },
+    {
+      "nome": "Est. 104",
+      "cep": "55613-010",
+      "cidade": "Vitória de Santo Antão",
+      "uf": "PE",
+      "lat": -8.1209019,
+      "lon": -35.2944858,
+      "endereco": "Rodovia Luiz Gonzaga BR-232 Km 51,8 - Distrito Industrial",
+      "cnpj": "00.289.348/0005-74",
+      "ativa": true,
+      "produtos": []
+    },
+    {
+      "nome": "Est. 105",
+      "cep": "37600-000",
+      "cidade": "Cambuí",
+      "uf": "MG",
+      "lat": -22.6122501,
+      "lon": -46.0572137,
+      "endereco": "Avenida dos Nascimento, 354 - Congonhal",
+      "cnpj": "00.289.348/0007-36",
+      "ativa": true,
+      "produtos": []
+    },
+    {
+      "nome": "Est. 106",
+      "cep": "89245-000",
+      "cidade": "Araquari",
+      "uf": "SC",
+      "lat": -26.3703324,
+      "lon": -48.7210994,
+      "endereco": "Rodovia BR-101, 17175 - Corveta",
+      "cnpj": "00.289.348/0008-17",
+      "ativa": true,
+      "produtos": []
+    },
+    {
+      "nome": "Est. 107",
+      "cep": "37600-000",
+      "cidade": "Cambuí",
+      "uf": "MG",
+      "lat": -22.6122501,
+      "lon": -46.0572137,
+      "endereco": "Avenida dos Nascimento, 354 Galpão 02 - Congonhal",
+      "cnpj": "00.289.348/0009-06",
+      "ativa": true,
+      "produtos": []
+    },
+    {
+      "nome": "Est. 1101",
+      "cep": "89245-000",
+      "cidade": "Araquari",
+      "uf": "SC",
+      "lat": -26.3703324,
+      "lon": -48.7210994,
+      "endereco": "Rodovia BR-101, 17175 Galpão 03 - Corveta",
+      "cnpj": "37.076.760/0001-92",
+      "ativa": true,
+      "produtos": []
+    }
   ],
-
   "fretes": {
     "modo": "embutido",
     "_como_funciona": "O frete JÁ ESTÁ no preço por metro das faixas (por isso o preço cai com o volume). Duas exceções cadastradas abaixo: pedidos pequenos e destinos distantes.",
-
     "raio_maximo_km": 600,
     "raio_medido_de": "unidade_mais_proxima",
     "_raio_nota": "600 km contados DA FÁBRICA (unidade mais próxima da obra), não da matriz em Cedral. Acima disso o sistema NÃO conclui o orçamento: registra o pedido, gera protocolo e encaminha para a 4A formalizar a proposta, porque o frete varia por localidade.",
     "mensagem_fora_do_raio": "Sua obra está fora da nossa área de entrega automática. Já registramos todo o seu pedido e nossa equipe vai formalizar a proposta com o frete correto para a sua região — em breve entramos em contato.",
-
     "metragem_minima_m2": 40,
-    "frete_abaixo_do_minimo": 400.00,
+    "frete_abaixo_do_minimo": 400.0,
     "_minimo_nota": "Abaixo de 40 m² a carga não fecha: cobra-se R$ 400 de frete, DILUÍDO no preço por metro (o cliente continua vendo 'frete incluso').",
-
     "tabela": []
   },
-
   "regras": {
     "faixa_preco_por": "produto",
     "faixa_tolerancia_pct": 5,
@@ -255,13 +425,11 @@
     "quantidade_maxima_pecas": 200,
     "observacao_pdf": "Orçamento gerado automaticamente. Sujeito a conferência das medidas informadas pelo cliente. Frete grátis para o endereço informado."
   },
-
   "ilustracoes": {
     "_nota": "Fotos reais usadas na escolha do tipo de telhado. Deixe vazio para usar o desenho padrão. Sugestão: uma foto de obra com caída única e outra com duas águas/cumeeira aparente — a galeria de vocês tem várias em /galeria-de-fotos/telhados-pir/8",
     "uma_queda": null,
     "duas_aguas": null
   },
-
   "textos_pdf": {
     "frete": "FRETE GRÁTIS",
     "pagamento_observacao": "ENTREGUE NA OBRA",

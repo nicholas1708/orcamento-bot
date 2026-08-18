@@ -41,6 +41,12 @@ const orcamentosDb = require('./orcamentos');
 // diretório, não dá pra descobrir os orçamentos dos outros.
 app.use('/out', express.static(path.join(__dirname, 'out'), { index: false }));
 
+// FOTOS PRÓPRIAS DOS PRODUTOS — alternativa ao CDN da 4A.
+// Basta jogar o arquivo em img/ e apontar "imagem": "/img/arquivo.jpg" no
+// catálogo. Vale para o site E para o PDF (ver imagens.js). São fotos de
+// catálogo, sem dado de cliente: público de propósito.
+app.use('/img', express.static(path.join(__dirname, 'img'), { index: false, maxAge: '7d' }));
+
 app.get('/simulador', exigirSenha, (_req, res) => res.sendFile(path.join(__dirname, 'simulador.html')));
 
 // Design system do painel (compartilhado pelas páginas internas)
@@ -439,6 +445,8 @@ app.get('/api/catalogo', async (_req, res) => {
       perfis: (c.perfis || []).map((p) => ({
         id: p.id, nome: p.nome, tipo: p.tipo, preco: p.preco,
         unidade: p.unidade, barra_m: p.barra_m || null,
+        // a tela mostra "aguenta até Xm sem apoio" — sem este campo saía "undefined"
+        vao_maximo_m: p.vao_maximo_m || null,
       })),
       temEstrutura: (c.perfis || []).some((p) => p.tipo === 'terca'),
       engenharia: {
