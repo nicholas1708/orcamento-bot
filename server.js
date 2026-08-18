@@ -520,6 +520,13 @@ app.get('/api/cep/:cep', async (req, res) => {
 /** Erro de preenchimento (vira 400 e a mensagem vai para a tela do cliente). */
 function erroCliente(msg) { const e = new Error(msg); e.publico = true; return e; }
 
+/** Rua e número. "S/N" vale — endereço rural não pode travar o orçamento. */
+function enderecoValido(v) {
+  const t = String(v || '').trim();
+  if (t.length < 8) return false;
+  return /\d/.test(t) || /\bs\/?\s?n(º|o|\b)/i.test(t) || /sem\s+n[úu]mero/i.test(t);
+}
+
 /**
  * CPF ou CNPJ com dígito verificador conferido.
  * Validado também aqui, e não só na tela: a tela pode ser burlada.
@@ -652,8 +659,11 @@ app.post('/api/orcamento', async (req, res) => {
   try {
     const { pedido, cliente } = req.body || {};
     // REGRA: sem endereço não existe orçamento (entrega/frete dependem dele)
-    if (!cliente?.nome || !cliente?.cidade || !cliente?.endereco || !/\d/.test(cliente.endereco)) {
-      return res.status(400).json({ error: 'Nome, cidade e endereço completo (rua, número e bairro) são obrigatórios.' });
+    if (!cliente?.nome || !cliente?.cidade) {
+      return res.status(400).json({ error: 'Nome e cidade são obrigatórios.' });
+    }
+    if (!enderecoValido(cliente.endereco)) {
+      return res.status(400).json({ error: 'Endereço com rua e número — ex: "Rua Exemplo, 120". Sem número, escreva S/N.' });
     }
     if (!cliente?.telefone || String(cliente.telefone).replace(/\D/g, '').length < 10) {
       return res.status(400).json({ error: 'Informe um telefone/WhatsApp válido com DDD.' });

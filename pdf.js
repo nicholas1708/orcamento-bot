@@ -20,8 +20,9 @@ const W = 595.28 - M * 2; // largura útil A4
 async function gerarPDF({ cliente, pedido, orcamento, catalogo }, destino) {
   fs.mkdirSync(path.dirname(destino), { recursive: true });
 
-  // baixa (com cache) as fotos dos produtos antes de montar o documento
-  const fotos = await preCarregar(orcamento.itens.map((i) => i.imagem));
+  // baixa (com cache) as fotos dos produtos e a logo antes de montar o documento
+  const logoUrl = catalogo.empresa?.logo || null;
+  const fotos = await preCarregar([...orcamento.itens.map((i) => i.imagem), logoUrl]);
 
   const doc = new PDFDocument({ size: 'A4', margin: M });
   const stream = doc.pipe(fs.createWriteStream(destino));
@@ -63,12 +64,25 @@ async function gerarPDF({ cliente, pedido, orcamento, catalogo }, destino) {
   };
 
   // ── CABEÇALHO ─────────────────────────────────────────────────────
+  // A logo é opcional: se o download falhar, o texto ocupa o lugar dela e
+  // o cabeçalho não quebra.
+  const LOGO_W = 88, LOGO_H = 34;
+  let xTexto = M;
+  const logo = fotos.get(logoUrl);
+  if (logo) {
+    try {
+      doc.image(logo, M, M - 2, { fit: [LOGO_W, LOGO_H], align: 'left', valign: 'top' });
+      xTexto = M + LOGO_W + 12;
+    } catch (e) { xTexto = M; }   // imagem corrompida — segue sem ela
+  }
+  const larguraEsq = W * 0.6 - (xTexto - M);
+
   doc.font('Helvetica-Bold').fontSize(10).fillColor('#000')
-    .text(emp.razao_social, M, M, { width: W * 0.6 });
+    .text(emp.razao_social, xTexto, M, { width: larguraEsq });
   doc.font('Helvetica').fontSize(7.5).fillColor('#333')
-    .text(`CNPJ: ${emp.cnpj}`, { width: W * 0.6 })
-    .text(emp.endereco, { width: W * 0.6 })
-    .text(emp.cidade, { width: W * 0.6 });
+    .text(`CNPJ: ${emp.cnpj}`, { width: larguraEsq })
+    .text(emp.endereco, { width: larguraEsq })
+    .text(emp.cidade, { width: larguraEsq });
 
   const yTopo = M;
   doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#000')
@@ -98,13 +112,14 @@ async function gerarPDF({ cliente, pedido, orcamento, catalogo }, destino) {
     doc.text(`${p.descricao} R$ ${BRL(p.total)} = ${p.parcelas} x R$ ${BRL(p.valorParcela)}`, { width: W });
   }
 
+  // "frete grátis" aparece uma vez só, na linha de totais — aqui ficam
+  // apenas metragem e destino
   linhaTracejada();
   doc.font('Helvetica').fontSize(7.5).fillColor('#000')
     .text(`METRAGEM TOTAL..............: ${NUM(orcamento.metragemTotal)} mts`, M, doc.y, { width: W });
   linhaTracejada();
-  doc.text(txt.frete || 'FRETE', M, doc.y, { width: W });
-  linhaTracejada();
-  doc.text(`Entrega em.........................: ${(cliente.cidade || '').toUpperCase()}`, M, doc.y, { width: W });
+  doc.text(`Entrega em.........................: ${(cliente.cidade || '').toUpperCase()}`
+    + (cliente.estado ? ` - ${cliente.estado.toUpperCase()}` : ''), M, doc.y, { width: W });
   doc.moveDown(0.4);
 
   // validade / previsão
@@ -239,9 +254,11 @@ async function gerarPDF({ cliente, pedido, orcamento, catalogo }, destino) {
         ? 'FRETE: a confirmar pelo vendedor'
         : fr.valor === 0 ? 'FRETE: GRÁTIS' : `FRETE: ${BRL(fr.valor)}`;
     doc.fontSize(8.5).text(linhaFrete, M, doc.y + 1, { width: W - 4, align: 'right' });
-    if (fr.descricao) {
+    // só a ORIGEM abaixo da linha — repetir "frete grátis" aqui seria redundante
+    if (fr.unidade?.cidade) {
       doc.font('Helvetica').fontSize(6.8).fillColor('#555')
-        .text(fr.descricao, M, doc.y, { width: W - 4, align: 'right' });
+        .text(`sai da unidade de ${fr.unidade.cidade} - ${fr.unidade.uf}` +
+          (fr.km ? ` (${fr.km} km)` : ''), M, doc.y, { width: W - 4, align: 'right' });
       doc.font('Helvetica-Bold').fillColor('#000');
     }
   }
@@ -290,9 +307,10 @@ async function gerarPDF({ cliente, pedido, orcamento, catalogo }, destino) {
   // As unidades saem do cadastro (sem telefone: o contato é do representante,
   // e já aparece no cabeçalho). Cai nos textos fixos se ainda não houver cadastro.
   faixa('OBSERVAÇÕES');
+  // O cliente não conhece "Est. 101" — o que identifica a fábrica é a cidade.
   const unidadesTexto = (catalogo.unidades || []).filter((u) => u.ativa).length
     ? catalogo.unidades.filter((u) => u.ativa).map((u) =>
-        `${u.nome.toUpperCase()} | ${u.endereco || ''} | ${u.cidade} - ${u.uf} | CEP ${u.cep}`)
+        `UNIDADE - ${String(u.cidade || '').toUpperCase()}/${u.uf} | ${u.endereco || ''} | CEP ${u.cep}`)
     : (txt.unidades || []);
   for (const u of unidadesTexto) par(u, { size: 6.3, cor: '#333' });
   linhaTracejada();

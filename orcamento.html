@@ -823,6 +823,17 @@ function buscarCep(v){
     }else if(m)m.textContent='CEP não encontrado — confira cidade e estado abaixo.';
   },500);
 }
+/**
+ * Endereço serve pra entregar: precisa de rua e número.
+ * "S/N" e "sem número" valem — endereço rural existe e não pode travar
+ * o orçamento por causa de uma regra que exige dígito.
+ */
+function enderecoValido(v){
+  const t=String(v||'').trim();
+  if(t.length<8)return false;
+  return /\d/.test(t)||/\bs\/?\s?n(º|o|\b)/i.test(t)||/sem\s+n[úu]mero/i.test(t);
+}
+
 /** CPF ou CNPJ com dígito verificador conferido — evita documento inventado. */
 function documentoValido(v){
   const d=String(v||'').replace(/\D/g,'');
@@ -856,16 +867,20 @@ function okDados(){
   cliente.estado=g('du').value.trim().toUpperCase();
   cliente.endereco=g('de').value.trim();
 
-  if(cliente.nome.length<2)return err('Informe seu nome.');
+  // aponta o campo que falhou, em vez de só mostrar a mensagem no rodapé
+  const falha=(id,msg)=>{const c=g(id);if(c){c.focus();c.scrollIntoView({block:'center',behavior:'smooth'});}return err(msg);};
+
+  if(cliente.nome.length<2)return falha('dn','Informe seu nome.');
   if(!documentoValido(cliente.documento))
-    return err('Informe um CPF ou CNPJ válido — é o que vai no orçamento e na nota.');
-  if(cliente.telefone.replace(/\D/g,'').length<10)return err('Informe um WhatsApp válido com DDD.');
-  if(cliente.email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cliente.email))return err('Esse e-mail não parece válido.');
+    return falha('dd','Informe um CPF ou CNPJ válido — é o que vai no orçamento e na nota.');
+  if(cliente.telefone.replace(/\D/g,'').length<10)return falha('dt','Informe um WhatsApp válido com DDD.');
+  if(cliente.email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cliente.email))return falha('dm','Esse e-mail não parece válido.');
   if(cliente.cep.replace(/\D/g,'').length!==8)
-    return err('Informe o CEP da obra — é ele que define a unidade de entrega.');
-  if(cliente.cidade.length<2)return err('Informe a cidade.');
-  if(cliente.estado.length!==2)return err('Informe o estado com 2 letras, ex: SP.');
-  if(cliente.endereco.length<8||!/\d/.test(cliente.endereco))return err('Endereço completo com rua, número e bairro.');
+    return falha('dp','Informe o CEP da obra — é ele que define a unidade de entrega.');
+  if(cliente.cidade.length<2)return falha('dc','Informe a cidade.');
+  if(!/^[A-Za-zÀ-ÿ]{2}$/.test(cliente.estado))return falha('du','Informe o estado com 2 letras, ex: SP.');
+  if(!enderecoValido(cliente.endereco))
+    return falha('de','Rua e número — ex: "Rua Exemplo, 120". Sem número, escreva S/N.');
 
   try{localStorage.setItem('cliente4a',JSON.stringify(cliente));}catch(e){}
   gerar();

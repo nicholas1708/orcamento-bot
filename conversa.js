@@ -225,7 +225,7 @@ async function aplicarCampos(ficha, campos, catalogo, acoes) {
     c.email = campos.email.trim();
   }
   if (typeof campos.cidade === 'string' && campos.cidade.trim().length >= 2) c.cidade = campos.cidade.trim();
-  if (typeof campos.endereco === 'string' && campos.endereco.trim().length >= 8 && /\d/.test(campos.endereco)) {
+  if (typeof campos.endereco === 'string' && require('./roteiro').enderecoValido(campos.endereco)) {
     c.endereco = campos.endereco.trim();
   }
 

@@ -622,7 +622,7 @@ async function processar(chatId, textoRaw) {
     }
 
     case 'ENDERECO': {
-      if (texto.length < 8 || !/\d/.test(texto)) { erro(R.T.erroEndereco); break; }
+      if (!R.enderecoValido(texto)) { erro(R.T.erroEndereco); break; }
       ficha.cliente.endereco = texto;
       ficha.tentativasErro = 0;
       mostrarConferencia();

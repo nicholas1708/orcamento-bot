@@ -1,35 +1,37 @@
-Cadastro completo do cliente: CPF/CNPJ, e-mail, CEP e estado
+Acrescimo de 30% em 2 aguas, logo no PDF e correcao do endereco
 
-O PDF ja tinha os campos, mas o sistema nao coletava: CNPJ/CPF, CEP,
-Estado e E-mail saiam em branco no orcamento.
+Acrescimo de material para 2 aguas
+- Telhado de 2 aguas leva 30% a mais de material, em TODOS os itens:
+  telha, acabamentos de perimetro e estrutura. Parafusos herdam pelo
+  consumo por m2.
+- O fator SUBSTITUI o de inclinacao, para nao contar o caimento duas
+  vezes. Perimetro e tercas sao calculados pela geometria e o
+  acrescimo entra uma vez so, por cima.
+- Parametro em engenharia.acrescimo_2_quedas_pct, nao fixo no codigo.
+- Efeito: galpao 10x10 de 2 aguas passa de 102,40 para 132,60 mts.
+  ATENCAO: deixa de bater com o orcamento oficial 11454, que era a
+  referencia de calibracao do motor.
 
-Site
-- Tela de dados ganhou CPF/CNPJ, e-mail e estado.
-- CEP virou obrigatorio e preenche cidade e estado sozinho.
-- Documento validado pelo digito verificador (CPF e CNPJ).
-- E-mail opcional, validado quando preenchido.
+PDF
+- Logo da empresa no cabecalho, pelo mesmo cache de imagens dos
+  produtos. Se o download falhar, o texto volta ao lugar e o cabecalho
+  nao quebra. URL em empresa.logo.
+- Frete grafado 4 vezes; agora aparece so na linha de totais. Abaixo
+  dela vai a origem ("sai da unidade de Cedral - SP (12 km)") em vez de
+  repetir a palavra.
+- Unidades saem como "UNIDADE - ANAPOLIS/GO" no lugar de "EST. 101".
+- Linha de entrega passa a mostrar cidade - UF.
 
-WhatsApp
-- Nova etapa de CPF/CNPJ depois do nome.
-- CEP perdeu o "pular": e ele que escolhe a unidade de origem e aplica
-  a regra dos 600 km.
-- Pergunta de cidade aceita "Cedral - SP" e separa o estado.
+Endereco: corrige erro ao gerar orcamento
+- A regra exigia um digito no endereco, o que reprovava endereco sem
+  numero (comum em zona rural).
+- enderecoValido() aceita S/N e "sem numero", compartilhada pelos tres
+  canais via roteiro.js e repetida no server.js.
+- Na tela, o campo que falhou recebe foco e rola ate a vista, em vez de
+  so mostrar a mensagem no rodape.
 
-Modo com IA
-- documento e cep entram na lista de obrigatorios da ficha.
-- O codigo valida o documento; a IA so transcreve. Errou, o bot pede
-  para conferir.
-- Campos documento e email no schema.
-
-Compartilhado
-- documentoValido() no roteiro.js, usado pelos tres canais, e repetido
-  no server.js porque a tela pode ser burlada.
-- interpretarCidade() separa "cidade - UF".
-- clientes.completo() passa a exigir documento e CEP, entao cliente
-  antigo e perguntado uma vez em vez de gerar outro PDF pela metade.
-- clientes.salvar() e o registro do orcamento passam a gravar
-  documento, email, cep e estado, que antes se perdiam mesmo quando
-  existiam.
-
-Desconto no PDF
-- "DESCONTO POR VOLUME" virou so "DESCONTO" na linha de totais.
+Teste
+- teste-completo.js: roda o caminho inteiro sem navegador nem WhatsApp
+  (romaneio -> lista -> volta da conferencia -> preco -> PDF) e confere
+  que o total com e sem a tela de conferencia e identico, que 1 agua
+  nao leva cumeeira e que pedido sem telha rateia o frete minimo.

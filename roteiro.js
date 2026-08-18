@@ -111,7 +111,7 @@ const T = {
   erroOpcao: 'Não entendi 🤔 Responda com o *número* da opção.',
   erroCortes: 'Não consegui ler as medidas 🤔 Use `quantidade de comprimento`, ex: `3 de 4m, 9 de 4,75`.',
   erroDimensoes: 'Me diga as medidas como `comprimento x largura`, ex: `20x10`.',
-  erroEndereco: 'Preciso do endereço completo com *rua, número e bairro*.',
+  erroEndereco: 'Preciso da *rua e do número* — ex: `Rua Exemplo, 120 - Centro`.\n\n_Sem número? Escreva *S/N*._',
 
   /** Único limite do comprimento: o que a máquina corta. */
   erroForaDoLimite: (nome, lim, curtos, longos) => {
@@ -232,6 +232,13 @@ function documentoValido(v) {
   return false;
 }
 
+/** Rua e número. "S/N" vale — endereço rural não pode travar o orçamento. */
+function enderecoValido(v) {
+  const t = String(v || '').trim();
+  if (t.length < 8) return false;
+  return /\d/.test(t) || /\bs\/?\s?n(º|o|\b)/i.test(t) || /sem\s+n[úu]mero/i.test(t);
+}
+
 /** "Cedral - SP", "cedral sp" → { cidade, uf } */
 function interpretarCidade(texto) {
   const t = String(texto || '').trim().replace(/\s+/g, ' ');
@@ -255,5 +262,5 @@ module.exports = {
   T,
   interpretarSimNao, interpretarDimensoes, interpretarQuedas,
   interpretarEscolha, interpretarCortes, interpretarAjuste,
-  documentoValido, interpretarCidade,
+  documentoValido, interpretarCidade, enderecoValido,
 };

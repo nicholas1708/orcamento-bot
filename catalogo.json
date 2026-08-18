@@ -13,7 +13,8 @@
     "whatsapp": "5517981682818",
     "email": "contato@4arepresentacao.com.br",
     "site": "www.4arepresentacao.com.br",
-    "vendedor_padrao": "André Luis"
+    "vendedor_padrao": "André Luis",
+    "logo": "https://d4polyhz8pjtz.cloudfront.net/5223/logo-3768-20221005184441-06-15-2023-15-51-14-000000.png"
   },
 
   "pagamento": {
@@ -31,6 +32,8 @@
   "engenharia": {
     "_aviso": "⚠️ REGRAS CADASTRÁVEIS — validar com o responsável técnico. O sistema só APLICA, nunca inventa. Fora do padrão vai para o vendedor.",
     "beiral_m": 0.10,
+    "_acrescimo_2_quedas": "Telhado de 2 águas leva 30% a mais de material. Substitui o fator de inclinação (não soma com ele).",
+    "acrescimo_2_quedas_pct": 30,
     "transpasse_longitudinal_m": 0.20,
     "comprimento_maximo_fabricacao_m": 12.0,
     "comprimento_minimo_fabricacao_m": 0.5,
@@ -261,7 +264,7 @@
 
   "textos_pdf": {
     "frete": "FRETE GRÁTIS",
-    "pagamento_observacao": "FRETE GRÁTIS - ENTREGUE NA OBRA",
+    "pagamento_observacao": "ENTREGUE NA OBRA",
     "transportadora": "",
     "_unidades_nota": "Sem telefone por unidade: o contato é do representante e já aparece no cabeçalho.",
     "unidades": [],

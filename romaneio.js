@@ -158,13 +158,30 @@ function calcularRomaneio(ambiente, telha, catalogo) {
   }
   // fator de inclinação: hipotenusa / projeção horizontal
   const fatorIncl = Math.sqrt(1 + Math.pow(inclPct / 100, 2));
-  memoria.push(`Inclinação ${inclPct}% → fator ${round(fatorIncl, 4)}`);
+
+  // ── ACRÉSCIMO DE MATERIAL PARA 2 ÁGUAS ────────────────────────────
+  // Regra da empresa: telhado de 2 águas leva 30% a mais de material —
+  // TODOS os materiais, não só a telha. Cobre caimento, transpasses e
+  // sobras de corte. Substitui o fator de inclinação: somar os dois
+  // contaria o caimento duas vezes.
+  // Cadastrado em engenharia.acrescimo_2_quedas_pct.
+  const pctAcrescimo = Number(eng.acrescimo_2_quedas_pct);
+  const acresce = quedas === 2 && Number.isFinite(pctAcrescimo) && pctAcrescimo > 0;
+  const fatorMaterial = acresce ? 1 + pctAcrescimo / 100 : 1;
+  /** Aplica o acréscimo uma única vez, em qualquer quantidade de material. */
+  const comAcrescimo = (v) => round(v * fatorMaterial, 2);
+
+  memoria.push(acresce
+    ? `2 águas: acréscimo de ${pctAcrescimo}% em todos os materiais (fator ${round(fatorMaterial, 4)})`
+    : `Inclinação ${inclPct}% → fator ${round(fatorIncl, 4)}`);
 
   // ── Comprimento da telha (sentido da água) ────────────────────────
+  // A geometria pura serve de base para tudo; o acréscimo entra por cima.
   const projecao = quedas === 2 ? W / 2 : W;
-  let compTelha = projecao * fatorIncl + eng.beiral_m;
-  compTelha = round(compTelha, 2);
-  memoria.push(`${quedas} água(s): projeção ${round(projecao, 2)}m x fator + beiral ${eng.beiral_m}m → telha de ${compTelha}m`);
+  const compGeo = round(projecao * (acresce ? 1 : fatorIncl) + eng.beiral_m, 2);
+  const compTelha = comAcrescimo(compGeo);
+  memoria.push(`${quedas} água(s): projeção ${round(projecao, 2)}m + beiral ${eng.beiral_m}m = ${compGeo}m` +
+    (acresce ? ` → com acréscimo: ${compTelha}m` : ''));
 
   const compMax = telha.comprimento_maximo_m || eng.comprimento_maximo_fabricacao_m;
   const cortes = [];
@@ -220,9 +237,11 @@ function calcularRomaneio(ambiente, telha, catalogo) {
   if (ambiente.comEstrutura) {
     const vaoMax = telha.vao_maximo_m || eng.vao_maximo_terca_padrao_m;
     // terças correm paralelas à cumeeira; nº por água = vãos + 1
-    const tercasPorAgua = Math.ceil(round(compTelha / vaoMax, 4)) + 1;
-    const metrosTerca = round(tercasPorAgua * quedas * L, 2);
-    memoria.push(`Terças: ${compTelha}m ÷ vão máx ${vaoMax}m + 1 = ${tercasPorAgua} por água → ${metrosTerca}m lineares`);
+    // (conta pela geometria; o acréscimo de material entra depois)
+    const tercasPorAgua = Math.ceil(round(compGeo / vaoMax, 4)) + 1;
+    const metrosTerca = comAcrescimo(tercasPorAgua * quedas * L);
+    memoria.push(`Terças: ${compGeo}m ÷ vão máx ${vaoMax}m + 1 = ${tercasPorAgua} por água → ${metrosTerca}m lineares` +
+      (acresce ? ` (já com ${pctAcrescimo}%)` : ''));
 
     const terca = (catalogo.perfis || []).find((p) => p.tipo === 'terca');
     if (terca) {
@@ -240,8 +259,17 @@ function calcularRomaneio(ambiente, telha, catalogo) {
   }
 
   // ── Acabamentos pelo PERÍMETRO do telhado ─────────────────────────
-  const { complementos, perimetro } = complementosPorPerimetro(L, compTelha, quedas, catalogo);
-  memoria.push(`Perímetro: frontal ${perimetro.frontalM}m · lateral ${perimetro.lateralM}m · cumeeira ${perimetro.cumeeiraM}m`);
+  // Perímetro sai da geometria; o acréscimo de material entra por cima,
+  // uma vez só, igual ao resto.
+  const base = complementosPorPerimetro(L, compGeo, quedas, catalogo);
+  const perimetro = {
+    frontalM: comAcrescimo(base.perimetro.frontalM),
+    lateralM: comAcrescimo(base.perimetro.lateralM),
+    cumeeiraM: comAcrescimo(base.perimetro.cumeeiraM),
+  };
+  const complementos = base.complementos.map((c) => ({ ...c, metros: comAcrescimo(c.metros) }));
+  memoria.push(`Perímetro: frontal ${perimetro.frontalM}m · lateral ${perimetro.lateralM}m · cumeeira ${perimetro.cumeeiraM}m` +
+    (acresce ? ` (já com ${pctAcrescimo}%)` : ''));
 
   return {
     cortes, perfis, complementos, perimetro, memoria, avisos, escalarParaVendedor,
