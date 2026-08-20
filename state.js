@@ -29,6 +29,11 @@ function novaFicha(chatId) {
       documento: conhecido?.documento || null,
       cep: conhecido?.cep || null,
       estado: conhecido?.estado || null,
+      // endereço em partes: o CEP traz rua e bairro, o cliente dá o número
+      rua: conhecido?.rua || null,
+      numero: conhecido?.numero || null,
+      bairro: conhecido?.bairro || null,
+      complemento: conhecido?.complemento || null,
       email: conhecido?.email || null,
       telefone,
     },

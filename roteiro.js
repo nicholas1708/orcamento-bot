@@ -80,6 +80,7 @@ const T = {
     '_É o que define a distância até a unidade mais próxima._\n' +
     'Se não souber, responda *pular*.',
   pedeCidade: '🏙️ Qual a *cidade* de entrega? _Com o estado, ex: `Cedral - SP`_',
+  pedeNumero: '🔢 E o *número*? _Ex: `353`. Se não tiver, responda *S/N*._',
   pedeEndereco: '📍 E o *endereço da obra* (rua, número e bairro)?\n\n_Necessário para a entrega._',
 
   confirmaDados: (c) =>
@@ -241,6 +242,16 @@ function documentoValido(v) {
   return false;
 }
 
+/**
+ * Junta as partes numa linha só — formato que o motor, o PDF e a nota usam.
+ * Ex: "Rua Exemplo, 353, fundos - Centro".
+ */
+function montarEndereco(c) {
+  const ruaNum = [c.rua, c.numero].filter(Boolean).join(', ');
+  const comComp = [ruaNum, c.complemento].filter(Boolean).join(', ');
+  return [comComp, c.bairro].filter(Boolean).join(' - ');
+}
+
 /** Rua e número. "S/N" vale — endereço rural não pode travar o orçamento. */
 function enderecoValido(v) {
   const t = String(v || '').trim();
@@ -271,5 +282,5 @@ module.exports = {
   T,
   interpretarSimNao, interpretarDimensoes, interpretarQuedas,
   interpretarEscolha, interpretarCortes, interpretarAjuste,
-  documentoValido, interpretarCidade, enderecoValido,
+  documentoValido, interpretarCidade, enderecoValido, montarEndereco,
 };

@@ -596,17 +596,41 @@ async function processar(chatId, textoRaw) {
 
       const { cidadeDoCep } = require('./distancia');
       const info = await cidadeDoCep(digitos).catch(() => null);
-      if (info) {
-        ficha.cliente.cidade = info.cidade;
-        ficha.cliente.estado = info.uf;
-        say(`📍 *${info.cidade} - ${info.uf}* ✅`);
-        say(R.T.pedeEndereco);
-        ficha.etapa = 'ENDERECO';
-      } else {
+      if (!info) {
         say('Não achei esse CEP na base 🤔');
         say(R.T.pedeCidade);
         ficha.etapa = 'CIDADE';
+        break;
       }
+
+      ficha.cliente.cidade = info.cidade;
+      ficha.cliente.estado = info.uf;
+      ficha.cliente.rua = info.rua || null;
+      ficha.cliente.bairro = info.bairro || null;
+
+      // CEP de cidade pequena é único e não tem rua na base — aí perguntamos
+      // o endereço inteiro. Quando tem, sobra só o número.
+      if (info.rua) {
+        say(`📍 *${info.rua}${info.bairro ? ', ' + info.bairro : ''} — ${info.cidade}/${info.uf}* ✅`);
+        say(R.T.pedeNumero);
+        ficha.etapa = 'NUMERO';
+      } else {
+        say(`📍 *${info.cidade} - ${info.uf}* ✅`);
+        say(R.T.pedeEndereco);
+        ficha.etapa = 'ENDERECO';
+      }
+      break;
+    }
+
+    // Só o número: rua e bairro já vieram do CEP
+    case 'NUMERO': {
+      const n = texto.trim();
+      if (!n || n.length > 12) { erro('Só o *número*, ex: `353`. Se não tiver, responda *S/N*.'); break; }
+      ficha.tentativasErro = 0;
+      ficha.cliente.numero = n;
+      ficha.cliente.endereco = R.montarEndereco(ficha.cliente);
+      say(`✅ ${ficha.cliente.endereco}`);
+      mostrarConferencia();
       break;
     }
 

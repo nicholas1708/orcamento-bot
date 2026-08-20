@@ -32,26 +32,38 @@ const gravarCache = () => {
 const soDigitos = (s) => String(s || '').replace(/\D/g, '');
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** CEP → { cidade, uf }. Usa BrasilAPI e cai no ViaCEP se precisar. */
+/**
+ * CEP → { cidade, uf, rua, bairro }. Usa BrasilAPI e cai no ViaCEP se precisar.
+ *
+ * A distância só precisa de cidade/UF, mas as duas APIs já devolvem rua e
+ * bairro de graça — e é isso que deixa o cliente digitar só o número.
+ * O `v` marca a versão do registro: cache antigo (só cidade/uf) é refeito.
+ */
+const CACHE_CEP_V = 2;
 async function cidadeDoCep(cep) {
   const c = soDigitos(cep);
   if (c.length !== 8) return null;
-  if (cache['cep:' + c]) return cache['cep:' + c];
+  const guardado = cache['cep:' + c];
+  if (guardado && guardado.v === CACHE_CEP_V) return guardado;
 
   const tentativas = [
     async () => {
       const { data } = await axios.get(`https://brasilapi.com.br/api/cep/v2/${c}`, { timeout: 8000 });
-      return data?.city ? { cidade: data.city, uf: data.state } : null;
+      return data?.city
+        ? { cidade: data.city, uf: data.state, rua: data.street || null, bairro: data.neighborhood || null }
+        : null;
     },
     async () => {
       const { data } = await axios.get(`https://viacep.com.br/ws/${c}/json/`, { timeout: 8000 });
-      return data?.localidade ? { cidade: data.localidade, uf: data.uf } : null;
+      return data?.localidade
+        ? { cidade: data.localidade, uf: data.uf, rua: data.logradouro || null, bairro: data.bairro || null }
+        : null;
     },
   ];
   for (const tentar of tentativas) {
     try {
       const r = await tentar();
-      if (r) { cache['cep:' + c] = r; gravarCache(); return r; }
+      if (r) { r.v = CACHE_CEP_V; cache['cep:' + c] = r; gravarCache(); return r; }
     } catch { /* tenta o próximo */ }
   }
   console.warn(`[distancia] CEP não encontrado: ${cep}`);

@@ -169,7 +169,10 @@ const A={telhaId:null,cg:'',lg:'',quedas:2,famAberta:null,busca:'',
 const B={itens:[],busca:''};                                   // modo B
 // Conferência final: a lista que vai ser cobrada, SEM PREÇO, montada pelo servidor.
 const R={linhas:null,carregando:false,busca:'',ambiente:null,addAberto:false};
-const cliente={nome:'',documento:'',telefone:'',email:'',cep:'',cidade:'',estado:'',endereco:''};
+// Endereço em campos separados: o CEP preenche o que souber e a pessoa
+// completa o resto. `endereco` é a linha montada, que vai ao motor e ao PDF.
+const cliente={nome:'',documento:'',telefone:'',email:'',cep:'',
+               rua:'',numero:'',bairro:'',complemento:'',cidade:'',estado:'',endereco:''};
 
 const T=document.getElementById('t');
 const g=id=>document.getElementById(id);
@@ -680,15 +683,30 @@ function desenhar(){
       <div class="campo"><label>WhatsApp</label><input id="dt" inputmode="tel" value="${cliente.telefone}" placeholder="(17) 99999-9999"></div>
       <div class="campo"><label>E-mail <i style="font-style:normal;color:var(--muted);font-weight:400">(opcional)</i></label>
         <input id="dm" type="email" value="${cliente.email}" placeholder="voce@email.com"></div>
+      <span class="eyebrow" style="margin-top:22px">Onde entregar</span>
       <div class="campo"><label>CEP da obra</label>
         <input id="dp" inputmode="numeric" value="${cliente.cep}" placeholder="15000-000"
-          oninput="buscarCep(this.value)"><small id="cepmsg" class="dica"></small></div>
-      <div class="l2">
-        <div class="campo"><label>Cidade</label><input id="dc" value="${cliente.cidade}" placeholder="São José do Rio Preto"></div>
-        <div class="campo"><label>Estado</label><input id="du" value="${cliente.estado}" placeholder="SP" maxlength="2"
-          style="text-transform:uppercase"></div>
+          oninput="buscarCep(this.value)">
+        <small id="cepmsg" class="dica">Digite o CEP que eu preencho o resto — só o número fica com você.</small></div>
+
+      <div class="l2" style="grid-template-columns:1fr 100px">
+        <div class="campo"><label>Rua</label>
+          <input id="dr" value="${cliente.rua}" placeholder="Rua Exemplo"></div>
+        <div class="campo"><label>Número</label>
+          <input id="dnum" value="${cliente.numero}" placeholder="120"></div>
       </div>
-      <div class="campo"><label>Onde entregar</label><input id="de" value="${cliente.endereco}" placeholder="Rua Exemplo, 120 - Centro"></div>
+      <div class="l2">
+        <div class="campo"><label>Bairro</label>
+          <input id="db" value="${cliente.bairro}" placeholder="Centro"></div>
+        <div class="campo"><label>Complemento <i style="font-style:normal;color:var(--muted);font-weight:400">(opcional)</i></label>
+          <input id="dcp" value="${cliente.complemento}" placeholder="fundos, galpão 2"></div>
+      </div>
+      <div class="l2" style="grid-template-columns:1fr 90px">
+        <div class="campo"><label>Cidade</label>
+          <input id="dc" value="${cliente.cidade}" placeholder="São José do Rio Preto"></div>
+        <div class="campo"><label>Estado</label>
+          <input id="du" value="${cliente.estado}" placeholder="SP" maxlength="2" style="text-transform:uppercase"></div>
+      </div>
       <button class="btn" onclick="okDados()">Ver meu orçamento</button>`);
   }
 
@@ -991,14 +1009,42 @@ function buscarCep(v){
   _cepTimer=setTimeout(async()=>{
     const r=await fetch('/api/cep/'+d).then(x=>x.json()).catch(()=>null);
     const m=g('cepmsg');
-    if(r&&r.cidade){
-      cliente.cidade=r.cidade;cliente.estado=r.uf||'';
-      const c=g('dc');if(c)c.value=cliente.cidade;
-      const u=g('du');if(u)u.value=cliente.estado;
-      if(m)m.textContent=`${r.cidade} - ${r.uf}`;
-    }else if(m)m.textContent='CEP não encontrado — confira cidade e estado abaixo.';
+    if(!r||!r.cidade){
+      if(m)m.textContent='CEP não encontrado — preencha o endereço abaixo.';
+      return;
+    }
+    // preenche o que a base sabe; o que vier vazio fica pro cliente
+    const põe=(id,campo,valor)=>{
+      if(!valor)return;
+      cliente[campo]=valor;
+      const c=g(id);if(c)c.value=valor;
+    };
+    põe('dc','cidade',r.cidade);
+    põe('du','estado',r.uf);
+    põe('dr','rua',r.rua);
+    põe('db','bairro',r.bairro);
+
+    if(m){
+      // cidade de CEP único não tem rua nem bairro na base — avisa em vez
+      // de deixar a pessoa achando que o campo travou
+      m.textContent=(r.rua&&r.bairro)
+        ? `${r.cidade} - ${r.uf}. Agora só o número.`
+        : `${r.cidade} - ${r.uf}. Esse CEP não tem rua cadastrada — preencha rua e bairro.`;
+    }
+    const alvo=g(r.rua?'dnum':'dr');
+    if(alvo&&!alvo.value)alvo.focus();
   },500);
 }
+/**
+ * Junta os campos numa linha só — é o formato que o motor, o PDF e o
+ * cadastro usam. Ex: "Rua Exemplo, 120, fundos - Centro".
+ */
+function montarEndereco(c){
+  const ruaNum=[c.rua,c.numero].filter(Boolean).join(', ');
+  const comComp=[ruaNum,c.complemento].filter(Boolean).join(', ');
+  return [comComp,c.bairro].filter(Boolean).join(' - ');
+}
+
 /**
  * Endereço serve pra entregar: precisa de rua e número.
  * "S/N" e "sem número" valem — endereço rural existe e não pode travar
@@ -1039,9 +1085,14 @@ function okDados(){
   cliente.telefone=g('dt').value.trim();
   cliente.email=g('dm').value.trim();
   cliente.cep=g('dp').value.trim();
+  cliente.rua=g('dr').value.trim();
+  cliente.numero=g('dnum').value.trim();
+  cliente.bairro=g('db').value.trim();
+  cliente.complemento=g('dcp').value.trim();
   cliente.cidade=g('dc').value.trim();
   cliente.estado=g('du').value.trim().toUpperCase();
-  cliente.endereco=g('de').value.trim();
+  // linha única para o motor, o PDF e a nota
+  cliente.endereco=montarEndereco(cliente);
 
   // aponta o campo que falhou, em vez de só mostrar a mensagem no rodapé
   const falha=(id,msg)=>{const c=g(id);if(c){c.focus();c.scrollIntoView({block:'center',behavior:'smooth'});}return err(msg);};
@@ -1053,10 +1104,13 @@ function okDados(){
   if(cliente.email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cliente.email))return falha('dm','Esse e-mail não parece válido.');
   if(cliente.cep.replace(/\D/g,'').length!==8)
     return falha('dp','Informe o CEP da obra — é ele que define a unidade de entrega.');
+  // CEP de cidade pequena não traz rua nem bairro — por isso os campos são
+  // sempre editáveis, e sempre exigidos.
+  if(cliente.rua.length<3)return falha('dr','Informe a rua.');
+  if(!cliente.numero)return falha('dnum','Informe o número. Se não tiver, escreva S/N.');
+  if(cliente.bairro.length<2)return falha('db','Informe o bairro.');
   if(cliente.cidade.length<2)return falha('dc','Informe a cidade.');
   if(!/^[A-Za-zÀ-ÿ]{2}$/.test(cliente.estado))return falha('du','Informe o estado com 2 letras, ex: SP.');
-  if(!enderecoValido(cliente.endereco))
-    return falha('de','Rua e número — ex: "Rua Exemplo, 120". Sem número, escreva S/N.');
 
   try{localStorage.setItem('cliente4a',JSON.stringify(cliente));}catch(e){}
   gerar();

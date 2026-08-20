@@ -1,36 +1,35 @@
-Corrige inversao de comprimento/largura e ajustes na tela de itens
+Endereco em campos separados, preenchidos pelo CEP
 
-CORRIGE: comprimento e largura invertidos no simulador e no WhatsApp
-- interpretarDimensoes forcava o MAIOR numero como comprimento
-  (Math.max/Math.min). Quem digitava 10x20 querendo comprimento 10
-  recebia um telhado de comprimento 20, e a telha saia com metade do
-  tamanho certo. Agora respeita a ordem digitada.
-- Legenda embaixo dos campos de medida: comprimento = lado da cumeeira,
-  onde as telhas ficam lado a lado; largura = por onde a agua escorre,
-  que e o sentido da telha. Falta confirmar com o cliente se o
-  vocabulario dele bate com esses rotulos.
+O endereco era um campo unico de texto livre. Vira rua, numero, bairro,
+complemento, cidade e estado. O CEP preenche o que a base souber e sobra
+o numero para o cliente digitar.
 
-Telefone
-- Empresa passa a usar (17)98173-4676 e whatsapp 5517981734676.
+Base de CEP
+- distancia.js: cidadeDoCep passa a devolver rua e bairro, que a
+  BrasilAPI e o ViaCEP ja mandavam e estavam sendo descartados.
+- Cache ganhou versao (v:2): CEP ja consultado e refeito uma vez para
+  trazer os campos novos.
+- GET /api/cep/:cep devolve cidade, uf, rua e bairro.
 
-Quantidade sempre inteira
-- Cumeeira, frontal, parafuso e telha sao peca inteira: o campo so
-  aceita decimal em item vendido por metro. Ao sair do campo, arredonda
-  pra cima (0,05 de cumeeira virava 1,5 na tela e agora vira 1).
-- Vale na tela de itens, na conferencia e na conferencia do WhatsApp.
-- O COMPRIMENTO da telha nao e tocado: continua livre com duas casas
-  (3,80m, 4,75m, 6,5m). O arredondamento e so na contagem de pecas.
+Site
+- Formulario com CEP no topo; ao digitar, preenche rua, bairro, cidade e
+  estado. Todos continuam editaveis e obrigatorios.
+- CIDADE DE CEP UNICO nao tem rua nem bairro na base: a mensagem avisa,
+  o foco vai para a rua em vez do numero, e a validacao segue exigindo
+  os dois.
+- montarEndereco() junta as partes na linha que vai ao motor, ao PDF e a
+  nota, entao nada mudou rio abaixo.
 
-Quantidade negativa
-- min=0 nos campos, ajuste ao sair do campo e filtro no aplicarLista,
-  que descarta linha negativa ou vazia.
-- aplicarLista arredondava a quantidade de telha pra baixo, o que zerava
-  a linha e derrubava o motor com "Quantidade invalida: 0". Passa a
-  arredondar pra cima.
+WhatsApp
+- Com rua vinda do CEP, o bot confirma o endereco e pergunta so o numero
+  (etapa NUMERO). Sem rua, cai no fluxo antigo de endereco completo.
 
-Tela "ja sei o que quero"
-- Linha do pedido ganhou a miniatura do produto, junto com o nomeCurto()
-  da vitrine: nome curto na tela, completo no title.
-- Tela separada em dois blocos explicitos: "No seu orcamento", com
-  moldura destacada e contador de itens, e "Catalogo - toque para
-  adicionar". Cartao de produto ja incluido mostra "2x no orcamento".
+Modo com IA
+- O codigo consulta o CEP e preenche rua e bairro; o prompt manda pedir
+  so o numero. Campo numero no schema.
+
+Cadastro
+- clientes.js e orcamentos.js gravam rua, numero, bairro, complemento e
+  estado, que antes se perdiam.
+- Ficha do cliente no painel ganhou os campos, mais a linha final
+  editavel a mao.

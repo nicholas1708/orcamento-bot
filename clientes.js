@@ -40,6 +40,12 @@ function salvar(cliente) {
     nome: cliente.nome || anterior.nome || null,
     cidade: cliente.cidade || anterior.cidade || null,
     estado: cliente.estado || anterior.estado || null,
+    // endereço também em partes: o CEP preenche rua/bairro e o cliente
+    // completa o número. A linha montada continua em `endereco`.
+    rua: cliente.rua || anterior.rua || null,
+    numero: cliente.numero || anterior.numero || null,
+    bairro: cliente.bairro || anterior.bairro || null,
+    complemento: cliente.complemento || anterior.complemento || null,
     endereco: cliente.endereco || anterior.endereco || null,
     cep: cliente.cep || anterior.cep || null,
     documento: cliente.documento || anterior.documento || null,
@@ -58,7 +64,8 @@ function salvar(cliente) {
 function atualizar(telefone, dados) {
   const atual = carregar(telefone);
   if (!atual) return null;
-  const campos = ['nome', 'cidade', 'endereco', 'cep', 'documento', 'email', 'observacao'];
+  const campos = ['nome', 'cidade', 'estado', 'rua', 'numero', 'bairro', 'complemento',
+    'endereco', 'cep', 'documento', 'email', 'observacao'];
   const registro = { ...atual };
   for (const c of campos) {
     if (dados[c] !== undefined) registro[c] = dados[c] === '' ? null : dados[c];

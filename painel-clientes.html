@@ -150,11 +150,22 @@ async function verFicha(i){
         <div class="campo"><label>CEP</label>
           <input id="cl-cep" value="${esc(c.cep||'')}" placeholder="15000-000">
           <small>define a distância até a unidade mais próxima</small></div>
+        <div class="campo"><label>Rua <i>*</i></label>
+          <input id="cl-rua" value="${esc(c.rua||'')}" placeholder="Rua Exemplo"></div>
+        <div class="campo"><label>Número <i>*</i></label>
+          <input id="cl-num" value="${esc(c.numero||'')}" placeholder="120"></div>
+        <div class="campo"><label>Bairro</label>
+          <input id="cl-bairro" value="${esc(c.bairro||'')}" placeholder="Centro"></div>
+        <div class="campo"><label>Complemento</label>
+          <input id="cl-comp" value="${esc(c.complemento||'')}" placeholder="fundos, galpão 2"></div>
         <div class="campo"><label>Cidade <i>*</i></label>
-          <input id="cl-cidade" value="${esc(c.cidade||'')}" placeholder="São José do Rio Preto - SP"></div>
-        <div class="campo"><label>Endereço de entrega <i>*</i></label>
-          <input id="cl-end" value="${esc(c.endereco||'')}" placeholder="Rua Exemplo, 120 - Centro"></div>
+          <input id="cl-cidade" value="${esc(c.cidade||'')}" placeholder="São José do Rio Preto"></div>
+        <div class="campo"><label>Estado</label>
+          <input id="cl-uf" value="${esc(c.estado||'')}" placeholder="SP" maxlength="2"></div>
       </div>
+      <div class="campo" style="margin-top:14px"><label>Endereço como sai no orçamento</label>
+        <input id="cl-end" value="${esc(c.endereco||'')}" placeholder="Rua Exemplo, 120 - Centro">
+        <small>montado a partir dos campos acima — dá para ajustar à mão</small></div>
       <div class="campo" style="margin-top:14px"><label>Observação interna</label>
         <textarea id="cl-obs" placeholder="não aparece para o cliente">${esc(c.observacao||'')}</textarea></div>
 
@@ -198,7 +209,12 @@ async function salvarCliente(telefone){
     documento:g('cl-doc').value.trim(),
     email:g('cl-email').value.trim(),
     cep:g('cl-cep').value.trim(),
+    rua:g('cl-rua').value.trim(),
+    numero:g('cl-num').value.trim(),
+    bairro:g('cl-bairro').value.trim(),
+    complemento:g('cl-comp').value.trim(),
     cidade:g('cl-cidade').value.trim(),
+    estado:g('cl-uf').value.trim().toUpperCase(),
     endereco:g('cl-end').value.trim(),
     observacao:g('cl-obs').value.trim(),
   };

@@ -580,7 +580,8 @@ app.get('/api/cep/:cep', async (req, res) => {
     const { cidadeDoCep } = require('./distancia');
     const info = await cidadeDoCep(req.params.cep);
     if (!info) return res.status(404).json({ error: 'CEP não encontrado.' });
-    res.json(info);
+    // rua e bairro vêm vazios em cidade de CEP único — a tela pede ao cliente
+    res.json({ cidade: info.cidade, uf: info.uf, rua: info.rua || null, bairro: info.bairro || null });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

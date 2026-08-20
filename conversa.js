@@ -95,6 +95,7 @@ REGRAS INEGOCIÁVEIS:
 5. Pergunte se quer só telhas ou telhas + estrutura → comEstrutura (true/false).
 6. Endereço completo (rua, número, bairro), cidade, CEP e CPF/CNPJ são OBRIGATÓRIOS. Sem eles não há orçamento.
 7. Peça o CEP da obra → cep (é ele que mede a distância até a unidade) e o CPF/CNPJ → documento (vai no orçamento e na nota). E-mail é opcional → email.
+7b. Depois do CEP, o sistema já sabe rua e bairro: peça SÓ o número → numero. Se o CEP for de cidade pequena (sem rua na base), aí sim peça o endereço completo → endereco.
 8. Se pedir humano, fugir do assunto ou pedir algo que não vendemos → "handoff": true.
 9. Foto enviada pelo cliente: agradeça e diga que fica anexada pro vendedor. NUNCA tire medidas de fotos.
 10. Não invente dado técnico. Se não souber, diga que o vendedor confirma.
@@ -110,7 +111,7 @@ AINDA FALTA: ${falta.length ? falta.join(', ') : 'nada — ficha completa'}
 
 RESPONDA APENAS JSON:
 {"reply":"sua mensagem","campos":{...},"fotos":[],"handoff":false}
-Campos possíveis: familiaFoco, novosProdutos (array, ver caminhos A/B), avulsos (array), maisProdutos (bool), comAcabamento (bool), comEstrutura (bool), nome, documento, email, cep, cidade, endereco.
+Campos possíveis: familiaFoco, novosProdutos (array, ver caminhos A/B), avulsos (array), maisProdutos (bool), comAcabamento (bool), comEstrutura (bool), nome, documento, email, cep, numero, cidade, endereco.
 Envie em "novosProdutos" APENAS produtos ainda não listados acima.
 Pedido SEM TELHA (só parafuso, acabamento ou perfil) é permitido: use
 "avulsos": [{"produtoId":"...","quantidade":12}] com os ids da lista de avulsos.
@@ -236,8 +237,24 @@ async function aplicarCampos(ficha, campos, catalogo, acoes) {
       c.cep = d;
       const { cidadeDoCep } = require('./distancia');
       const info = await cidadeDoCep(d).catch(() => null);
-      if (info) { c.cidade = `${info.cidade} - ${info.uf}`; c.estado = info.uf; }
+      if (info) {
+        c.cidade = info.cidade;
+        c.estado = info.uf;
+        // rua e bairro vêm da base; CEP único de cidade pequena não tem,
+        // e aí o cliente informa o endereço inteiro
+        if (info.rua) c.rua = info.rua;
+        if (info.bairro) c.bairro = info.bairro;
+      }
     }
+  }
+
+  // número separado: com rua vinda do CEP, é só isso que falta
+  if (typeof campos.numero === 'string' && campos.numero.trim()) {
+    c.numero = campos.numero.trim();
+  }
+  // monta a linha do endereço quando temos as partes e a IA não mandou pronta
+  if (!c.endereco && c.rua && c.numero) {
+    c.endereco = require('./roteiro').montarEndereco(c);
   }
 }
 
