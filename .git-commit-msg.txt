@@ -1,32 +1,16 @@
-Catalogo em uso sai da raiz para dados/, que vai em volume
+Campo de tamanho mostra o limite de corte da propria peca
 
-O container e descartavel: a cada deploy ele e recriado a partir da
-imagem. Com o catalogo na raiz do projeto, todo produto cadastrado,
-preco alterado e foto vinculada pelo painel voltava ao que esta no
-repositorio. A empresa perdia o cadastro em cada atualizacao.
+No "ja sei o que quero" e na conferencia, o campo de tamanho da telha
+so avisava do limite quando o cliente clicava em Continuar.
 
-Como fica
-- catalogo.json         semente, versionada no git
-- dados/catalogo.json   o que o sistema le e o painel grava
-- Na primeira subida a semente e copiada. Depois disso o repositorio
-  NUNCA sobrescreve o que esta em uso.
-- Novo catalogo-arquivo.js resolve o caminho e semeia. Volume
-  somente-leitura ou sem permissao cai para o do repositorio com aviso,
-  em vez de derrubar o sistema.
-- Caminho configuravel por DADOS_DIR.
-- pricing.js, o cadastro do painel e a importacao de planilha passam a
-  usar o arquivo em uso. O backup vai junto para dados/.
-- dados/ e catalogo.backup.json no .gitignore.
-
-DEPLOY.md
-- Tabela do que precisa de volume (dados, img, clientes, orcamentos,
-  sessions, out) e o que acontece se perder cada um.
-- Stack pronto com os volumes. Volume nomeado e semeado com o conteudo
-  da imagem na primeira criacao, entao as fotos do repositorio entram
-  sozinhas e as enviadas pelo painel ficam.
-- Rotina de atualizacao e comando de backup.
-
-ATENCAO ao aplicar: com o volume em dados/, mudanca feita no
-catalogo.json do repositorio nao chega mais sozinha ao que esta
-rodando. Para levar preco ou produto novo, use a importacao de planilha
-em /painel/dados ou edite pelo painel.
+- Placeholder passa de "6,5" para "tam".
+- min e max saem do cadastro DAQUELA peca (comprimento_minimo_m e
+  comprimento_maximo_m), entao o navegador barra e o teclado numerico
+  do celular respeita. Telha nova com outro limite ja funciona sem
+  mexer em codigo.
+- Linha embaixo do item: "Corta de 0,5m ate 12m", com o maximo em
+  negrito.
+- Ao sair do campo, medida fora do limite avisa na hora, com a saida
+  para peca maior (emenda pelo calculo automatico).
+- O aviso NAO corrige a medida sozinho: mudar o que a pessoa digitou
+  seria pior do que apontar o erro. O Continuar segue bloqueando.

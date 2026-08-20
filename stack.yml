@@ -1,0 +1,56 @@
+# Stack para Docker Swarm + Traefik (Portainer) — mesmo padrão do Kairos.
+# Imagem construída pelo GitHub Action e publicada no GHCR.
+version: "3.8"
+services:
+  orcamento-bot:
+    image: ghcr.io/nicholas1708/orcamento-bot:latest
+    environment:
+      PORT: "3000"
+      # WAHA já existente no servidor (o mesmo do Kairos/AtendeNexo)
+      WAHA_URL: "https://wh.atendenexo.com.br"
+      WAHA_SESSION: "telhas"                 # sessão DEDICADA pra empresa de telhas
+      WAHA_API_KEY: "DEFINIR_NO_PORTAINER"   # mesma chave configurada no WAHA
+      # IA (OpenAI) — opcional: interpreta texto livre ("quero a de 40mm" → opção 2).
+      # Vazio = só menus numerados, sem custo de tokens.
+      OPENAI_API_KEY: "DEFINIR_NO_PORTAINER"
+      OPENAI_MODEL: "gpt-4o-mini"
+      # Fonte de preços: local (catalogo.json) | gestaoclick (quando contratar a API)
+      PRICING_SOURCE: "local"
+      GC_ACCESS_TOKEN: ""
+      GC_SECRET_TOKEN: ""
+      # Painel interno: orçamentos têm CPF, telefone e endereço de clientes
+      PAINEL_SENHA: "DEFINIR_NO_PORTAINER"
+    volumes:
+      # ⚠️ O container é descartável: o que não estiver aqui some no próximo
+      # deploy. Volume nomeado é semeado com o conteúdo da imagem na primeira
+      # criação, então as fotos que estão no repositório entram sozinhas.
+      - orcamento-dados:/app/dados         # catálogo EM USO: produtos, preços, fotos vinculadas
+      - orcamento-img:/app/img             # fotos enviadas pelo painel
+      - orcamento-clientes:/app/clientes   # cadastro dos clientes
+      - orcamento-orcamentos:/app/orcamentos # histórico que alimenta o painel
+      - orcamento-sessions:/app/sessions   # fichas de conversa sobrevivem a redeploy
+      - orcamento-pdfs:/app/out            # PDFs gerados (link já enviado continua abrindo)
+    networks:
+      - network_public
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.orcamento.rule=Host(`orcamento.atendenexo.com.br`)"
+        - "traefik.http.routers.orcamento.entrypoints=websecure"
+        - "traefik.http.routers.orcamento.tls=true"
+        - "traefik.http.routers.orcamento.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.orcamento.loadbalancer.server.port=3000"
+        - "traefik.docker.network=network_public"
+networks:
+  network_public:
+    external: true
+volumes:
+  orcamento-dados:
+  orcamento-img:
+  orcamento-clientes:
+  orcamento-orcamentos:
+  orcamento-sessions:
+  orcamento-pdfs:

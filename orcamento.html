@@ -460,6 +460,9 @@ function desenhar(){
             <span></span><span>Produto</span><span>Quantas</span><span>Tamanho</span><span></span></div>
           ${B.itens.map((it,i)=>{
             const p=todos.find(x=>x.id===it.id)||{};
+            // limite de corte da própria peça — o campo já avisa, em vez de
+            // o cliente descobrir só ao clicar em Continuar
+            const lim=it.tipo==='telha'?limitesDaTelha(it.id):null;
             // ⚠️ NÃO chamar render() no oninput: redesenhar a tela a cada tecla
             // destrói o campo e o cursor pula fora. Só a legenda é atualizada.
             return `<div class="linha" style="grid-template-columns:46px 1fr 74px 74px auto">
@@ -469,10 +472,15 @@ function desenhar(){
               <input type="number" min="0" step="1" value="${it.qtd}" placeholder="qtd"
                 oninput="B.itens[${i}].qtd=this.value;legenda(${i})" onblur="arrumaItem(${i})">
               ${it.tipo==='telha'
-                ?`<input type="number" min="0" step="0.01" inputmode="decimal" value="${it.comp||''}" placeholder="6,5"
-                    oninput="B.itens[${i}].comp=this.value;legenda(${i})">`
+                ?`<input type="number" min="${lim.min}" max="${lim.max}" step="0.01" inputmode="decimal"
+                    value="${it.comp||''}" placeholder="tam"
+                    title="de ${String(lim.min).replace('.',',')}m até ${String(lim.max).replace('.',',')}m"
+                    oninput="B.itens[${i}].comp=this.value;legenda(${i})" onblur="arrumaItem(${i})">`
                 :'<span style="text-align:center;color:#cbd5e1">—</span>'}
               <button class="x" onclick="B.itens.splice(${i},1);render()">✕</button></div>
+              ${lim?`<div class="dica" style="margin:-6px 0 8px 60px">
+                Corta de ${String(lim.min).replace('.',',')}m até
+                <b>${String(lim.max).replace('.',',')}m</b></div>`:''}
               ${it.tipo==='telha'&&!B.itens.some((o,j)=>j>i&&o.id===it.id)?`
                 <button onclick="addItem('${it.id}','telha')"
                   style="background:none;border:none;color:var(--brand-dd);font-family:inherit;font-size:12.5px;
@@ -633,8 +641,10 @@ function desenhar(){
           oninput="R.linhas[${i}].qtd=this.value;totConferir()"
           onblur="ajustarQtd(${i});render()">
         ${l.tipo==='telha'
-          ?`<input type="number" min="0" step="0.01" value="${l.comp}"
-              oninput="R.linhas[${i}].comp=this.value;totConferir()">`
+          ?(()=>{const lim=limitesDaTelha(l.id);
+             return `<input type="number" min="${lim.min}" max="${lim.max}" step="0.01" value="${l.comp}"
+               placeholder="tam" title="de ${String(lim.min).replace('.',',')}m até ${String(lim.max).replace('.',',')}m"
+               oninput="R.linhas[${i}].comp=this.value;totConferir()">`;})()
           :'<span style="text-align:center;color:#cbd5e1">—</span>'}
         <button class="x" onclick="R.linhas.splice(${i},1);render()">✕</button>
       </div>
@@ -833,8 +843,22 @@ function arrumaItem(i){
   let v=parseFloat(String(it.qtd).replace(',','.'));
   if(!Number.isFinite(v)||v<0)v=0;
   it.qtd=Math.ceil(v);
-  const c=parseFloat(String(it.comp).replace(',','.'));
-  if(it.tipo==='telha'&&(!Number.isFinite(c)||c<0))it.comp='';
+
+  if(it.tipo==='telha'){
+    const c=parseFloat(String(it.comp).replace(',','.'));
+    const {min,max,nome}=limitesDaTelha(it.id);
+    if(!Number.isFinite(c)||c<0){ it.comp=''; }
+    // Avisa na hora, sem mexer no que a pessoa digitou: mudar a medida
+    // por conta própria seria pior do que apontar o erro.
+    else if(c>max){
+      err(`${nome}: a fábrica corta até ${String(max).replace('.',',')}m. `+
+        `Para peça maior é emenda — deixe eu calcular pelas medidas do local.`);
+    }
+    else if(c>0&&c<min){
+      err(`${nome}: o menor corte é ${String(min).replace('.',',')}m.`);
+    }
+    else err('');
+  }
   render();
 }
 
