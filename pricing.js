@@ -7,8 +7,11 @@
 const fs = require('fs');
 const path = require('path');
 
+const { caminhoCatalogo } = require('./catalogo-arquivo');
+
 async function getCatalogoLocal() {
-  const raw = fs.readFileSync(path.join(__dirname, 'catalogo.json'), 'utf8');
+  // lê o catálogo EM USO (dados/), não a semente do repositório
+  const raw = fs.readFileSync(caminhoCatalogo(), 'utf8');
   return JSON.parse(raw);
 }
 

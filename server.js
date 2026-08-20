@@ -165,15 +165,15 @@ app.post('/api/painel/importar', exigirSenha, async (req, res) => {
       return res.status(400).json({ error: 'Envie ao menos uma planilha.' });
     }
     const { processar, aplicar: montar } = require('./importador');
-    const arquivoCat = path.join(__dirname, 'catalogo.json');
+    const { caminhoCatalogo: arqCat, caminhoBackup: arqBk } = require('./catalogo-arquivo');
+    const arquivoCat = arqCat();
     const catalogo = JSON.parse(require('fs').readFileSync(arquivoCat, 'utf8'));
 
     const r = processar({ produtosCsv, fretesCsv, unidadesCsv }, catalogo);
 
     if (confirmar && r.ok) {
       // guarda uma cópia antes de sobrescrever — dá pra voltar atrás
-      const backup = path.join(__dirname, 'catalogo.backup.json');
-      require('fs').writeFileSync(backup, JSON.stringify(catalogo, null, 2));
+      require('fs').writeFileSync(arqBk(), JSON.stringify(catalogo, null, 2));
       require('fs').writeFileSync(arquivoCat, JSON.stringify(montar(catalogo, r), null, 2));
       limparCacheCatalogo();
       console.log(`[PAINEL] Catálogo atualizado: ${r.resumo.produtos} produtos, ${r.resumo.faixasFrete} faixas de frete`);
@@ -188,11 +188,14 @@ app.post('/api/painel/importar', exigirSenha, async (req, res) => {
 
 // ── PAINEL › CADASTRO DE PRODUTOS (formulário) ────────────────────────
 const fsp = require('fs');
-const ARQ_CAT = path.join(__dirname, 'catalogo.json');
-const lerCat = () => JSON.parse(fsp.readFileSync(ARQ_CAT, 'utf8'));
+// O catálogo EM USO fica em dados/ (volume), não na raiz do projeto: senão
+// todo cadastro feito pelo painel voltaria ao do repositório a cada deploy.
+const { caminhoCatalogo, caminhoBackup } = require('./catalogo-arquivo');
+const lerCat = () => JSON.parse(fsp.readFileSync(caminhoCatalogo(), 'utf8'));
 const gravarCat = (c) => {
-  fsp.writeFileSync(path.join(__dirname, 'catalogo.backup.json'), fsp.readFileSync(ARQ_CAT));
-  fsp.writeFileSync(ARQ_CAT, JSON.stringify(c, null, 2));
+  const arq = caminhoCatalogo();
+  fsp.writeFileSync(caminhoBackup(), fsp.readFileSync(arq));  // dá pra voltar atrás
+  fsp.writeFileSync(arq, JSON.stringify(c, null, 2));
   limparCacheCatalogo();
 };
 

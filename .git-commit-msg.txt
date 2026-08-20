@@ -1,35 +1,32 @@
-Endereco em campos separados, preenchidos pelo CEP
+Catalogo em uso sai da raiz para dados/, que vai em volume
 
-O endereco era um campo unico de texto livre. Vira rua, numero, bairro,
-complemento, cidade e estado. O CEP preenche o que a base souber e sobra
-o numero para o cliente digitar.
+O container e descartavel: a cada deploy ele e recriado a partir da
+imagem. Com o catalogo na raiz do projeto, todo produto cadastrado,
+preco alterado e foto vinculada pelo painel voltava ao que esta no
+repositorio. A empresa perdia o cadastro em cada atualizacao.
 
-Base de CEP
-- distancia.js: cidadeDoCep passa a devolver rua e bairro, que a
-  BrasilAPI e o ViaCEP ja mandavam e estavam sendo descartados.
-- Cache ganhou versao (v:2): CEP ja consultado e refeito uma vez para
-  trazer os campos novos.
-- GET /api/cep/:cep devolve cidade, uf, rua e bairro.
+Como fica
+- catalogo.json         semente, versionada no git
+- dados/catalogo.json   o que o sistema le e o painel grava
+- Na primeira subida a semente e copiada. Depois disso o repositorio
+  NUNCA sobrescreve o que esta em uso.
+- Novo catalogo-arquivo.js resolve o caminho e semeia. Volume
+  somente-leitura ou sem permissao cai para o do repositorio com aviso,
+  em vez de derrubar o sistema.
+- Caminho configuravel por DADOS_DIR.
+- pricing.js, o cadastro do painel e a importacao de planilha passam a
+  usar o arquivo em uso. O backup vai junto para dados/.
+- dados/ e catalogo.backup.json no .gitignore.
 
-Site
-- Formulario com CEP no topo; ao digitar, preenche rua, bairro, cidade e
-  estado. Todos continuam editaveis e obrigatorios.
-- CIDADE DE CEP UNICO nao tem rua nem bairro na base: a mensagem avisa,
-  o foco vai para a rua em vez do numero, e a validacao segue exigindo
-  os dois.
-- montarEndereco() junta as partes na linha que vai ao motor, ao PDF e a
-  nota, entao nada mudou rio abaixo.
+DEPLOY.md
+- Tabela do que precisa de volume (dados, img, clientes, orcamentos,
+  sessions, out) e o que acontece se perder cada um.
+- Stack pronto com os volumes. Volume nomeado e semeado com o conteudo
+  da imagem na primeira criacao, entao as fotos do repositorio entram
+  sozinhas e as enviadas pelo painel ficam.
+- Rotina de atualizacao e comando de backup.
 
-WhatsApp
-- Com rua vinda do CEP, o bot confirma o endereco e pergunta so o numero
-  (etapa NUMERO). Sem rua, cai no fluxo antigo de endereco completo.
-
-Modo com IA
-- O codigo consulta o CEP e preenche rua e bairro; o prompt manda pedir
-  so o numero. Campo numero no schema.
-
-Cadastro
-- clientes.js e orcamentos.js gravam rua, numero, bairro, complemento e
-  estado, que antes se perdiam.
-- Ficha do cliente no painel ganhou os campos, mais a linha final
-  editavel a mao.
+ATENCAO ao aplicar: com o volume em dados/, mudanca feita no
+catalogo.json do repositorio nao chega mais sozinha ao que esta
+rodando. Para levar preco ou produto novo, use a importacao de planilha
+em /painel/dados ou edite pelo painel.

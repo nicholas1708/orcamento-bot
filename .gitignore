@@ -6,3 +6,6 @@ clientes/
 orcamentos/
 cache-geo.json
 .env
+# catálogo EM USO (o do repositório é só a semente) e o backup dele
+dados/
+catalogo.backup.json
