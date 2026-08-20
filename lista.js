@@ -94,8 +94,8 @@ function aplicarLista(linhas, catalogo, ambiente) {
   const perfis = [];
 
   for (const l of (linhas || [])) {
-    const qtd = Number(l.qtd);
-    if (!(qtd > 0)) continue;
+    const qtd = Number(String(l.qtd).replace(',', '.'));
+    if (!Number.isFinite(qtd) || qtd <= 0) continue;   // negativo e vazio caem fora
 
     const telha = (catalogo.telhas || []).find((t) => t.id === l.id);
     if (telha) {
@@ -106,10 +106,13 @@ function aplicarLista(linhas, catalogo, ambiente) {
       }
       // a mesma telha entra várias vezes, uma linha por comprimento.
       // Dois pedidos do MESMO comprimento viram uma linha só.
+      // peça é inteira: 0,5 telha não existe, e arredondar pra baixo
+      // zeraria a linha e derrubaria o motor com "Quantidade inválida: 0"
+      const pecas = Math.ceil(qtd);
       const cortes = porTelha.get(telha.id).cortes;
       const igual = cortes.find((c) => Math.abs(c.comprimentoM - comp) < 0.001);
-      if (igual) igual.quantidade += Math.floor(qtd);
-      else cortes.push({ quantidade: Math.floor(qtd), comprimentoM: comp });
+      if (igual) igual.quantidade += pecas;
+      else cortes.push({ quantidade: pecas, comprimentoM: comp });
       continue;
     }
 

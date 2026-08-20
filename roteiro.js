@@ -41,9 +41,10 @@ const T = {
     '\n_Não sabe a medida? Responda *calcular* que eu monto pelo tamanho do local._',
 
   pedeAmbiente:
-    '📐 Quais as *medidas do local*?\n\n' +
+    '📐 Quais as *medidas do local*? Na ordem *comprimento x largura*.\n\n' +
     'Ex: `20x10` — e se já souber, pode mandar junto: `20x10 duas águas`\n\n' +
-    '_Comprimento = lado da cumeeira · largura = lado onde a água escorre._',
+    '_*Comprimento* = lado da cumeeira, onde as telhas ficam lado a lado._\n' +
+    '_*Largura* = por onde a água escorre — é o sentido da telha._',
 
   pedeQuedas:
     '🏠 Essa área terá *1 queda* ou *2 quedas*?\n\n' +
@@ -151,14 +152,22 @@ function interpretarSimNao(texto, { umEhSim = true } = {}) {
   return null;
 }
 
-/** "20x10", "20 por 10", "20 x 10 metros" → { comprimento, largura } */
+/**
+ * "20x10", "20 por 10", "20 x 10 metros" → { comprimentoM, larguraM }
+ *
+ * ⚠️ RESPEITA A ORDEM DIGITADA: o primeiro número é o COMPRIMENTO (lado da
+ * cumeeira) e o segundo é a LARGURA (por onde a água escorre — o sentido da
+ * telha). Antes o código forçava o maior como comprimento, o que invertia o
+ * telhado de quem tem o galpão mais fundo que largo e fazia a telha sair
+ * com metade do tamanho certo.
+ */
 function interpretarDimensoes(texto) {
   const t = String(texto || '').replace(/,(\d)/g, '.$1');
   const m = t.match(/(\d+(?:\.\d+)?)\s*(?:x|×|por)\s*(\d+(?:\.\d+)?)/i);
   if (!m) return null;
   const a = parseFloat(m[1]), b = parseFloat(m[2]);
   if (!(a > 0 && b > 0)) return null;
-  return { comprimentoM: Math.max(a, b), larguraM: Math.min(a, b) };
+  return { comprimentoM: a, larguraM: b };
 }
 
 /** "2 águas", "duas quedas", "uma caída", "1" → 1 | 2 | null */

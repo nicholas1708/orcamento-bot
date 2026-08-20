@@ -440,37 +440,58 @@ function desenhar(){
     const todos=itensDoCatalogo();
     const lista=q?todos.filter(x=>(x.nome+' '+(x.codigo||'')).toLowerCase().includes(q)):todos;
     el(`<h1>Seu orçamento</h1>
-      <p class="sub">Escolha os produtos e diga quanto precisa de cada um.</p>
+      <p class="sub">Escolha no catálogo abaixo e diga quanto precisa de cada um.</p>
 
-      ${B.itens.length?`<div class="cab" style="margin-top:16px"><span>Produto</span><span>Quantas</span><span>Tamanho</span><span></span></div>
-        ${B.itens.map((it,i)=>{
-          const p=todos.find(x=>x.id===it.id)||{};
-          // ⚠️ NÃO chamar render() aqui: redesenhar a tela a cada tecla
-          // destrói o campo e o cursor pula fora. Só a legenda é atualizada.
-          return `<div class="linha">
-            <span title="${esc(p.nome||'')}"><b>${esc(p.nome?nomeCurto(p).titulo:it.id)}</b>
-              <small id="leg-${i}">${legendaItem(it,p)}</small></span>
-            <input type="number" value="${it.qtd}" placeholder="qtd"
-              oninput="B.itens[${i}].qtd=this.value;legenda(${i})">
-            ${it.tipo==='telha'
-              ?`<input type="number" step="0.01" inputmode="decimal" value="${it.comp||''}" placeholder="6,5"
-                  oninput="B.itens[${i}].comp=this.value;legenda(${i})">`
-              :'<span style="text-align:center;color:#cbd5e1">—</span>'}
-            <button class="x" onclick="B.itens.splice(${i},1);render()">✕</button></div>
-            ${it.tipo==='telha'&&!B.itens.some((o,j)=>j>i&&o.id===it.id)?`
-              <button onclick="addItem('${it.id}','telha')"
-                style="background:none;border:none;color:var(--brand-dd);font-family:inherit;font-size:12.5px;
-                font-weight:600;cursor:pointer;padding:0 0 10px 13px;margin-top:-4px">
-                + outro comprimento desta telha</button>`:''}`;
-        }).join('')}
-        <p class="dica" style="margin-top:2px">A largura é fixa de fábrica; o comprimento é você quem
-          diz — inteiro ou quebrado, como 6,5m. ${limiteTexto()} Não sabe a medida?
-          <a href="#" onclick="irParaCalculo();return false" style="color:var(--brand);font-weight:600">deixe eu calcular</a>.</p>`:''}
+      <!-- ══ BLOCO 1: O QUE JÁ ESTÁ NO ORÇAMENTO ══ -->
+      <div style="border:2px solid ${B.itens.length?'var(--brand)':'var(--line)'};padding:14px;margin-bottom:22px;
+        background:${B.itens.length?'#fff':'var(--bg-soft)'}">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:${B.itens.length?'12px':'0'}">
+          <span class="eyebrow" style="margin:0">🧾 No seu orçamento</span>
+          <span style="margin-left:auto;font-family:'Barlow Condensed';font-weight:700;font-size:15px;
+            background:${B.itens.length?'var(--brand)':'var(--line)'};color:${B.itens.length?'#fff':'var(--muted)'};
+            padding:2px 11px">${B.itens.length} ${B.itens.length===1?'item':'itens'}</span>
+        </div>
 
-      <input class="busca" style="margin-top:16px" placeholder="🔎 Buscar produto"
+        ${B.itens.length?`
+          <div class="cab" style="grid-template-columns:46px 1fr 74px 74px auto">
+            <span></span><span>Produto</span><span>Quantas</span><span>Tamanho</span><span></span></div>
+          ${B.itens.map((it,i)=>{
+            const p=todos.find(x=>x.id===it.id)||{};
+            // ⚠️ NÃO chamar render() no oninput: redesenhar a tela a cada tecla
+            // destrói o campo e o cursor pula fora. Só a legenda é atualizada.
+            return `<div class="linha" style="grid-template-columns:46px 1fr 74px 74px auto">
+              ${mini(p,42)}
+              <span title="${esc(p.nome||'')}"><b>${esc(p.nome?nomeCurto(p).titulo:it.id)}</b>
+                <small id="leg-${i}">${legendaItem(it,p)}</small></span>
+              <input type="number" min="0" step="1" value="${it.qtd}" placeholder="qtd"
+                oninput="B.itens[${i}].qtd=this.value;legenda(${i})" onblur="arrumaItem(${i})">
+              ${it.tipo==='telha'
+                ?`<input type="number" min="0" step="0.01" inputmode="decimal" value="${it.comp||''}" placeholder="6,5"
+                    oninput="B.itens[${i}].comp=this.value;legenda(${i})">`
+                :'<span style="text-align:center;color:#cbd5e1">—</span>'}
+              <button class="x" onclick="B.itens.splice(${i},1);render()">✕</button></div>
+              ${it.tipo==='telha'&&!B.itens.some((o,j)=>j>i&&o.id===it.id)?`
+                <button onclick="addItem('${it.id}','telha')"
+                  style="background:none;border:none;color:var(--brand-dd);font-family:inherit;font-size:12.5px;
+                  font-weight:600;cursor:pointer;padding:0 0 10px 60px;margin-top:-4px">
+                  + outro comprimento desta telha</button>`:''}`;
+          }).join('')}
+          <p class="dica" style="margin:6px 0 0">A largura é fixa de fábrica; o comprimento é você quem
+            diz — inteiro ou quebrado, como 6,5m. ${limiteTexto()}</p>`
+        :`<p style="color:var(--muted);font-size:13.5px;margin:0">Vazio por enquanto.
+            Toque num produto do catálogo abaixo para trazer pra cá.</p>`}
+      </div>
+
+      <!-- ══ BLOCO 2: CATÁLOGO ══ -->
+      <span class="eyebrow">📦 Catálogo — toque para adicionar</span>
+      <input class="busca" placeholder="🔎 Buscar produto"
         value="${B.busca}" oninput="digitouBusca(B,'busca',this.value)">
       <div class="grade">
-        ${lista.slice(0,q?24:10).map(x=>cartao(x,`addItem('${x.id}','${x._tipo}')`)).join('')}
+        ${lista.slice(0,q?24:10).map(x=>{
+          const jaTem=B.itens.filter(o=>o.id===x.id).length;
+          return cartao(x,`addItem('${x.id}','${x._tipo}')`,
+            jaTem?{marcado:true,detalhe:`${rotuloUnidade(x._tipo)} · ✓ ${jaTem}x no orçamento`}:undefined);
+        }).join('')}
       </div>
       ${!q&&todos.length>10?'<p class="dica" style="margin-top:8px">Busque para ver todos os produtos.</p>':''}
       ${B.itens.length?'<button class="btn" onclick="okItens()">Continuar →</button>':''}
@@ -498,13 +519,15 @@ function desenhar(){
     el(`<h1>Tamanho do telhado</h1><p class="sub">Só isso que eu preciso saber. Em metros.</p>
       <div class="l2">
         <div class="campo"><label>Comprimento</label>
-          <input id="mc" type="number" inputmode="decimal" placeholder="20" value="${A.cg}"
-            oninput="A.cg=this.value;atualizaMaquete()"></div>
+          <input id="mc" type="number" min="0" inputmode="decimal" placeholder="20" value="${A.cg}"
+            oninput="A.cg=this.value;atualizaMaquete()">
+          <small class="dica" style="margin:4px 0 0">lado da cumeeira — as telhas ficam lado a lado</small></div>
         <div class="campo"><label>Largura</label>
-          <input id="ml" type="number" inputmode="decimal" placeholder="10" value="${A.lg}"
-            oninput="A.lg=this.value;atualizaMaquete()"></div>
+          <input id="ml" type="number" min="0" inputmode="decimal" placeholder="10" value="${A.lg}"
+            oninput="A.lg=this.value;atualizaMaquete()">
+          <small class="dica" style="margin:4px 0 0">por onde a água escorre — é o sentido da telha</small></div>
       </div>
-      <p class="dica">Não precisa ser exato — o vendedor confere depois.</p>
+      <p class="dica" style="margin-top:4px">Não precisa ser exato — o vendedor confere depois.</p>
       ${opcaoQueda(1,'1 água','A chuva escorre para um lado só','📐')}
       ${opcaoQueda(2,'2 águas','A chuva escorre para os dois lados','⛰️')}
       <div class="caixa" id="maq" style="padding:6px 8px"></div>
@@ -603,10 +626,11 @@ function desenhar(){
           <small>${l.codigo?l.codigo+' · ':''}${l.tipo==='telha'
             ? 'quantas peças e de que comprimento'
             : l.rotulo}${l.detalhe&&l.tipo!=='telha'?' · '+l.detalhe:''}</small></span>
-        <input type="number" ${l.tipo==='telha'?'step="1"':'step="0.01"'} value="${l.qtd}"
-          oninput="R.linhas[${i}].qtd=this.value;totConferir()">
+        <input type="number" min="0" ${porMetro(l)?'step="0.01"':'step="1"'} value="${l.qtd}"
+          oninput="R.linhas[${i}].qtd=this.value;totConferir()"
+          onblur="ajustarQtd(${i});render()">
         ${l.tipo==='telha'
-          ?`<input type="number" step="0.01" value="${l.comp}"
+          ?`<input type="number" min="0" step="0.01" value="${l.comp}"
               oninput="R.linhas[${i}].comp=this.value;totConferir()">`
           :'<span style="text-align:center;color:#cbd5e1">—</span>'}
         <button class="x" onclick="R.linhas.splice(${i},1);render()">✕</button>
@@ -783,6 +807,20 @@ function legenda(i){
 }
 
 /**
+ * Quantidade é peça inteira e nunca negativa — não existe meia cumeeira
+ * nem -3 parafusos. Roda quando o cliente sai do campo.
+ */
+function arrumaItem(i){
+  const it=B.itens[i];if(!it)return;
+  let v=parseFloat(String(it.qtd).replace(',','.'));
+  if(!Number.isFinite(v)||v<0)v=0;
+  it.qtd=Math.ceil(v);
+  const c=parseFloat(String(it.comp).replace(',','.'));
+  if(it.tipo==='telha'&&(!Number.isFinite(c)||c<0))it.comp='';
+  render();
+}
+
+/**
  * A MESMA TELHA PODE ENTRAR VÁRIAS VEZES — uma linha por comprimento.
  * É assim que o orçamento da empresa é montado: o mesmo produto repetido
  * em 4m, 4,75m, 6,20m... O que não se repete é acabamento e perfil, que
@@ -878,6 +916,22 @@ async function carregarLista(){
   R.ambiente=d.ambiente||null;
   render();
 }
+/**
+ * Só o que é vendido POR METRO aceita quebrado. Cumeeira, frontal e
+ * parafuso são peça inteira — não existe meia cumeeira.
+ */
+const porMetro=(l)=>l.rotulo==='metros';
+
+/** Arruma a quantidade quando o cliente sai do campo: nada negativo, e
+ *  peça inteira arredonda pra cima (0,05 de cumeeira vira 1). */
+function ajustarQtd(i){
+  const l=R.linhas[i];if(!l)return;
+  let v=parseFloat(String(l.qtd).replace(',','.'));
+  if(!Number.isFinite(v)||v<0)v=0;
+  if(!porMetro(l))v=Math.ceil(v);          // peça inteira (telha inclusive)
+  l.qtd=v;
+}
+
 /** Atualiza só o rodapé — reescrever a tela faria o campo perder o foco. */
 function totConferir(){
   const box=g('tot');if(!box)return;
@@ -911,6 +965,7 @@ function addNaLista(id){
   R.addAberto=false;R.busca='';err('');render();
 }
 function okConferir(){
+  (R.linhas||[]).forEach((l,i)=>ajustarQtd(i));   // nada negativo nem quebrado
   // Telha não é obrigatória: dá pra orçar só acabamento, parafuso ou estrutura.
   const v=(R.linhas||[]).filter(l=>+l.qtd>0);
   if(!v.length)return err('Coloque ao menos um produto com quantidade.');

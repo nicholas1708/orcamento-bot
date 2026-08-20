@@ -669,7 +669,8 @@ async function processar(chatId, textoRaw) {
         linhas.splice(aj.item - 1, 1);
         say(`🗑️ *${l.nome}* fora da lista.`);
       } else {
-        l.qtd = l.tipo === 'telha' ? Math.floor(aj.valor) : aj.valor;
+        // só o que é vendido por metro aceita quebrado — não existe meia cumeeira
+        l.qtd = l.rotulo === 'metros' ? aj.valor : Math.ceil(aj.valor);
         say(`✅ *${l.nome}*: ${String(l.qtd).replace('.', ',')} ${l.rotulo}.`);
       }
       P.linhas = linhas;

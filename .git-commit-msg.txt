@@ -1,39 +1,36 @@
-Vitrine de produtos com foto grande e fotos proprias em /img
+Corrige inversao de comprimento/largura e ajustes na tela de itens
 
-Escolha de produto
-- A lista virou vitrine: foto na largura toda em cima e nome curto
-  embaixo. 1 coluna no celular (a foto passa de 44px para ~220px de
-  altura), 2 no desktop. Vale nas quatro telas de escolha: qual telha,
-  montar pedido, "ja separei tudo" e adicionar na conferencia.
-- nomeCurto() quebra o nome tecnico do ERP em titulo + variante:
-  "Confort PIR 30mm Trapezio 40/1000 - Galvalume / Branco" vira
-  "Confort PIR 30mm" com "Galvalume / Branco" embaixo. O nome completo
-  continua no title e e o que vai para o PDF e para a nota. Da para
-  mandar no cadastro preenchendo nome_curto no catalogo.json.
-- Sem nada depois do travessao, a medida retirada volta como variante:
-  senao Perfil C 150x60x20 e Perfil C 100x50x17 ficariam com o mesmo
-  nome na tela.
+CORRIGE: comprimento e largura invertidos no simulador e no WhatsApp
+- interpretarDimensoes forcava o MAIOR numero como comprimento
+  (Math.max/Math.min). Quem digitava 10x20 querendo comprimento 10
+  recebia um telhado de comprimento 20, e a telha saia com metade do
+  tamanho certo. Agora respeita a ordem digitada.
+- Legenda embaixo dos campos de medida: comprimento = lado da cumeeira,
+  onde as telhas ficam lado a lado; largura = por onde a agua escorre,
+  que e o sentido da telha. Falta confirmar com o cliente se o
+  vocabulario dele bate com esses rotulos.
 
-Fotos proprias
-- Nova pasta img/, servida em /img pelo server.js. Vale para o site E
-  para o PDF: imagens.js reconhece caminho local e usa o arquivo em
-  disco em vez de tentar baixar. O basename barra saida da pasta.
-- catalogo.json aponta os 6 itens para /img/*.jpg. ATENCAO: os arquivos
-  ainda nao subiram; ate la esses produtos mostram o desenho do perfil
-  no lugar da foto, inclusive as duas telhas, que antes vinham do CDN.
-- A foto entra POR CIMA do desenho e se remove no onerror. Foto que nao
-  carrega (arquivo ausente, CDN fora do ar) nunca vira icone quebrado.
-- img/ nao esta no .gitignore nem no .dockerignore, entao as fotos vao
-  junto na imagem Docker. Nao precisa volume nem mexer no stack.
+Telefone
+- Empresa passa a usar (17)98173-4676 e whatsapp 5517981734676.
 
-Correcoes
-- A busca escrevia de tras para frente: cada tecla redesenhava a tela e
-  o input recriado nascia com o cursor na posicao 0, entao a letra
-  seguinte entrava na frente da anterior ("cumeeira" virava "arieemuc").
-  digitouBusca() guarda e restaura a posicao do cursor. Eram tres campos
-  com o mesmo bug.
-- /api/catalogo nao devolvia vao_maximo_m dos perfis e a tela escrevia
-  "aguenta ate undefinedm sem apoio".
+Quantidade sempre inteira
+- Cumeeira, frontal, parafuso e telha sao peca inteira: o campo so
+  aceita decimal em item vendido por metro. Ao sair do campo, arredonda
+  pra cima (0,05 de cumeeira virava 1,5 na tela e agora vira 1).
+- Vale na tela de itens, na conferencia e na conferencia do WhatsApp.
+- O COMPRIMENTO da telha nao e tocado: continua livre com duas casas
+  (3,80m, 4,75m, 6,5m). O arredondamento e so na contagem de pecas.
 
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01GAziYSwudnXnZZrNcb21H2
+Quantidade negativa
+- min=0 nos campos, ajuste ao sair do campo e filtro no aplicarLista,
+  que descarta linha negativa ou vazia.
+- aplicarLista arredondava a quantidade de telha pra baixo, o que zerava
+  a linha e derrubava o motor com "Quantidade invalida: 0". Passa a
+  arredondar pra cima.
+
+Tela "ja sei o que quero"
+- Linha do pedido ganhou a miniatura do produto, junto com o nomeCurto()
+  da vitrine: nome curto na tela, completo no title.
+- Tela separada em dois blocos explicitos: "No seu orcamento", com
+  moldura destacada e contador de itens, e "Catalogo - toque para
+  adicionar". Cartao de produto ja incluido mostra "2x no orcamento".
