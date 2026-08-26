@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Proposta e Contrato — Sistema de Orçamento de Telhas · 4A</title>
+<style>
+  /* Documento para IMPRIMIR: abra e tecle Ctrl+P → "Salvar como PDF".
+     Nada de servidor, nada de dependência. */
+  @page { size: A4; margin: 18mm 16mm 16mm; }
+
+  :root{
+    --marca:#01A79D; --marca-d:#036C62; --tinta:#0E1416; --suave:#5B6B6E;
+    --linha:#E2E7E8; --claro:#F5F7F7; --tint:#F2FAF9;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:"Segoe UI",Helvetica,Arial,sans-serif;color:var(--tinta);
+       font-size:10.5pt;line-height:1.55;background:#8b9599}
+  .folha{background:#fff;max-width:210mm;margin:0 auto;padding:20mm 18mm}
+
+  h1{font-size:15pt;text-transform:uppercase;letter-spacing:.3px;margin:26px 0 4px}
+  h1::after{content:'';display:block;width:52px;height:3px;background:var(--marca);margin-top:6px}
+  h1:first-child{margin-top:0}
+  h2{font-size:11pt;color:var(--marca-d);margin:18px 0 4px}
+  h3{font-size:10.5pt;margin:14px 0 3px}
+  p{margin:0 0 8px}
+  ul{margin:0 0 10px 0;list-style:none}
+  li{position:relative;padding:2px 0 2px 18px;margin-bottom:2px}
+  li::before{content:'•';position:absolute;left:4px;color:var(--marca);font-size:13pt;line-height:1.2}
+  strong{font-weight:600}
+
+  table{width:100%;border-collapse:collapse;margin:10px 0 14px;font-size:10pt}
+  th{background:var(--claro);color:var(--suave);text-align:left;font-size:9pt;
+     font-weight:600;padding:7px 10px;border:1px solid var(--linha)}
+  td{padding:7px 10px;border:1px solid var(--linha);vertical-align:top}
+  td.n{white-space:nowrap;text-align:right}
+
+  .nota{background:var(--tint);border-left:3px solid var(--marca);padding:11px 14px;
+        margin:12px 0 14px;font-size:9.8pt;color:#2A4A48}
+  .nota.aviso{background:#FFF8E6;border-left-color:#C6952B;color:#5C4407}
+
+  .capa{background:var(--tinta);color:#fff;margin:-20mm -18mm 22px;padding:22mm 18mm 16mm}
+  .capa .risco{width:54px;height:3px;background:var(--marca);margin-bottom:16px}
+  .capa .olho{color:var(--marca);font-size:9.5pt;letter-spacing:2.4px;margin-bottom:10px}
+  .capa h1{font-size:27pt;text-transform:none;letter-spacing:-.4px;margin:0;line-height:1.08}
+  .capa h1::after{display:none}
+  .capa h1 i{font-style:normal;color:var(--marca)}
+  .capa p{color:#C9D4D6;font-size:11pt;margin-top:14px}
+
+  .numeros{display:flex;gap:10px;margin:14px 0 16px}
+  .numeros div{flex:1;border:1px solid var(--linha);border-top:3px solid var(--marca);padding:12px 14px}
+  .numeros b{display:block;font-size:19pt;color:var(--marca-d);line-height:1}
+  .numeros span{font-size:9pt;color:var(--suave)}
+
+  .assina{display:flex;gap:30px;margin-top:34px}
+  .assina div{flex:1}
+  .assina .risco{border-top:1px solid #9AA8AC;padding-top:6px}
+  .assina b{font-size:10pt}
+  .assina span{display:block;font-size:9pt;color:var(--suave)}
+
+  .caixa{display:inline-block;width:11px;height:11px;border:1px solid #9AA8AC;
+         margin-right:8px;vertical-align:-1px}
+  .quebra{page-break-before:always}
+  .junto{page-break-inside:avoid}
+
+  .barra-tela{position:fixed;top:0;left:0;right:0;background:var(--marca);color:#fff;
+    padding:10px 16px;font-size:14px;text-align:center;z-index:9}
+  .barra-tela b{cursor:pointer;text-decoration:underline}
+  @media print{ .barra-tela{display:none} body{background:#fff} .folha{padding:0;max-width:none} }
+  @media screen{ body{padding:52px 12px 40px} .folha{box-shadow:0 8px 30px rgba(0,0,0,.25)} }
+</style>
+</head>
+<body>
+
+<div class="barra-tela">
+  Para gerar o PDF: <b onclick="window.print()">clique aqui</b> ou tecle <b>Ctrl+P</b> →
+  Destino "Salvar como PDF" → Salvar.
+</div>
+
+<div class="folha">
+
+  <!-- ═══════════ CAPA ═══════════ -->
+  <div class="capa">
+    <div class="risco"></div>
+    <div class="olho">PROPOSTA COMERCIAL</div>
+    <h1>Orçamento de telhas<br><i>no automático</i></h1>
+    <p>O cliente monta sozinho, recebe o PDF na hora,<br>e você só entra para fechar.</p>
+  </div>
+
+  <table>
+    <tr><td style="width:32%"><strong>Para</strong></td>
+        <td>4A Comércio e Representação Materiais de Construção</td></tr>
+    <tr><td><strong>CNPJ</strong></td><td>44.627.801/0001-57</td></tr>
+    <tr><td><strong>De</strong></td><td>[SEU NOME / EMPRESA]</td></tr>
+    <tr><td><strong>Data</strong></td><td id="data">___/___/______</td></tr>
+    <tr><td><strong>Validade desta proposta</strong></td><td id="validade">15 dias</td></tr>
+  </table>
+
+  <div class="nota">Este documento tem duas partes. <strong>A proposta</strong> explica o que é
+    o sistema e quanto custa. <strong>O contrato</strong>, na segunda metade, é o instrumento a
+    ser assinado — já vai pronto, para não haver uma segunda rodada de conversa depois do "sim".</div>
+
+  <!-- ═══════════ PROBLEMA ═══════════ -->
+  <h1>O problema de hoje</h1>
+  <p>Cada orçamento de telha passa por uma pessoa. Alguém precisa entender a obra, calcular
+    quantas peças e de que comprimento, lembrar da cumeeira, dos acabamentos de borda, dos
+    parafusos, conferir a faixa de preço e digitar tudo no sistema.</p>
+  <p>Isso cria três custos que não aparecem em lugar nenhum:</p>
+  <ul>
+    <li><strong>Tempo do vendedor.</strong> Boa parte do dia vai em orçamento que nunca vira pedido.</li>
+    <li><strong>Cliente que espera.</strong> Quem pede orçamento no sábado à noite recebe na
+      segunda — e até lá já pediu em outros dois lugares.</li>
+    <li><strong>Erro de conta.</strong> Esquecer o acabamento lateral ou usar a faixa de preço
+      errada custa margem, e só se descobre depois.</li>
+  </ul>
+  <p>E existe um custo maior, silencioso: <strong>o orçamento que não foi pedido</strong> porque a
+    pessoa não quis ligar, não quis falar com vendedor, ou só queria saber o preço antes de decidir.</p>
+
+  <h1>A proposta</h1>
+  <p>Um sistema que faz o orçamento inteiro sozinho, com as suas regras, pelo site e pelo
+    WhatsApp, 24 horas por dia — e entrega ao cliente o mesmo PDF que hoje sai do escritório.</p>
+  <div class="numeros">
+    <div><b>2 min</b><span>do primeiro clique ao PDF pronto</span></div>
+    <div><b>24 h</b><span>inclusive fora do expediente</span></div>
+    <div><b>0</b><span>orçamento perdido por falta de resposta</span></div>
+  </div>
+  <div class="nota"><strong>O que ele NÃO faz:</strong> não negocia, não fecha pedido e não
+    substitui o vendedor. Ele tira do vendedor a parte mecânica — a conta e a digitação — e
+    entrega a ele o cliente já com o orçamento na mão, pronto para a conversa que importa.</div>
+
+  <!-- ═══════════ O QUE MUDA ═══════════ -->
+  <div class="quebra"></div>
+  <h1>O que muda na prática</h1>
+  <table>
+    <tr><th style="width:48%">Hoje</th><th>Com o sistema</th></tr>
+    <tr><td>Cliente liga ou manda mensagem e espera retorno</td>
+        <td>Cliente monta o orçamento na hora, sozinho</td></tr>
+    <tr><td>Vendedor calcula peças, acabamentos e parafusos</td>
+        <td>O sistema calcula, sempre pela mesma regra</td></tr>
+    <tr><td>Fim de semana e feriado: ninguém responde</td>
+        <td>Funciona 24 horas, todos os dias</td></tr>
+    <tr><td>Faixa de preço aplicada manualmente</td>
+        <td>Desconto por volume entra automático</td></tr>
+    <tr><td>Frete estimado por experiência</td>
+        <td>Calculado pela distância até a unidade mais próxima</td></tr>
+    <tr><td>Orçamento antigo se perde no WhatsApp</td>
+        <td>Tudo registrado no painel, com cliente e histórico</td></tr>
+  </table>
+
+  <h1>Como o cálculo funciona</h1>
+  <p>O cliente escolhe um dos dois caminhos:</p>
+  <h3>1. "Eu calculo pra você"</h3>
+  <p>Ele informa comprimento, largura e quantas águas. O sistema monta a lista de corte, aplica
+    o acréscimo de material de 2 águas, calcula cumeeira e acabamentos pelo perímetro, a
+    parafusagem por metro quadrado e a estrutura pelo vão máximo.</p>
+  <h3>2. "Já sei o que quero"</h3>
+  <p>Ele informa direto quantas peças e de que comprimento — respeitando o limite de corte
+    cadastrado para cada telha.</p>
+  <p>Nos dois casos aparece uma <strong>tela de conferência sem preço</strong>, onde ele ajusta
+    quantidade, tira ou acrescenta item. Só depois vê o valor e baixa o PDF.</p>
+  <div class="nota"><strong>O cálculo é determinístico.</strong> A inteligência artificial,
+    quando ativa, só conversa e entende o pedido — ela nunca calcula preço nem quantidade. Toda
+    conta sai de regra cadastrada, e toda regra é editável por vocês no painel.</div>
+
+  <h1>Você não perde o controle</h1>
+  <p>O autoatendimento tem limites, definidos por vocês:</p>
+  <table>
+    <tr><th style="width:36%">Situação</th><th>O que o sistema faz</th></tr>
+    <tr><td>Obra a mais de 600 km da fábrica</td>
+        <td>Gera o orçamento, guarda no painel e direciona o cliente ao comercial — sem mostrar valor</td></tr>
+    <tr><td>Pedido acima de 150 m²</td>
+        <td>Mesma coisa: registra e encaminha, porque volume grande merece negociação</td></tr>
+    <tr><td>Peça acima do comprimento de promoção</td>
+        <td>Marca o orçamento para revisão da equipe</td></tr>
+    <tr><td>Medida fora do padrão de fábrica</td>
+        <td>Recusa e explica, em vez de gerar preço errado</td></tr>
+  </table>
+  <p>Todos esses números ficam no painel e podem ser alterados por vocês a qualquer momento,
+    sem depender de mim.</p>
+
+  <!-- ═══════════ INCLUÍDO ═══════════ -->
+  <div class="quebra"></div>
+  <h1>O que está incluído</h1>
+  <h3>Módulo A — Sistema de orçamento · R$ 380,00/mês</h3>
+  <ul>
+    <li>Orçamento pelo site, nos dois caminhos de cálculo;</li>
+    <li>Orçamento pelo WhatsApp, em número dedicado;</li>
+    <li>PDF no layout de vocês, com lista de corte, acabamentos, fixação e estrutura;</li>
+    <li>Pix no orçamento, com QR e copia e cola;</li>
+    <li>Painel de orçamentos, com situação e histórico de cada um;</li>
+    <li>Painel de clientes, alimentado automaticamente pelos orçamentos;</li>
+    <li>Cadastro de produtos, preços por faixa, fotos e dados técnicos;</li>
+    <li>Importação de tabela de preços por planilha;</li>
+    <li>Cálculo de frete pela distância entre a obra e as unidades;</li>
+    <li>Hospedagem, certificado de segurança e monitoramento.</li>
+  </ul>
+  <h3>Módulo B — Site institucional · R$ 120,00/mês</h3>
+  <ul>
+    <li>Site com as páginas acordadas no Anexo I;</li>
+    <li>Página de vendas ligada ao orçamento;</li>
+    <li>Hospedagem, certificado de segurança e publicação;</li>
+    <li>Até 2 alterações de conteúdo por mês.</li>
+  </ul>
+
+  <h1>Investimento</h1>
+  <table>
+    <tr><th style="width:70%">Item</th><th class="n">Mensal</th></tr>
+    <tr><td>Módulo A — Sistema de orçamento</td><td class="n">R$ 380,00</td></tr>
+    <tr><td>Módulo B — Site institucional</td><td class="n">R$ 120,00</td></tr>
+    <tr><td><strong>Total</strong></td><td class="n"><strong>R$ 500,00</strong></td></tr>
+  </table>
+  <p><strong>Sem taxa de implantação.</strong> O desenvolvimento já está feito e entra diluído na
+    mensalidade — por isso o contrato prevê permanência mínima de 6 meses.</p>
+
+  <h2>A conta que interessa</h2>
+  <p>R$ 500 por mês são <strong>R$ 16,60 por dia</strong>. Preencha com os números de vocês:</p>
+  <table>
+    <tr><th style="width:62%">Pergunta</th><th>Resposta</th></tr>
+    <tr><td>Quantos orçamentos vocês fazem por semana?</td><td>[_______]</td></tr>
+    <tr><td>Quanto tempo leva cada um, em média?</td><td>[_______] min</td></tr>
+    <tr><td>Quantas horas por mês isso dá?</td><td>[_______] h</td></tr>
+    <tr><td>Qual a margem média de um pedido fechado?</td><td>R$ [_______]</td></tr>
+  </table>
+  <div class="nota">Não vou prometer aumento de vendas — quem vende é vocês, não o software.
+    O que dá para afirmar é objetivo: <strong>o tempo gasto montando orçamento sai da conta</strong>,
+    e quem pede preço fora do horário comercial passa a receber resposta.</div>
+
+  <h2>Custos que não são meus</h2>
+  <p>Ficam por conta de vocês, no valor de custo, sem margem minha: servidor, domínio, a linha
+    telefônica do WhatsApp e, se optarem pelo atendimento conversacional, os tokens de
+    inteligência artificial conforme o uso.</p>
+
+  <h1>Como começa</h1>
+  <table>
+    <tr><th style="width:70%">Etapa</th><th>Prazo</th></tr>
+    <tr><td>Assinatura e cadastro dos produtos e preços</td><td>Dia 1</td></tr>
+    <tr><td>Publicação do sistema e do site</td><td>Até 5 dias úteis</td></tr>
+    <tr><td>Conexão do número de WhatsApp dedicado</td><td>Até 7 dias úteis</td></tr>
+    <tr><td>Treinamento da equipe (remoto, 1 hora)</td><td>Na mesma semana</td></tr>
+  </table>
+
+  <h1>Próximo passo</h1>
+  <p>Se fizer sentido, o contrato está a seguir. Basta preencher os campos, assinar e devolver
+    uma via — começamos no mesmo dia.</p>
+  <p>Dúvida em qualquer ponto, me chame antes de assinar. É melhor ajustar agora do que
+    descobrir divergência no terceiro mês.</p>
+  <p style="margin-top:14px"><strong>[SEU NOME]</strong> · [telefone] · [e-mail]</p>
+
+  <!-- ═══════════ CONTRATO ═══════════ -->
+  <div class="quebra"></div>
+  <div style="border-top:3px solid var(--marca);padding-top:16px;margin-bottom:14px">
+    <h1 style="margin-top:0">Contrato de licença de uso de software e prestação de serviços</h1>
+  </div>
+
+  <div class="nota aviso"><strong>Antes de assinar:</strong> este documento foi redigido para
+    este caso específico e não substitui análise jurídica. Recomenda-se revisão por advogado, em
+    especial das cláusulas 5 (propriedade intelectual), 8 (rescisão) e 9 (responsabilidade).
+    Os campos entre colchetes devem ser preenchidos antes da assinatura.</div>
+
+  <h2>Partes</h2>
+  <p><strong>CONTRATADA:</strong> [SEU NOME / RAZÃO SOCIAL], inscrita no CNPJ/CPF sob nº [___],
+    com sede em [endereço], doravante denominada CONTRATADA.</p>
+  <p><strong>CONTRATANTE:</strong> 4A COMÉRCIO E REPRESENTAÇÃO MATERIAIS DE CONSTRUÇÃO, inscrita
+    no CNPJ sob nº 44.627.801/0001-57, com sede na Rua Carolina Capuano Mantanhim, 329 — Recanto
+    Antônio Silva Filho, Cedral/SP, CEP 15895-314, doravante denominada CONTRATANTE.</p>
+
+  <h1>1. Objeto</h1>
+  <p>A CONTRATADA licencia à CONTRATANTE o uso de um sistema de orçamento automático de telhas,
+    de sua propriedade, e presta os serviços de hospedagem, manutenção e suporte descritos neste
+    contrato, nos termos da proposta que integra este instrumento.</p>
+  <h2>1.1 O que está incluído</h2>
+  <p>Os itens listados na proposta — Módulos A e B — e detalhados no Anexo I.</p>
+  <h2>1.2 O que não está incluído</h2>
+  <p>Fica expresso que não integram este contrato, e serão orçados à parte:</p>
+  <ul>
+    <li>criação de páginas, telas, relatórios ou funcionalidades não listadas no Anexo I;</li>
+    <li>integração com o ERP GestãoClick ou qualquer outro sistema de terceiros;</li>
+    <li>criação de conteúdo, textos publicitários, fotografia ou design de peças;</li>
+    <li>gestão de tráfego pago, redes sociais, SEO ou e-mail marketing;</li>
+    <li>treinamento presencial;</li>
+    <li>migração de dados de outros sistemas;</li>
+    <li>emissão de nota fiscal, boleto, cobrança ou integração bancária;</li>
+    <li>atendimento aos clientes finais da CONTRATANTE.</li>
+  </ul>
+  <div class="nota"><strong>Regra prática:</strong> o que estiver no Anexo I é manutenção e está
+    incluído. O que não estiver é escopo novo, com orçamento e prazo próprios, aprovado por
+    escrito antes de começar.</div>
+
+  <h1>2. Valor e pagamento</h1>
+  <p><strong>Valor mensal total: R$ 500,00</strong> (Módulo A R$ 380,00 + Módulo B R$ 120,00).</p>
+  <ul>
+    <li>Vencimento todo dia [10] de cada mês, a partir de [___/___/______];</li>
+    <li>Pagamento por Pix ou transferência para [dados bancários];</li>
+    <li>Atraso superior a [10] dias corridos: multa de 2% e juros de 1% ao mês;</li>
+    <li>Atraso superior a [30] dias: a CONTRATADA poderá suspender o acesso ao sistema e ao site,
+      mediante aviso prévio de 5 dias, sem que isso configure rescisão nem afaste os valores devidos.</li>
+  </ul>
+  <h2>2.1 Reajuste</h2>
+  <p>O valor será reajustado anualmente pelo IPCA acumulado, ou pelo índice que o substituir, na
+    data de aniversário do contrato.</p>
+  <h2>2.2 Custos de terceiros</h2>
+  <p>Ficam por conta da CONTRATANTE, mediante repasse sem acréscimo:</p>
+  <table>
+    <tr><th style="width:62%">Item</th><th>Estimativa mensal</th></tr>
+    <tr><td>Servidor / infraestrutura</td><td>R$ [_____]</td></tr>
+    <tr><td>Domínio</td><td>R$ [_____]</td></tr>
+    <tr><td>Linha telefônica dedicada ao WhatsApp</td><td>R$ [_____]</td></tr>
+    <tr><td>Tokens de inteligência artificial</td><td>variável, conforme uso</td></tr>
+  </table>
+
+  <h1>3. Prazo</h1>
+  <p>Vigência de <strong>[12] meses</strong>, contados de [___/___/______], renovando-se
+    automaticamente por iguais períodos, salvo manifestação de qualquer das partes com
+    <strong>[30] dias</strong> de antecedência.</p>
+
+  <h1>4. Obrigações</h1>
+  <h2>4.1 Da CONTRATADA</h2>
+  <ul>
+    <li>Manter o sistema disponível conforme a cláusula 6;</li>
+    <li>Corrigir defeitos que impeçam o uso normal, sem custo adicional;</li>
+    <li>Manter cópia de segurança diária dos dados, com retenção de [7] dias;</li>
+    <li>Guardar sigilo sobre dados comerciais e de clientes da CONTRATANTE;</li>
+    <li>Avisar com antecedência sobre paradas programadas.</li>
+  </ul>
+  <h2>4.2 Da CONTRATANTE</h2>
+  <ul>
+    <li>Pagar pontualmente;</li>
+    <li>Manter atualizados, no painel, os preços, produtos e dados técnicos — o sistema apenas
+      aplica o que está cadastrado;</li>
+    <li>Conferir os orçamentos gerados antes de encaminhá-los a clientes finais;</li>
+    <li>Fornecer os dados, fotos e textos necessários;</li>
+    <li>Indicar um responsável único para solicitações;</li>
+    <li>Manter ativa a linha do WhatsApp e o aparelho conectado.</li>
+  </ul>
+
+  <h1>5. Propriedade intelectual</h1>
+  <p><strong>5.1</strong> O sistema, seu código-fonte, arquitetura, regras de cálculo e
+    documentação são e permanecem de propriedade exclusiva da CONTRATADA.</p>
+  <p><strong>5.2</strong> Este contrato concede à CONTRATANTE licença de uso não exclusiva,
+    intransferível e limitada ao prazo de vigência. Não há cessão, venda ou transferência de código.</p>
+  <p><strong>5.3</strong> São e permanecem de propriedade da CONTRATANTE: sua marca, logotipo,
+    textos, fotografias, tabela de preços, cadastro de produtos, cadastro de clientes e o
+    histórico de orçamentos gerados.</p>
+  <p><strong>5.4</strong> Encerrado o contrato, a CONTRATADA entregará, em até [10] dias e em
+    formato aberto (CSV ou JSON), os dados citados em 5.3. A entrega dos dados não inclui o
+    código-fonte.</p>
+  <p><strong>5.5</strong> Havendo interesse futuro na aquisição do código-fonte, o valor será
+    negociado à parte, em instrumento próprio.</p>
+
+  <h1>6. Nível de serviço e suporte</h1>
+  <ul>
+    <li>Disponibilidade: meta de 99% ao mês, excluídas paradas programadas e falhas de terceiros
+      (provedor, WhatsApp, operadora, energia);</li>
+    <li>Canal de suporte: [WhatsApp/e-mail], em dias úteis, das [9h] às [18h].</li>
+  </ul>
+  <table>
+    <tr><th style="width:62%">Situação</th><th>Início do atendimento</th></tr>
+    <tr><td>Sistema fora do ar ou orçamento não sendo gerado</td><td>até 4 horas úteis</td></tr>
+    <tr><td>Erro que atrapalha, mas tem contorno</td><td>até 1 dia útil</td></tr>
+    <tr><td>Dúvida, ajuste de conteúdo, alteração no site</td><td>até 3 dias úteis</td></tr>
+  </table>
+  <p><strong>6.1</strong> O WhatsApp é acessado por interface não oficial. Bloqueio ou banimento
+    do número pela Meta não é falha do serviço e não gera abatimento, sem prejuízo do dever da
+    CONTRATADA de auxiliar na reativação.</p>
+
+  <h1>7. Proteção de dados (LGPD)</h1>
+  <p><strong>7.1</strong> A CONTRATANTE é controladora dos dados pessoais dos seus clientes; a
+    CONTRATADA atua como operadora, tratando-os apenas para executar este contrato.</p>
+  <p><strong>7.2</strong> A CONTRATADA adota medidas técnicas para proteger os dados e comunicará
+    qualquer incidente de segurança em até [48] horas do conhecimento.</p>
+  <p><strong>7.3</strong> Encerrado o contrato e entregues os dados na forma da cláusula 5.4, a
+    CONTRATADA os eliminará em até [30] dias, salvo obrigação legal de guarda.</p>
+
+  <h1>8. Rescisão</h1>
+  <p><strong>8.1</strong> Qualquer parte pode rescindir sem justa causa, mediante aviso escrito
+    de <strong>[30] dias</strong>.</p>
+  <p><strong>8.2</strong> Rescisão pela CONTRATANTE antes de completados os <strong>[6] primeiros
+    meses</strong> implica multa equivalente a <strong>[3] mensalidades</strong>, pelo investimento
+    de implantação amortizado ao longo do prazo.</p>
+  <p><strong>8.3</strong> A rescisão por descumprimento — inclusive falta de pagamento por mais de
+    [30] dias — é imediata, independente de aviso prévio, e não afasta os valores já devidos.</p>
+  <p><strong>8.4</strong> Em qualquer hipótese, a CONTRATADA entregará os dados na forma da
+    cláusula 5.4.</p>
+
+  <h1>9. Limitação de responsabilidade</h1>
+  <p><strong>9.1</strong> O sistema é ferramenta de apoio. Os valores e quantidades resultam
+    exclusivamente dos dados cadastrados pela CONTRATANTE, que é responsável por mantê-los
+    corretos e por conferir cada orçamento antes de enviá-lo ao cliente final.</p>
+  <p><strong>9.2</strong> A CONTRATADA não responde por prejuízo decorrente de:</p>
+  <ul>
+    <li>preço, medida ou dado técnico cadastrado incorretamente;</li>
+    <li>orçamento enviado ao cliente final sem conferência;</li>
+    <li>indisponibilidade de serviços de terceiros;</li>
+    <li>uso do sistema por pessoa não autorizada com credencial da CONTRATANTE.</li>
+  </ul>
+  <p><strong>9.3</strong> A responsabilidade da CONTRATADA, em qualquer hipótese, fica limitada
+    ao valor das <strong>[3] últimas mensalidades</strong> pagas.</p>
+
+  <h1>10. Disposições gerais</h1>
+  <p><strong>10.1</strong> Alterações só valem por escrito, assinadas por ambas as partes.
+    Mensagens trocadas por WhatsApp ou e-mail servem para solicitar ajustes dentro do escopo,
+    não para ampliá-lo.</p>
+  <p><strong>10.2</strong> A CONTRATADA poderá citar a CONTRATANTE como cliente em seu portfólio,
+    salvo manifestação em contrário. &nbsp;&nbsp;<span class="caixa"></span>autorizo
+    &nbsp;&nbsp;<span class="caixa"></span>não autorizo</p>
+  <p><strong>10.3</strong> Nenhuma das partes é responsável por descumprimento decorrente de caso
+    fortuito ou força maior.</p>
+  <p><strong>10.4</strong> Fica eleito o foro da comarca de [___] para dirimir controvérsias.</p>
+
+  <p style="margin-top:16px">E por estarem justas e contratadas, as partes assinam este
+    instrumento em duas vias de igual teor.</p>
+  <p>[Cidade], ______ de ____________________ de ________.</p>
+
+  <div class="assina junto">
+    <div class="risco"><b>CONTRATADA</b><span>[seu nome]</span><span>CPF/CNPJ: [___]</span></div>
+    <div class="risco"><b>CONTRATANTE</b><span>4A Comércio e Representação</span>
+      <span>CNPJ: 44.627.801/0001-57</span></div>
+  </div>
+  <div class="assina junto">
+    <div class="risco"><b>Testemunha 1</b><span>Nome:</span><span>CPF:</span></div>
+    <div class="risco"><b>Testemunha 2</b><span>Nome:</span><span>CPF:</span></div>
+  </div>
+
+  <!-- ═══════════ ANEXO ═══════════ -->
+  <div class="quebra"></div>
+  <h1>Anexo I — Escopo entregue</h1>
+  <p>Preencha antes de assinar. É este anexo que decide o que é manutenção e o que é serviço
+    novo — a cláusula 1.2 se apoia nele.</p>
+
+  <h2>Sistema de orçamento</h2>
+  <p><span class="caixa"></span>Orçamento pelo site em [endereço]<br>
+     <span class="caixa"></span>Orçamento pelo WhatsApp no número [___]<br>
+     <span class="caixa"></span>PDF do orçamento no layout da CONTRATANTE<br>
+     <span class="caixa"></span>Pix estático no orçamento<br>
+     <span class="caixa"></span>Painel de orçamentos<br>
+     <span class="caixa"></span>Painel de clientes<br>
+     <span class="caixa"></span>Cadastro de produtos, preços e fotos<br>
+     <span class="caixa"></span>Importação de planilha<br>
+     <span class="caixa"></span>Página de vendas em [endereço]</p>
+
+  <h2>Site institucional — páginas contratadas</h2>
+  <table>
+    <tr><th style="width:40px">#</th><th>Página</th></tr>
+    <tr><td>1</td><td>[Home]</td></tr>
+    <tr><td>2</td><td>[Quem somos]</td></tr>
+    <tr><td>3</td><td>[Produtos — listagem]</td></tr>
+    <tr><td>4</td><td>[_______________________]</td></tr>
+    <tr><td>5</td><td>[_______________________]</td></tr>
+    <tr><td>6</td><td>[_______________________]</td></tr>
+  </table>
+
+  <h2>Regras de cálculo cadastradas na assinatura</h2>
+  <table>
+    <tr><th style="width:66%">Regra</th><th>Valor</th></tr>
+    <tr><td>Acréscimo de material para telhado de 2 águas</td><td>30%</td></tr>
+    <tr><td>Raio máximo de entrega automática</td><td>600 km</td></tr>
+    <tr><td>Metragem máxima para autoatendimento</td><td>150 m²</td></tr>
+    <tr><td>Metragem mínima sem frete diluído</td><td>40 m²</td></tr>
+    <tr><td>Tolerância de faixa de preço</td><td>5%</td></tr>
+    <tr><td>Validade do orçamento</td><td>1 dia</td></tr>
+  </table>
+  <div class="nota">Alterar qualquer uma destas regras é <strong>manutenção</strong> e está
+    incluído. Criar regra nova, que hoje não existe, é <strong>escopo novo</strong>.</div>
+
+</div>
+
+<script>
+  const hoje = new Date();
+  const val = new Date(hoje.getTime() + 15 * 86400000);
+  const br = (d) => d.toLocaleDateString('pt-BR');
+  document.getElementById('data').textContent = br(hoje);
+  document.getElementById('validade').textContent = br(val) + ' (15 dias)';
+</script>
+</body>
+</html>

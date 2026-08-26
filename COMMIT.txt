@@ -1,0 +1,58 @@
+Rede de vendedores, vinculo acabamento-telha e volumes que faltavam
+
+VINCULO ACABAMENTO <-> TELHA
+Cada telha passa a declarar quais acabamentos e perfis a acompanham
+(campo compativeis). Antes o codigo pegava qualquer complemento ativo com
+o aplica_em certo, entao a telha BRANCA saia com cumeeira GALVALUME.
+Vale nos quatro caminhos: calculo automatico, wizard do site, WhatsApp e
+sugestao de acabamentos. Telha sem vinculo cadastrado continua aceitando
+tudo que esta ativo, para catalogo antigo nao quebrar.
+
+Corrigido no caminho: os ids dos parafusos no vinculo estavam sem o "P"
+(6391P4 em vez de P6391P4), o que tiraria parafuso de todo orcamento.
+
+CADASTRO DO VINCULO (painel > Produtos)
+- telha nova nasce com nada marcado (antes nascia com tudo, o que virava
+  "aceita tudo" e devolvia o defeito calado)
+- busca dentro da lista; esconde, nao desmarca
+- Marcar/Desmarcar agem so no que esta visivel
+- contador "N de M marcados"
+- "Copiar de outra telha" para a segunda telha em diante
+- salvar sem acabamento pede confirmacao
+- aba Acabamentos aponta as pecas fora de toda telha, coluna "Vai em"
+- diagnostico trata acabamento orfao como problema
+
+REDE DE VENDEDORES
+Novo vendedores.js: cadastro em dados/vendedores.json, senha com scrypt e
+sal por usuario. Basic auth agora com usuario; admin + PAINEL_SENHA
+continua valendo sempre, como saida de emergencia.
+
+- exigirSenha virou exigirLogin + exigirAdmin
+- so o admin cadastra produto, vendedor, importa planilha e ve diagnostico
+- link de venda /orcamento?v=slug e /lp?v=slug: vitrine reduzida a linha do
+  vendedor, nome dele na tela e no PDF
+- vendedor so ve os proprios orcamentos, clientes e valores; nao muda status
+  do que nao e dele. Cliente de outro responde 404, nao 403
+- trava no servidor em montarPedido: nao adianta trocar o telhaId no POST
+- admin ve tudo, com filtro por vendedor e o nome na coluna Origem
+- O MOTOR NAO MUDA: engine, romaneio e pricing nao sabem que vendedor
+  existe. Preco e o mesmo por qualquer link
+
+VOLUMES QUE FALTAVAM (deploy apagava cadastro)
+/app/dados e /app/img nao tinham volume: catalogo em uso, fotos enviadas
+pelo painel e vendedores eram perdidos a cada atualizacao. Adicionados
+orcamento-dados e orcamento-fotos no stack e no Dockerfile.
+
+MIGRACAO DO VINCULO
+A semente so e copiada na primeira execucao, entao num servidor que ja roda
+o vinculo novo nunca chegaria. migrarVinculos() roda na subida: preenche so
+telha sem vinculo, nunca sobrescreve escolha do painel, so usa id que existe
+no catalogo em uso, faz backup antes e e idempotente.
+
+TESTES
+Novos: teste-vinculo.js, teste-migracao.js, teste-vendedores.js.
+npm test encadeia os seis. Os de migracao e vendedores usam pasta
+temporaria, nao encostam em cadastro real.
+
+NAO EXECUTADOS nesta sessao: o ambiente Linux nao subiu. Rodar npm test
+antes de publicar.

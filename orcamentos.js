@@ -18,12 +18,18 @@ const STATUS = ['novo', 'em_negociacao', 'fechado', 'perdido'];
 const arquivo = (numero) => path.join(DIR, String(numero).replace(/[^A-Za-z0-9_-]/g, '') + '.json');
 
 /** Grava o orçamento recém-gerado. */
-function salvar({ numero, canal, origem, vendedor, cliente, orcamento, grupos, pdfPath }) {
+function salvar({ numero, canal, origem, vendedor, vendedorId, vendedorSlug,
+  cliente, orcamento, grupos, pdfPath }) {
   const registro = {
     numero,
     canal,                                  // 'whatsapp' | 'web'
     origem: origem || 'cliente',            // 'cliente' (autoatendimento) | 'vendedor' (interno)
-    vendedor: vendedor || null,             // quem gerou, quando é interno
+    vendedor: vendedor || null,             // nome de quem gerou
+    // ⚠️ É POR AQUI que o painel decide quem enxerga o orçamento. Gravado a
+    // partir do cadastro, nunca do que a tela mandou. Orçamento sem dono
+    // (link público) fica null e só o admin vê.
+    vendedorId: vendedorId || null,
+    vendedorSlug: vendedorSlug || null,     // qual link trouxe o cliente
     criadoEm: new Date().toISOString(),
     status: 'novo',
     cliente: {

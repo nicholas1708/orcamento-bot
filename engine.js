@@ -75,10 +75,19 @@ function quantidadeDoComplemento(item, comp, metragemTotal) {
   const temInformada = Number.isFinite(informada) && informada > 0;
 
   if (item.venda_por === 'metro') {
-    // cobrado por metro corrido (ex: acabamento lateral a R$ 27,48/m)
-    qtd = temInformada ? m3(informada) : m3(Number(comp.metros) || 0);
+    // Cobrado por metro corrido (ex: acabamento lateral a R$ 27,48/m), mas
+    // a peça vem em BARRA FECHADA: 16,12m de lateral viram 6 barras de 3m
+    // = 18m. Conferido contra o orçamento 12x6 de 2 águas, que fatura 18.
+    // Sem comprimento_barra_m cadastrado, cobra o metro exato.
+    const barra = Number(item.comprimento_barra_m) || 0;
+    const bruto = temInformada ? m3(informada) : m3(Number(comp.metros) || 0);
+    qtd = barra > 0 && bruto > 0 ? m3(Math.ceil(bruto / barra) * barra) : bruto;
     unidade = item.unidade || 'M';
     rotulo = 'metros';
+    if (barra > 0 && qtd > bruto) {
+      aviso = `${item.nome}: ${bruto}m necessários → ${Math.round(qtd / barra)} barras de ` +
+        `${String(barra).replace('.', ',')}m (${qtd}m faturados).`;
+    }
 
   } else if (item.venda_por === 'barra') {
     const barra = Number(item.comprimento_barra_m) || 3;

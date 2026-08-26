@@ -15,20 +15,50 @@ app.get('/', (_req, res) => res.redirect('/orcamento')); // raiz → wizard do c
 
 // ===== ÁREA INTERNA (painel + PDFs) — protegida por senha =====
 // Os orçamentos têm nome, telefone e endereço de clientes: nunca deixar público.
+//
+// Continua sendo Basic auth, agora com USUÁRIO além da senha. O navegador já
+// pede os dois no mesmo popup, então nada muda para quem usa:
+//
+//   admin  + PAINEL_SENHA  → vê tudo, cadastra produto, cadastra vendedor
+//   fulano + senha dele    → vê só os orçamentos que saíram pelo link dele
+//
+// Sem nenhum vendedor cadastrado o sistema se comporta exatamente como antes.
 const PAINEL_SENHA = process.env.PAINEL_SENHA || '';
-function exigirSenha(req, res, next) {
+const vendedoresDb = require('./vendedores');
+
+/**
+ * Qualquer pessoa da equipe: admin ou vendedor.
+ * Deixa a sessão em req.usuario = { id, nome, papel, slug, telhas }.
+ */
+function exigirLogin(req, res, next) {
   if (!PAINEL_SENHA) {
     return res.status(503).send('Painel desativado: defina PAINEL_SENHA nas variáveis de ambiente.');
   }
   const h = req.headers.authorization || '';
   const [tipo, dados] = h.split(' ');
   if (tipo === 'Basic' && dados) {
-    const [, senha] = Buffer.from(dados, 'base64').toString().split(':');
-    if (senha === PAINEL_SENHA) return next();
+    const bruto = Buffer.from(dados, 'base64').toString();
+    const i = bruto.indexOf(':');                 // senha pode conter ':'
+    const usuario = i >= 0 ? bruto.slice(0, i) : '';
+    const senha = i >= 0 ? bruto.slice(i + 1) : bruto;
+    const sessao = vendedoresDb.autenticar(usuario, senha);
+    if (sessao) { req.usuario = sessao; return next(); }
   }
   res.set('WWW-Authenticate', 'Basic realm="Painel 4A"');
   return res.status(401).send('Acesso restrito.');
 }
+
+/** Só o dono. Cadastro de produto, de vendedor e diagnóstico moram aqui. */
+function exigirAdmin(req, res, next) {
+  exigirLogin(req, res, () => {
+    if (req.usuario.papel === 'admin') return next();
+    // 'error' é a chave que o painel inteiro já lê (ver enviar() em painel-ui.js)
+    res.status(403).json({ error: 'Só o administrador pode fazer isso.' });
+  });
+}
+
+// Nome antigo mantido para não quebrar rota nenhuma enquanto migra.
+const exigirSenha = exigirLogin;
 
 // ===== SIMULADOR LOCAL (testes sem WhatsApp) =====
 // Abra /simulador — conversa com o mesmo flow.js do WhatsApp.
@@ -56,10 +86,27 @@ app.get('/painel/ui.js', exigirSenha, (_req, res) => res.sendFile(path.join(__di
 // ── PAINEL ────────────────────────────────────────────────────────────
 app.get('/painel', exigirSenha, (_req, res) => res.sendFile(path.join(__dirname, 'painel.html')));
 
-app.get('/api/painel/orcamentos', exigirSenha, (req, res) => {
-  const { de, ate, canal, origem, status, busca } = req.query;
+/** Quem está logado — o painel usa para esconder o que o vendedor não pode ver. */
+app.get('/api/painel/eu', exigirLogin, (req, res) => {
+  res.json({ ...req.usuario, vendedores: req.usuario.papel === 'admin'
+    ? vendedoresDb.listar().map((v) => ({ id: v.id, nome: v.nome, ativo: v.ativo })) : [] });
+});
+
+app.get('/api/painel/orcamentos', exigirLogin, (req, res) => {
+  const { de, ate, canal, origem, status, busca, vendedor } = req.query;
   const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   let lista = orcamentosDb.listar();
+
+  // ⚠️ O CORTE POR VENDEDOR VEM PRIMEIRO e não é opcional. O vendedor nunca
+  // enxerga orçamento de outro — nem os antigos, sem dono. Filtro de tela é
+  // conveniência; isto aqui é a regra.
+  if (req.usuario.papel !== 'admin') {
+    lista = lista.filter((o) => o.vendedorId === req.usuario.id);
+  } else if (vendedor) {
+    lista = vendedor === 'sem'
+      ? lista.filter((o) => !o.vendedorId)
+      : lista.filter((o) => o.vendedorId === vendedor);
+  }
 
   if (de) lista = lista.filter((o) => o.criadoEm >= de);
   if (ate) lista = lista.filter((o) => o.criadoEm <= ate + 'T23:59:59');
@@ -75,29 +122,85 @@ app.get('/api/painel/orcamentos', exigirSenha, (req, res) => {
   res.json({ orcamentos: lista, estatisticas: orcamentosDb.estatisticas(lista) });
 });
 
+// ── PAINEL › VENDEDORES (só admin) ────────────────────────────────────
+// Cada vendedor tem seu link (/orcamento?v=slug) e a lista de telhas que
+// pode vender. Preço não muda por vendedor — o motor é o mesmo para todos.
+app.get('/painel/vendedores', exigirAdmin, (_req, res) =>
+  res.sendFile(path.join(__dirname, 'painel-vendedores.html')));
+
+app.get('/api/painel/vendedores', exigirAdmin, (_req, res) => {
+  const catalogo = lerCat();
+  const totais = {};
+  for (const o of orcamentosDb.listar()) {
+    if (o.vendedorId) totais[o.vendedorId] = (totais[o.vendedorId] || 0) + 1;
+  }
+  res.json({
+    vendedores: vendedoresDb.listar().map((v) => ({ ...v, orcamentos: totais[v.id] || 0 })),
+    telhas: (catalogo.telhas || []).filter((t) => t.ativo !== false)
+      .map((t) => ({ id: t.id, nome: t.nome, codigo: t.codigo || null })),
+  });
+});
+
+app.post('/api/painel/vendedor', exigirAdmin, (req, res) => {
+  try {
+    res.json({ ok: true, vendedor: vendedoresDb.salvar(req.body || {}) });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// Desativa, não apaga: orçamento antigo precisa continuar com dono.
+app.delete('/api/painel/vendedor/:id', exigirAdmin, (req, res) => {
+  try {
+    res.json({ ok: true, vendedor: vendedoresDb.desativar(req.params.id) });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
 // ── PAINEL › CLIENTES ─────────────────────────────────────────────────
 // O cadastro nasce do próprio orçamento: para orçar, o cliente informa nome,
 // telefone, cidade e endereço — e isso já fica gravado aqui.
 app.get('/painel/clientes', exigirSenha, (_req, res) => res.sendFile(path.join(__dirname, 'painel-clientes.html')));
 
-app.get('/api/painel/clientes', exigirSenha, (req, res) => {
+/**
+ * Telefones que este usuário pode ver.
+ * O cadastro de cliente nasce do orçamento, então a regra é a mesma: o
+ * vendedor só alcança quem passou pelo link dele. Admin recebe null = tudo.
+ */
+function telefonesVisiveis(usuario) {
+  if (!usuario || usuario.papel === 'admin') return null;
+  const so = new Set();
+  for (const o of orcamentosDb.listar()) {
+    if (o.vendedorId === usuario.id) so.add(String(o.cliente?.telefone || '').replace(/\D/g, ''));
+  }
+  return so;
+}
+
+app.get('/api/painel/clientes', exigirLogin, (req, res) => {
   const clientesDb = require('./clientes');
   const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-  const orcs = orcamentosDb.listar();
+  const meusTelefones = telefonesVisiveis(req.usuario);
+  // ⚠️ O vendedor também não pode ver o VALOR de orçamento que não é dele:
+  // sem este corte, a coluna "valor gerado" somaria a venda dos colegas.
+  const orcs = orcamentosDb.listar()
+    .filter((o) => !meusTelefones || o.vendedorId === req.usuario.id);
 
-  let lista = clientesDb.listar().map((c) => {
-    const meus = orcs.filter((o) => String(o.cliente?.telefone || '').replace(/\D/g, '') === c.telefone);
-    const fechados = meus.filter((o) => o.status === 'fechado');
-    return {
-      ...c,
-      orcamentosGerados: meus.length,
-      valorTotal: Math.round(meus.reduce((s, o) => s + (Number(o.totalAvista) || 0), 0) * 100) / 100,
-      valorFechado: Math.round(fechados.reduce((s, o) => s + (Number(o.totalAvista) || 0), 0) * 100) / 100,
-      fechados: fechados.length,
-      completo: clientesDb.completo(c),
-      pendencias: clientesDb.pendencias(c),
-    };
-  });
+  let lista = clientesDb.listar()
+    .filter((c) => !meusTelefones || meusTelefones.has(c.telefone))
+    .map((c) => {
+      const meus = orcs.filter((o) => String(o.cliente?.telefone || '').replace(/\D/g, '') === c.telefone);
+      const fechados = meus.filter((o) => o.status === 'fechado');
+      return {
+        ...c,
+        orcamentosGerados: meus.length,
+        valorTotal: Math.round(meus.reduce((s, o) => s + (Number(o.totalAvista) || 0), 0) * 100) / 100,
+        valorFechado: Math.round(fechados.reduce((s, o) => s + (Number(o.totalAvista) || 0), 0) * 100) / 100,
+        fechados: fechados.length,
+        completo: clientesDb.completo(c),
+        pendencias: clientesDb.pendencias(c),
+      };
+    });
 
   const { busca, situacao } = req.query;
   if (busca) {
@@ -120,23 +223,36 @@ app.get('/api/painel/clientes', exigirSenha, (req, res) => {
 });
 
 /** Orçamentos de um cliente — abre na ficha dele. */
-app.get('/api/painel/cliente/:telefone', exigirSenha, (req, res) => {
+app.get('/api/painel/cliente/:telefone', exigirLogin, (req, res) => {
   const clientesDb = require('./clientes');
   const tel = String(req.params.telefone).replace(/\D/g, '');
+  const meusTelefones = telefonesVisiveis(req.usuario);
+  // 404, não 403: quem não é dono do cliente não fica sabendo que ele existe
+  if (meusTelefones && !meusTelefones.has(tel)) {
+    return res.status(404).json({ error: 'Cliente não encontrado.' });
+  }
   const c = clientesDb.carregar(tel);
   if (!c) return res.status(404).json({ error: 'Cliente não encontrado.' });
   const orcamentos = orcamentosDb.listar()
     .filter((o) => String(o.cliente?.telefone || '').replace(/\D/g, '') === tel)
+    .filter((o) => !meusTelefones || o.vendedorId === req.usuario.id)
     .map((o) => ({ numero: o.numero, criadoEm: o.criadoEm, status: o.status, canal: o.canal,
       origem: o.origem, totalAvista: o.totalAvista, metragemTotal: o.metragemTotal, pdf: o.pdf }));
   res.json({ cliente: { ...c, pendencias: clientesDb.pendencias(c) }, orcamentos });
 });
 
-app.post('/api/painel/cliente', exigirSenha, (req, res) => {
+app.post('/api/painel/cliente', exigirLogin, (req, res) => {
   try {
     const clientesDb = require('./clientes');
     const { telefone, ...dados } = req.body || {};
     if (!telefone) return res.status(400).json({ error: 'Telefone é a chave do cadastro.' });
+
+    // vendedor só edita cliente que passou pelo link dele
+    const meusTelefones = telefonesVisiveis(req.usuario);
+    if (meusTelefones && !meusTelefones.has(String(telefone).replace(/\D/g, ''))) {
+      return res.status(404).json({ error: 'Cliente não encontrado.' });
+    }
+
     if (dados.nome !== undefined && !String(dados.nome).trim()) {
       return res.status(400).json({ error: 'O nome não pode ficar em branco.' });
     }
@@ -147,7 +263,7 @@ app.post('/api/painel/cliente', exigirSenha, (req, res) => {
 });
 
 // ── PAINEL › CADASTRO DE DADOS (upload das planilhas) ─────────────────
-app.get('/painel/dados', exigirSenha, (_req, res) => res.sendFile(path.join(__dirname, 'painel-dados.html')));
+app.get('/painel/dados', exigirAdmin, (_req, res) => res.sendFile(path.join(__dirname, 'painel-dados.html')));
 
 /** Baixa o modelo de planilha (em branco ou com o que já está cadastrado). */
 app.get('/api/painel/modelo/:qual', exigirSenha, (req, res) => {
@@ -158,7 +274,7 @@ app.get('/api/painel/modelo/:qual', exigirSenha, (req, res) => {
 });
 
 /** Valida os CSVs enviados. Só grava quando "aplicar" vem true. */
-app.post('/api/painel/importar', exigirSenha, async (req, res) => {
+app.post('/api/painel/importar', exigirAdmin, async (req, res) => {
   try {
     const { produtosCsv, fretesCsv, unidadesCsv, aplicar: confirmar } = req.body || {};
     if (!produtosCsv && !fretesCsv && !unidadesCsv) {
@@ -199,7 +315,7 @@ const gravarCat = (c) => {
   limparCacheCatalogo();
 };
 
-app.get('/painel/produtos', exigirSenha, (_req, res) => res.sendFile(path.join(__dirname, 'painel-produtos.html')));
+app.get('/painel/produtos', exigirAdmin, (_req, res) => res.sendFile(path.join(__dirname, 'painel-produtos.html')));
 
 /**
  * UPLOAD DA FOTO DO PRODUTO.
@@ -213,7 +329,7 @@ app.get('/painel/produtos', exigirSenha, (_req, res) => res.sendFile(path.join(_
 const PNG_ASSINATURA = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
 const FOTO_MAX_BYTES = 4 * 1024 * 1024;
 
-app.post('/api/painel/imagem', exigirSenha, (req, res) => {
+app.post('/api/painel/imagem', exigirAdmin, (req, res) => {
   try {
     const { nome, dados } = req.body || {};
     if (!dados) return res.status(400).json({ error: 'Nenhuma imagem recebida.' });
@@ -258,7 +374,7 @@ app.post('/api/painel/imagem', exigirSenha, (req, res) => {
   }
 });
 
-app.get('/api/painel/produtos', exigirSenha, (_req, res) => {
+app.get('/api/painel/produtos', exigirAdmin, (_req, res) => {
   const c = lerCat();
   res.json({
     produtos: c.telhas || [],
@@ -272,14 +388,14 @@ app.get('/api/painel/produtos', exigirSenha, (_req, res) => {
  * CONFERÊNCIA DO CADASTRO — o que está faltando ou desvinculado.
  * "problemas" travam ou distorcem orçamento; "alertas" são para olhar depois.
  */
-app.get('/api/painel/diagnostico', exigirSenha, (_req, res) => {
+app.get('/api/painel/diagnostico', exigirAdmin, (_req, res) => {
   const { validarCatalogo } = require('./pricing');
   const r = validarCatalogo(lerCat());
   res.json({ problemas: r.problemas || [], alertas: r.alertas || [] });
 });
 
 /** Cadastro de perfis de estrutura (terças, vigas). */
-app.post('/api/painel/perfil', exigirSenha, (req, res) => {
+app.post('/api/painel/perfil', exigirAdmin, (req, res) => {
   try {
     const p = req.body || {};
     if (!p.nome) return res.status(400).json({ error: 'Informe o nome do perfil.' });
@@ -309,7 +425,7 @@ app.post('/api/painel/perfil', exigirSenha, (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.delete('/api/painel/perfil/:id', exigirSenha, (req, res) => {
+app.delete('/api/painel/perfil/:id', exigirAdmin, (req, res) => {
   try {
     const c = lerCat();
     const antes = (c.perfis || []).length;
@@ -327,7 +443,7 @@ app.delete('/api/painel/perfil/:id', exigirSenha, (req, res) => {
  *   fixação    → consumo_por_m2
  * Sem eles o item existe, mas nunca entra sozinho num orçamento.
  */
-app.post('/api/painel/complemento', exigirSenha, (req, res) => {
+app.post('/api/painel/complemento', exigirAdmin, (req, res) => {
   try {
     const p = req.body || {};
     if (!p.nome) return res.status(400).json({ error: 'Informe o nome do complemento.' });
@@ -377,7 +493,7 @@ app.post('/api/painel/complemento', exigirSenha, (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.delete('/api/painel/complemento/:id', exigirSenha, (req, res) => {
+app.delete('/api/painel/complemento/:id', exigirAdmin, (req, res) => {
   try {
     const c = lerCat();
     const antes = (c.complementos || []).length;
@@ -394,7 +510,7 @@ app.post('/api/painel/desmembrar', exigirSenha, (req, res) => {
   res.json(desmembrar(req.body?.descricao || ''));
 });
 
-app.post('/api/painel/produto', exigirSenha, (req, res) => {
+app.post('/api/painel/produto', exigirAdmin, (req, res) => {
   try {
     const p = req.body || {};
     if (!p.nome) return res.status(400).json({ error: 'Informe o nome do produto.' });
@@ -438,6 +554,14 @@ app.post('/api/painel/produto', exigirSenha, (req, res) => {
       imagem: p.imagem || null,
       ativo: p.ativo !== false,
       observacao: p.observacao || null,
+      // vínculo: só estes acabamentos e perfis acompanham a telha.
+      // null mantém o comportamento antigo (aceita todos os ativos).
+      compativeis: p.compativeis && (
+        Array.isArray(p.compativeis.complementos) || Array.isArray(p.compativeis.perfis)
+      ) ? {
+        complementos: Array.isArray(p.compativeis.complementos) ? p.compativeis.complementos : [],
+        perfis: Array.isArray(p.compativeis.perfis) ? p.compativeis.perfis : [],
+      } : null,
     };
 
     const i = c.telhas.findIndex((t) => t.id === id);
@@ -449,7 +573,7 @@ app.post('/api/painel/produto', exigirSenha, (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.delete('/api/painel/produto/:id', exigirSenha, (req, res) => {
+app.delete('/api/painel/produto/:id', exigirAdmin, (req, res) => {
   try {
     const c = lerCat();
     const antes = (c.telhas || []).length;
@@ -460,8 +584,17 @@ app.delete('/api/painel/produto/:id', exigirSenha, (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/painel/status', exigirSenha, (req, res) => {
+app.post('/api/painel/status', exigirLogin, (req, res) => {
   const { numero, status, nota } = req.body || {};
+
+  // vendedor só mexe no que é dele — inclusive marcar "fechado"
+  if (req.usuario.papel !== 'admin') {
+    const o = orcamentosDb.listar().find((x) => x.numero === numero);
+    if (!o || o.vendedorId !== req.usuario.id) {
+      return res.status(404).json({ error: 'Orçamento não encontrado.' });
+    }
+  }
+
   const r = orcamentosDb.atualizarStatus(numero, status, nota);
   if (!r) return res.status(400).json({ error: 'Orçamento ou status inválido.' });
   res.json({ ok: true, orcamento: r });
@@ -475,24 +608,56 @@ const { calcularRomaneio, opcoesDeCorte, corteComTamanho } = require('./romaneio
 const { gerarPDF } = require('./pdf');
 
 app.get('/orcamento', (_req, res) => res.sendFile(path.join(__dirname, 'orcamento.html')));
+// /orcamento?v=slug é o link de venda do vendedor. A tela lê o slug e o
+// repassa; quem confere é o servidor, sempre pelo cadastro.
 // canal experimental com visualização 3D — não substitui o wizard simples
 app.get('/orcamento3d', (_req, res) => res.sendFile(path.join(__dirname, 'orcamento3d.html')));
 
-app.get('/api/catalogo', async (_req, res) => {
+// Página de vendas — preços vêm do catálogo, então mudar no painel muda aqui.
+app.get('/lp', (_req, res) => res.sendFile(path.join(__dirname, 'lp.html')));
+
+app.get('/api/catalogo', async (req, res) => {
   try {
     const c = await getCatalogo();
+
+    // LINK DO VENDEDOR: ?v=slug reduz a vitrine ao que ele pode vender.
+    // Sem ?v=, ou com slug que não existe / vendedor desativado, o
+    // comportamento é o de sempre: todas as telhas ativas.
+    const vend = vendedoresDb.buscarPorSlug(req.query.v);
+    const telhasVisiveis = vendedoresDb.telhasDoVendedor(c, vend);
+
     res.json({
-      empresa: { razao_social: c.empresa.razao_social, site: c.empresa.site },
+      vendedor: vend ? { nome: vend.nome, slug: vend.slug, telefone: vend.telefone } : null,
+      // dados públicos da empresa — a LP e o wizard usam para o CTA
+      empresa: {
+        razao_social: c.empresa.razao_social, site: c.empresa.site,
+        whatsapp: c.empresa.whatsapp || null, telefones: c.empresa.telefones || null,
+        logo: c.empresa.logo || null,
+      },
+      // só cidade/UF: serve de prova de alcance na LP, sem expor CNPJ
+      unidades: (c.unidades || []).filter((u) => u.ativa !== false)
+        .map((u) => ({ cidade: u.cidade, uf: u.uf })),
+      regras_publicas: {
+        raio_maximo_km: c.fretes?.raio_maximo_km || null,
+        validade_orcamento_dias: c.validade_orcamento_dias || null,
+        prazo_entrega_dias: c.prazo_entrega_dias || null,
+        garantias: c.textos_pdf?.garantias || [],
+      },
       ilustracoes: c.ilustracoes || {},
-      telhas: c.telhas.filter((t) => t.ativo !== false).map((t) => ({
+      telhas: telhasVisiveis.map((t) => ({
         id: t.id, codigo: t.codigo || null, familia: t.familia, nome: t.nome,
         preco: t.preco, faixas_preco: t.faixas_preco || null,
+        preco_tabela: t.preco_tabela || null,   // o "de" da vitrine
         imagem: t.imagem || null, atributos: t.atributos || {},
         largura_util_m: t.largura_util_m,
         comprimento_maximo_m: t.comprimento_maximo_m,
         comprimento_minimo_m: t.comprimento_minimo_m,
         promocao_ate_m: t.promocao_ate_m || null,
+        vao_maximo_m: t.vao_maximo_m || null,
+        inclinacao_minima_pct: t.inclinacao_minima_pct || null,
         forro_integrado: t.forro_integrado,
+        // acabamentos e perfis que acompanham ESTA telha (null = todos)
+        compativeis: t.compativeis || null,
       })),
       regras: {
         faixa_preco_por: c.regras?.faixa_preco_por || 'produto',
@@ -548,7 +713,7 @@ app.post('/api/sugestoes', async (req, res) => {
     if (!(L > 0)) return res.status(400).json({ error: 'Informe o comprimento do galpão.' });
 
     const { complementosPorPerimetro, calcularEstruturaPerfis } = require('./romaneio');
-    const { complementos, perimetro } = complementosPorPerimetro(L, maior, quedas, catalogo);
+    const { complementos, perimetro } = complementosPorPerimetro(L, maior, quedas, catalogo, telhas[0]);
     const estrutura = comEstrutura
       ? calcularEstruturaPerfis(maior, L, telhas, catalogo)
       : { perfis: [], descricao: null };
@@ -632,8 +797,12 @@ function documentoValido(v) {
  * Fonte única: usada pelo /api/orcamento (que gera o PDF) e pelo /api/lista
  * (que mostra a lista sem preço para o cliente conferir). Assim a tela de
  * conferência mostra exatamente o que vai ser cobrado.
+ *
+ * @param {object|null} vendedor  quando o pedido veio pelo link de um
+ *   vendedor, só as telhas da linha dele passam. Sem vendedor, tudo passa —
+ *   é o link público de sempre.
  */
-function montarPedido(pedido, catalogo) {
+function montarPedido(pedido, catalogo, vendedor) {
   let grupos = [], complementos = [], perfis = [];
 
   if (pedido?.modo === 'auto') {
@@ -659,10 +828,15 @@ function montarPedido(pedido, catalogo) {
     const idsComp = Array.isArray(pedido.complementosIds) ? pedido.complementosIds : null;
     const idsPerf = Array.isArray(pedido.perfisIds) ? pedido.perfisIds : null;
 
-    const querComp = idsComp || (pedido.querAcabamento
-      ? (catalogo.complementos || []).filter((c) => c.ativo !== false).map((c) => c.id) : []);
+    // ⚠️ Só entra o que está VINCULADO a esta telha. A tela já filtra, mas a
+    // tela pode ser burlada — quem decide é o cadastro.
+    const { compativeisDaTelha } = require('./romaneio');
+    const permitidos = compativeisDaTelha(catalogo, telha, 'complementos').map((c) => c.id);
+
+    const querComp = idsComp || (pedido.querAcabamento ? permitidos : []);
 
     for (const id of querComp) {
+      if (permitidos.indexOf(id) < 0) continue;      // não acompanha esta telha
       const item = (catalogo.complementos || []).find((c) => c.id === id);
       if (!item) continue;
       const sug = (rom.complementos || []).find((c) => c.produtoId === id);
@@ -670,7 +844,9 @@ function montarPedido(pedido, catalogo) {
       else if (item.consumo_por_m2) complementos.push({ produtoId: id });     // por m²
     }
 
-    const querPerf = idsPerf || (pedido.querEstrutura && pedido.perfilId ? [pedido.perfilId] : []);
+    const perfisOk = compativeisDaTelha(catalogo, telha, 'perfis').map((p) => p.id);
+    const querPerf = (idsPerf || (pedido.querEstrutura && pedido.perfilId ? [pedido.perfilId] : []))
+      .filter((id) => perfisOk.indexOf(id) >= 0);
     if (querPerf.length) {
       const { calcularEstruturaPerfis } = require('./romaneio');
       const maior = Math.max(...rom.cortes.map((c) => c.comprimentoM));
@@ -706,6 +882,17 @@ function montarPedido(pedido, catalogo) {
   if (grupos.some((g) => !catalogo.telhas.some((t) => t.id === g.telhaId))) {
     throw erroCliente('Produto inválido.');
   }
+
+  // ⚠️ TRAVA DA REDE DE VENDEDORES. A tela já mostra só a linha dele, mas a
+  // tela pode ser burlada: sem esta conferência bastaria trocar o telhaId no
+  // POST para vender o que não é seu. Vale para os três modos.
+  if (vendedor) {
+    const fora = grupos.find((g) => !vendedoresDb.podeVender(catalogo, vendedor, g.telhaId));
+    if (fora) {
+      const t = catalogo.telhas.find((x) => x.id === fora.telhaId);
+      throw erroCliente(`${t ? t.nome : 'Este produto'} não faz parte da sua linha de venda.`);
+    }
+  }
   return { grupos, complementos, perfis };
 }
 
@@ -719,7 +906,8 @@ app.post('/api/lista', async (req, res) => {
   try {
     const { montarLista } = require('./lista');
     const catalogo = await getCatalogo();
-    const pedidoMotor = montarPedido(req.body?.pedido, catalogo);
+    const vend = vendedoresDb.buscarPorSlug(req.body?.vendedorSlug || req.body?.v);
+    const pedidoMotor = montarPedido(req.body?.pedido, catalogo, vend);
     res.json(montarLista(pedidoMotor, catalogo));
   } catch (e) {
     res.status(e.publico ? 400 : 500).json({ error: e.message });
@@ -749,8 +937,15 @@ app.post('/api/orcamento', async (req, res) => {
     }
     const catalogo = await getCatalogo();
 
+    // ── DE QUEM É ESTE ORÇAMENTO ──────────────────────────────────────
+    // O slug vem da tela, mas o vendedor sai do CADASTRO. Slug inventado,
+    // apagado ou desativado simplesmente não vira dono — vira orçamento sem
+    // vendedor, que só o admin enxerga.
+    const vend = vendedoresDb.buscarPorSlug(req.body?.vendedorSlug || req.body?.v);
+
     // ── Traduz o que veio da tela para o formato do motor ─────────────
-    const { grupos, complementos, perfis } = montarPedido(pedido, catalogo);
+    // (o montarPedido também barra telha fora da linha do vendedor)
+    const { grupos, complementos, perfis } = montarPedido(pedido, catalogo, vend);
 
     // frete é cobrado À PARTE: calculado aqui e somado como linha própria
     const { calcularFrete } = require('./frete');
@@ -779,7 +974,8 @@ app.post('/api/orcamento', async (req, res) => {
     const pdfPath = path.join(__dirname, 'out', `orcamento-${numero}-${token}.pdf`);
     await gerarPDF({
       cliente,
-      pedido: { numero, vendedor: catalogo.empresa.vendedor_padrao },
+      // veio pelo link de um vendedor? é o nome dele que assina o documento
+      pedido: { numero, vendedor: vend ? vend.nome : catalogo.empresa.vendedor_padrao },
       orcamento, catalogo,
     }, pdfPath);
 
@@ -789,8 +985,10 @@ app.post('/api/orcamento', async (req, res) => {
     // registra no histórico para o painel (com o motivo, quando encaminhado)
     orcamentosDb.salvar({
       numero, canal: 'web',
-      origem: req.body?.vendedor ? 'vendedor' : 'cliente',
-      vendedor: req.body?.vendedor || null,
+      origem: vend || req.body?.vendedor ? 'vendedor' : 'cliente',
+      vendedor: vend ? vend.nome : (req.body?.vendedor || null),
+      vendedorId: vend ? vend.id : null,          // é por aqui que o painel filtra
+      vendedorSlug: vend ? vend.slug : null,
       cliente,
       orcamento: {
         ...orcamento,
@@ -906,6 +1104,10 @@ app.post('/webhook', async (req, res) => {
     console.error('Erro no webhook:', err.message);
   }
 });
+
+// Leva o vínculo acabamento↔telha para o catálogo em uso, quando ele ainda
+// não tem. Só preenche o que está vazio, nunca sobrescreve escolha do painel.
+require('./catalogo-arquivo').migrarVinculos();
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`🤖 Bot de orçamentos ouvindo na porta ${port}`));

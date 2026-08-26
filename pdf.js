@@ -24,6 +24,12 @@ async function gerarPDF({ cliente, pedido, orcamento, catalogo }, destino) {
   const logoUrl = catalogo.empresa?.logo || null;
   const fotos = await preCarregar([...orcamento.itens.map((i) => i.imagem), logoUrl]);
 
+  // Pix estático — null quando não há chave cadastrada, e o bloco some
+  const { pixDoOrcamento } = require('./pix');
+  const pix = await pixDoOrcamento(catalogo, {
+    numero: pedido.numero, valor: orcamento.totalAvista,
+  }).catch((e) => { console.warn('[pdf] Pix não gerado:', e.message); return null; });
+
   const doc = new PDFDocument({ size: 'A4', margin: M });
   const stream = doc.pipe(fs.createWriteStream(destino));
 
@@ -296,6 +302,42 @@ async function gerarPDF({ cliente, pedido, orcamento, catalogo }, destino) {
     cP.obs, yP + 22, { width: W - (cP.obs - M) - 6, lineBreak: false }
   );
   doc.y = yP + 34 + 10;
+
+  // ── PIX ───────────────────────────────────────────────────────────
+  // Estático: sem banco, sem taxa e sem aviso de pagamento — a baixa é
+  // pelo extrato. Some do PDF quando não há chave cadastrada.
+  if (pix) {
+    espaco(120);
+    faixa('PAGUE COM PIX');
+    const yPix = doc.y;
+    const larguraQr = 96;
+
+    if (pix.png) {
+      try { doc.image(pix.png, M, yPix, { fit: [larguraQr, larguraQr] }); }
+      catch (e) { /* QR inválido — segue com o copia e cola */ }
+    }
+    const xTexto = M + (pix.png ? larguraQr + 14 : 0);
+    const larguraTexto = W - (xTexto - M);
+
+    doc.font('Helvetica-Bold').fontSize(8).fillColor('#000')
+      .text(`Valor: R$ ${BRL(orcamento.totalAvista)}`, xTexto, yPix + 2, { width: larguraTexto });
+    doc.font('Helvetica').fontSize(7).fillColor('#333')
+      .text(`Favorecido: ${pix.nome}${pix.banco ? ' · ' + pix.banco : ''}`, xTexto, doc.y, { width: larguraTexto })
+      .text(`Chave: ${pix.chave}`, xTexto, doc.y, { width: larguraTexto });
+
+    doc.font('Helvetica-Bold').fontSize(6.5).fillColor('#000')
+      .text('COPIA E COLA', xTexto, doc.y + 4, { width: larguraTexto });
+    doc.font('Courier').fontSize(5.6).fillColor('#444')
+      .text(pix.payload, xTexto, doc.y, { width: larguraTexto });
+
+    doc.font('Helvetica-Oblique').fontSize(6.3).fillColor('#7a5b00')
+      .text('Confira sempre o favorecido antes de concluir o pagamento. '
+        + 'O pedido só é confirmado após a conferência do comprovante pela equipe.',
+        xTexto, doc.y + 3, { width: larguraTexto });
+
+    doc.fillColor('#000');
+    doc.y = Math.max(doc.y, yPix + (pix.png ? larguraQr : 0)) + 10;
+  }
 
   // ── TRANSPORTADORA ────────────────────────────────────────────────
   if (txt.transportadora) {

@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vendedores — Painel 4A</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/painel/ui.css">
+</head>
+<body></body>
+<script src="/painel/ui.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   VENDEDORES — só o administrador entra aqui.
+
+   Cada vendedor tem:
+     · login próprio (usuário + senha)
+     · um link de venda: /orcamento?v=slug
+     · a lista de telhas que ele pode vender
+     · no painel, só os orçamentos que saíram pelo link dele
+
+   O PREÇO NÃO MUDA POR VENDEDOR. Quem calcula é o mesmo motor, com o
+   mesmo catálogo — o vendedor filtra o que aparece, nunca quanto custa.
+   ═══════════════════════════════════════════════════════════════════ */
+let vendedores=[], telhas=[], busca='';
+
+montarShell('vendedores','Vendedores','Quem vende, o que vende e por qual link',
+  `<button class="btn" onclick="novo()">+ Novo vendedor</button>`);
+
+g('corpo').innerHTML=`
+  <div class="msg info" style="margin-bottom:18px">
+    O vendedor entra no painel com o usuário e a senha definidos aqui, e enxerga
+    <b>apenas os orçamentos feitos pelo link dele</b>. Cadastro de produto continua
+    só com você.
+  </div>
+
+  <div class="filtros">
+    <div class="campo busca" style="flex:2"><label>Buscar</label>
+      <input id="f-busca" placeholder="nome ou usuário" oninput="busca=this.value;pintar()"></div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="tabela">
+    <table>
+      <thead><tr>
+        <th>Vendedor</th><th>Entra como</th><th>Link de venda</th>
+        <th>O que vende</th><th class="num">Orçamentos</th><th>Situação</th><th></th>
+      </tr></thead>
+      <tbody id="lista"></tbody>
+    </table>
+    <div class="vazio" id="vazio" hidden>
+      <b>Nenhum vendedor cadastrado</b>
+      Enquanto não houver nenhum, o site funciona como hoje: um link único,
+      com todas as telhas, e todo orçamento visível só para você.
+    </div>
+  </div>`;
+
+/* ── carga ────────────────────────────────────────────────────────── */
+async function carregar(){
+  let d;
+  try{ d=await (await fetch('/api/painel/vendedores')).json(); }
+  catch{ return; }
+  vendedores=d.vendedores||[]; telhas=d.telhas||[];
+  contador('vendedores',vendedores.filter(v=>v.ativo!==false).length);
+  pintar();
+}
+
+const filtra=()=>{
+  const b=busca.trim().toLowerCase();
+  if(!b)return vendedores;
+  return vendedores.filter(v=>
+    (v.nome||'').toLowerCase().includes(b)||(v.usuario||'').toLowerCase().includes(b));
+};
+
+const linkDe=(v)=>location.origin+'/orcamento?v='+encodeURIComponent(v.slug);
+
+/** "Todas as telhas" quando não há restrição; senão, quantas e quais. */
+function oQueVende(v){
+  if(!Array.isArray(v.telhas))return '<span class="tag ok">Todas as telhas</span>';
+  if(!v.telhas.length)return '<span class="tag bad">Nenhuma telha</span>';
+  const nomes=v.telhas.map(id=>(telhas.find(t=>t.id===id)||{}).nome).filter(Boolean);
+  return `<span class="tag info">${v.telhas.length} telha(s)</span>`
+    +`<div style="font-size:11.5px;color:var(--muted);margin-top:3px">${esc(nomes.join(' · '))}</div>`;
+}
+
+function pintar(){
+  const lista=filtra();
+  const ativos=vendedores.filter(v=>v.ativo!==false).length;
+  const comOrc=vendedores.reduce((s,v)=>s+(v.orcamentos||0),0);
+
+  g('kpis').innerHTML=`
+    ${kpi('Vendedores ativos',ativos)}
+    ${kpi('Cadastrados',vendedores.length)}
+    ${kpi('Orçamentos pela rede',comOrc)}`;
+
+  g('lista').innerHTML=lista.map(v=>`
+    <tr>
+      <td><b>${esc(v.nome)}</b>
+        ${v.telefone?`<div style="font-size:12px;color:var(--muted)">${esc(v.telefone)}</div>`:''}</td>
+      <td><code>${esc(v.usuario)}</code></td>
+      <td>
+        <div style="font-size:12px;word-break:break-all;color:var(--muted)">${esc(linkDe(v))}</div>
+        <button class="btn g sm" style="margin-top:5px" onclick="copiar('${esc(v.slug)}',this)">Copiar link</button>
+      </td>
+      <td>${oQueVende(v)}</td>
+      <td class="num">${v.orcamentos||0}</td>
+      <td>${v.ativo===false?'<span class="tag bad">Desativado</span>':'<span class="tag ok">Ativo</span>'}</td>
+      <td style="white-space:nowrap">
+        <button class="btn g sm" onclick="editar('${esc(v.id)}')">Editar</button>
+        ${v.ativo===false?'':`<button class="btn r sm" onclick="desativar('${esc(v.id)}')">Desativar</button>`}
+      </td>
+    </tr>`).join('');
+
+  g('vazio').hidden=lista.length>0;
+}
+
+const kpi=(rot,val)=>`<div class="kpi"><span>${rot}</span><b>${val}</b></div>`;
+
+async function copiar(slug,btn){
+  const url=location.origin+'/orcamento?v='+encodeURIComponent(slug);
+  try{ await navigator.clipboard.writeText(url); btn.textContent='Copiado ✓'; }
+  catch{ btn.textContent='Copie da tela'; }
+  setTimeout(()=>{btn.textContent='Copiar link';},1800);
+}
+
+/* ── formulário ───────────────────────────────────────────────────── */
+function novo(){ editar(null); }
+
+function editar(id){
+  const v=id?vendedores.find(x=>x.id===id):null;
+  const marcadas=v&&Array.isArray(v.telhas)?v.telhas:null;   // null = todas
+
+  abrirGaveta(
+    `<h2>${v?esc(v.nome):'Novo vendedor'}</h2>
+     <div style="font-size:13px;color:var(--muted)">${v
+       ?'O link de venda não muda quando o nome muda — link já enviado continua valendo.'
+       :'Ele vai receber um link próprio e um login para o painel.'}</div>`,
+    `<div id="vd-msg" class="msg" hidden></div>
+     <input type="hidden" id="vd-id" value="${esc(id||'')}">
+
+     <div class="card">
+       <h2>Quem é</h2>
+       <div class="grade g2">
+         <div class="campo"><label>Nome <i>*</i></label>
+           <input id="vd-nome" value="${esc(v?.nome||'')}" placeholder="André Luis">
+           <small>aparece para o cliente na tela e no PDF</small></div>
+         <div class="campo"><label>WhatsApp / telefone</label>
+           <input id="vd-fone" value="${esc(v?.telefone||'')}" placeholder="(17) 98173-4676"></div>
+       </div>
+     </div>
+
+     <div class="card">
+       <h2>Acesso ao painel</h2>
+       <div class="grade g2">
+         <div class="campo"><label>Usuário <i>*</i></label>
+           <input id="vd-usuario" value="${esc(v?.usuario||'')}" placeholder="andre"
+             ${v?'':''}>
+           <small>letras, números, ponto, hífen ou sublinhado</small></div>
+         <div class="campo"><label>Senha ${v?'':'<i>*</i>'}</label>
+           <input id="vd-senha" type="password" autocomplete="new-password"
+             placeholder="${v?'deixe em branco para manter a atual':'mínimo 6 caracteres'}">
+           <small>${v?'só preencha se for trocar':'ele troca depois com você'}</small></div>
+       </div>
+       <div class="msg warn" style="margin-top:12px">
+         O painel mostra CPF, telefone e endereço de clientes. Use uma senha
+         diferente da sua e não repasse por grupo de WhatsApp.
+       </div>
+     </div>
+
+     <div class="card">
+       <h2>O que ele pode vender</h2>
+       <p class="d">Só as telhas marcadas aparecem no link dele — e o servidor
+         confere de novo na hora de fechar, então não adianta burlar a tela.
+         <b>Tudo marcado = vende a linha inteira</b>, inclusive telha nova que
+         você cadastrar depois.</p>
+       ${caixinhasTelhas(marcadas)}
+     </div>
+
+     <div class="card">
+       <h2>Situação</h2>
+       <div class="grade g2">
+         <div class="campo"><label>Ativo?</label>
+           <select id="vd-ativo"><option value="sim">Sim</option>
+             <option value="nao" ${v?.ativo===false?'selected':''}>Não</option></select>
+           <small>desativado não entra no painel e o link dele para de valer</small></div>
+       </div>
+     </div>
+
+     <div style="display:flex;gap:9px;position:sticky;bottom:0;background:var(--bg-soft);padding:14px 0">
+       <button class="btn" onclick="salvar()">${v?'Salvar alterações':'Cadastrar vendedor'}</button>
+       <button class="btn g" onclick="fecharGaveta()">Cancelar</button>
+     </div>`
+  );
+  contarTelhas();
+}
+
+const semAcento=(s)=>String(s||'').toLowerCase()
+  .normalize('NFD').replace(new RegExp('[\\u0300-\\u036f]','g'),'');
+
+function caixinhasTelhas(marcadas){
+  if(!telhas.length)return '<p class="d">Nenhuma telha ativa no catálogo.</p>';
+  const tudo=!Array.isArray(marcadas);
+  return `
+    <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
+      <div class="campo busca" style="flex:1;min-width:200px;margin:0">
+        <input id="vd-busca" placeholder="buscar telha por nome ou código"
+          oninput="filtrarTelhas()"></div>
+      <button type="button" class="btn g sm" onclick="marcarTelhas(true)">Marcar</button>
+      <button type="button" class="btn g sm" onclick="marcarTelhas(false)">Desmarcar</button>
+    </div>
+    <div id="vd-cont" class="sec" style="margin-bottom:8px"></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px">
+    ${telhas.map(t=>`<label class="vd-cx"
+        data-busca="${esc(semAcento(t.nome+' '+(t.codigo||t.id)))}"
+        style="display:flex;gap:9px;align-items:flex-start;
+        border:1px solid var(--line);padding:10px;cursor:pointer">
+      <input type="checkbox" class="vd-telha" value="${esc(t.id)}" onchange="contarTelhas()"
+        ${tudo||marcadas.indexOf(t.id)>=0?'checked':''} style="margin-top:2px">
+      <span><b style="font-size:13px">${esc(t.nome)}</b>
+        <small style="display:block;color:var(--muted)">${esc(t.codigo||t.id)}</small></span>
+    </label>`).join('')}
+    </div>`;
+}
+
+/* Esconde, não redesenha: redesenhar perderia o que já está marcado fora do
+   filtro, e salvar() lê TODAS as caixinhas. Buscar nunca desmarca nada. */
+function filtrarTelhas(){
+  const termo=semAcento(g('vd-busca')?.value);
+  document.querySelectorAll('.vd-cx').forEach(el=>{
+    el.style.display=(!termo||el.dataset.busca.includes(termo))?'':'none';
+  });
+  contarTelhas();
+}
+function marcarTelhas(ligar){
+  document.querySelectorAll('.vd-cx').forEach(el=>{
+    if(el.style.display==='none')return;          // só o que está na tela
+    const chk=el.querySelector('.vd-telha');
+    if(chk)chk.checked=ligar;
+  });
+  contarTelhas();
+}
+function contarTelhas(){
+  const el=g('vd-cont');
+  if(!el)return;
+  const todas=document.querySelectorAll('.vd-telha').length;
+  const on=document.querySelectorAll('.vd-telha:checked').length;
+  el.innerHTML=`<b>${on}</b> de ${todas} marcadas`
+    +(on===todas?' · vende a linha inteira, inclusive telha nova que você cadastrar depois':'');
+}
+
+async function salvar(){
+  const val=(id)=>g(id)?.value?.trim()||'';
+  const els=[...document.querySelectorAll('.vd-telha')];
+  const on=els.filter(e=>e.checked).map(e=>e.value);
+  // todas marcadas → null: o vendedor acompanha o catálogo, sem precisar
+  // voltar aqui toda vez que uma telha nova é cadastrada
+  const escolhidas=els.length&&on.length===els.length?null:on;
+
+  if(!val('vd-nome'))return aviso('vd-msg','bad','Informe o nome do vendedor.');
+  if(!val('vd-usuario'))return aviso('vd-msg','bad','Informe o usuário de acesso.');
+  if(Array.isArray(escolhidas)&&!escolhidas.length){
+    return aviso('vd-msg','bad','Marque ao menos uma telha — senão ele não tem o que vender.');
+  }
+
+  try{
+    await enviar('/api/painel/vendedor',{
+      id:val('vd-id')||null,
+      nome:val('vd-nome'),
+      usuario:val('vd-usuario'),
+      senha:val('vd-senha')||null,
+      telefone:val('vd-fone')||null,
+      telhas:escolhidas,
+      ativo:g('vd-ativo').value==='sim',
+    });
+    fecharGaveta();await carregar();
+  }catch(e){ aviso('vd-msg','bad',esc(e.message)); }
+}
+
+async function desativar(id){
+  const v=vendedores.find(x=>x.id===id);
+  if(!confirm(`Desativar ${v?.nome}?\n\nO link dele para de valer e ele não entra mais no painel. `
+    +`Os orçamentos que ele já fez continuam guardados e visíveis para você.`))return;
+  try{
+    await fetch('/api/painel/vendedor/'+encodeURIComponent(id),{method:'DELETE'});
+    await carregar();
+  }catch(e){ alert('Não consegui desativar: '+e.message); }
+}
+
+carregar();
+</script>
+</html>

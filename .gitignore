@@ -6,6 +6,10 @@ clientes/
 orcamentos/
 cache-geo.json
 .env
-# catálogo EM USO (o do repositório é só a semente) e o backup dele
+# catálogo EM USO (o do repositório é só a semente), vendedores e os backups
 dados/
 catalogo.backup.json
+catalogo.antes-do-vinculo.json
+# fotos enviadas pelo painel — são dado da empresa, não código
+img/*
+!img/LEIA-ME.md

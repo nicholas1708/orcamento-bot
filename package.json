@@ -5,13 +5,20 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node test.js"
+    "test": "node test.js && node teste-vinculo.js && node teste-migracao.js && node teste-vendedores.js && node teste-2aguas.js && node teste-completo.js",
+    "test:motor": "node test.js",
+    "test:vinculo": "node teste-vinculo.js",
+    "test:migracao": "node teste-migracao.js",
+    "test:vendedores": "node teste-vendedores.js",
+    "test:2aguas": "node teste-2aguas.js",
+    "test:completo": "node teste-completo.js"
   },
   "dependencies": {
     "axios": "^1.7.0",
     "dotenv": "^16.4.0",
     "express": "^4.19.0",
-    "pdfkit": "^0.15.0"
+    "pdfkit": "^0.15.0",
+    "qrcode": "^1.5.4"
   },
   "engines": { "node": ">=18" }
 }

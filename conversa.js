@@ -287,8 +287,11 @@ function aplicarAcabamentos(ficha, catalogo, acoes) {
   const maiorCorte = (p.grupos || []).reduce(
     (m, g) => Math.max(m, ...g.cortes.map((c) => Number(c.comprimentoM) || 0)), 0);
 
+  // a telha escolhida manda: só os acabamentos vinculados a ela entram
+  const telha = (catalogo.telhas || []).find((t) => t.id === (p.grupos || [])[0]?.telhaId);
+
   p.complementos = complementosSugeridos(
-    amb ? amb.comprimentoGalpaoM : null, maiorCorte, amb ? amb.quedas : 2, catalogo);
+    amb ? amb.comprimentoGalpaoM : null, maiorCorte, amb ? amb.quedas : 2, catalogo, telha);
 
   const nomes = p.complementos
     .map((c) => (catalogo.complementos || []).find((x) => x.id === c.produtoId)?.nome)

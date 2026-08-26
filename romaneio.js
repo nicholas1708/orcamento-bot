@@ -160,26 +160,28 @@ function calcularRomaneio(ambiente, telha, catalogo) {
   const fatorIncl = Math.sqrt(1 + Math.pow(inclPct / 100, 2));
 
   // ── ACRÉSCIMO DE MATERIAL PARA 2 ÁGUAS ────────────────────────────
-  // Regra da empresa: telhado de 2 águas leva 30% a mais de material —
-  // TODOS os materiais, não só a telha. Cobre caimento, transpasses e
-  // sobras de corte. Substitui o fator de inclinação: somar os dois
-  // contaria o caimento duas vezes.
+  // Regra da empresa: telhado de 2 águas leva 30% a mais no COMPRIMENTO DA
+  // TELHA — cobre caimento, transpasses e sobras de corte. Substitui o fator
+  // de inclinação: somar os dois contaria o caimento duas vezes.
+  //
+  // ⚠️ Vale SÓ para a telha. Conferido contra o orçamento 12x6 de 2 águas:
+  // cumeeira 12 un (= comprimento puro) e frontal 24 un (= comprimento x 2).
+  // Se o acréscimo entrasse neles, sairiam 16 e 32.
+  // O acabamento LATERAL acompanha a telha porque corre ao lado dela — então
+  // recebe o acréscimo por tabela, via compTelha, não por regra própria.
   // Cadastrado em engenharia.acrescimo_2_quedas_pct.
   const pctAcrescimo = Number(eng.acrescimo_2_quedas_pct);
   const acresce = quedas === 2 && Number.isFinite(pctAcrescimo) && pctAcrescimo > 0;
   const fatorMaterial = acresce ? 1 + pctAcrescimo / 100 : 1;
-  /** Aplica o acréscimo uma única vez, em qualquer quantidade de material. */
-  const comAcrescimo = (v) => round(v * fatorMaterial, 2);
 
   memoria.push(acresce
-    ? `2 águas: acréscimo de ${pctAcrescimo}% em todos os materiais (fator ${round(fatorMaterial, 4)})`
+    ? `2 águas: acréscimo de ${pctAcrescimo}% no comprimento da telha (fator ${round(fatorMaterial, 4)})`
     : `Inclinação ${inclPct}% → fator ${round(fatorIncl, 4)}`);
 
   // ── Comprimento da telha (sentido da água) ────────────────────────
-  // A geometria pura serve de base para tudo; o acréscimo entra por cima.
   const projecao = quedas === 2 ? W / 2 : W;
   const compGeo = round(projecao * (acresce ? 1 : fatorIncl) + eng.beiral_m, 2);
-  const compTelha = comAcrescimo(compGeo);
+  const compTelha = round(compGeo * fatorMaterial, 2);
   memoria.push(`${quedas} água(s): projeção ${round(projecao, 2)}m + beiral ${eng.beiral_m}m = ${compGeo}m` +
     (acresce ? ` → com acréscimo: ${compTelha}m` : ''));
 
@@ -236,12 +238,11 @@ function calcularRomaneio(ambiente, telha, catalogo) {
   const perfis = [];
   if (ambiente.comEstrutura) {
     const vaoMax = telha.vao_maximo_m || eng.vao_maximo_terca_padrao_m;
-    // terças correm paralelas à cumeeira; nº por água = vãos + 1
-    // (conta pela geometria; o acréscimo de material entra depois)
-    const tercasPorAgua = Math.ceil(round(compGeo / vaoMax, 4)) + 1;
-    const metrosTerca = comAcrescimo(tercasPorAgua * quedas * L);
-    memoria.push(`Terças: ${compGeo}m ÷ vão máx ${vaoMax}m + 1 = ${tercasPorAgua} por água → ${metrosTerca}m lineares` +
-      (acresce ? ` (já com ${pctAcrescimo}%)` : ''));
+    // terças correm paralelas à cumeeira; nº por água = vãos + 1.
+    // Usa o comprimento REAL da telha — é ela que precisa de apoio.
+    const tercasPorAgua = Math.ceil(round(compTelha / vaoMax, 4)) + 1;
+    const metrosTerca = round(tercasPorAgua * quedas * L, 2);
+    memoria.push(`Terças: ${compTelha}m ÷ vão máx ${vaoMax}m + 1 = ${tercasPorAgua} por água → ${metrosTerca}m lineares`);
 
     const terca = (catalogo.perfis || []).find((p) => p.tipo === 'terca');
     if (terca) {
@@ -259,17 +260,10 @@ function calcularRomaneio(ambiente, telha, catalogo) {
   }
 
   // ── Acabamentos pelo PERÍMETRO do telhado ─────────────────────────
-  // Perímetro sai da geometria; o acréscimo de material entra por cima,
-  // uma vez só, igual ao resto.
-  const base = complementosPorPerimetro(L, compGeo, quedas, catalogo);
-  const perimetro = {
-    frontalM: comAcrescimo(base.perimetro.frontalM),
-    lateralM: comAcrescimo(base.perimetro.lateralM),
-    cumeeiraM: comAcrescimo(base.perimetro.cumeeiraM),
-  };
-  const complementos = base.complementos.map((c) => ({ ...c, metros: comAcrescimo(c.metros) }));
-  memoria.push(`Perímetro: frontal ${perimetro.frontalM}m · lateral ${perimetro.lateralM}m · cumeeira ${perimetro.cumeeiraM}m` +
-    (acresce ? ` (já com ${pctAcrescimo}%)` : ''));
+  // SEM o acréscimo de 2 águas: cumeeira e frontal seguem a planta, não a
+  // água. A lateral acompanha a telha e por isso recebe compTelha.
+  const { complementos, perimetro } = complementosPorPerimetro(L, compTelha, quedas, catalogo, telha);
+  memoria.push(`Perímetro: frontal ${perimetro.frontalM}m · lateral ${perimetro.lateralM}m · cumeeira ${perimetro.cumeeiraM}m`);
 
   return {
     cortes, perfis, complementos, perimetro, memoria, avisos, escalarParaVendedor,
@@ -288,8 +282,12 @@ function calcularRomaneio(ambiente, telha, catalogo) {
  *   frontal  = beiral de cada água         → L x nº de águas
  *   lateral  = as duas bordas de cada água → comprimento da telha x 2 x nº de águas
  *   cumeeira = encontro das águas no topo  → L (só em 2 águas)
+ *
+ * @param {object} [telha] quando informada, só entram os acabamentos
+ *   VINCULADOS a ela (telha.compativeis.complementos). É isso que impede
+ *   uma telha branca receber cumeeira galvalume.
  */
-function complementosPorPerimetro(comprimentoGalpaoM, compTelhaM, quedas, catalogo) {
+function complementosPorPerimetro(comprimentoGalpaoM, compTelhaM, quedas, catalogo, telha) {
   const L = Number(comprimentoGalpaoM) || 0;
   const c = Number(compTelhaM) || 0;
   const q = Number(quedas) === 2 ? 2 : 1;
@@ -301,8 +299,7 @@ function complementosPorPerimetro(comprimentoGalpaoM, compTelhaM, quedas, catalo
   };
 
   const complementos = [];
-  for (const item of (catalogo.complementos || [])) {
-    if (item.ativo === false) continue;
+  for (const item of compativeisDaTelha(catalogo, telha, 'complementos')) {
     let metros = 0;
     if (item.aplica_em === 'frontal') metros = perimetro.frontalM;
     else if (item.aplica_em === 'lateral') metros = perimetro.lateralM;
@@ -314,11 +311,33 @@ function complementosPorPerimetro(comprimentoGalpaoM, compTelhaM, quedas, catalo
 }
 
 /**
+ * ITENS QUE PODEM ACOMPANHAR UMA TELHA.
+ *
+ * Cada telha tem sua lista de acabamentos e perfis compatíveis, cadastrada
+ * em `telha.compativeis`. Sem esse vínculo, uma telha branca acabava
+ * recebendo cumeeira galvalume — o código pegava qualquer item ativo do
+ * tipo certo.
+ *
+ * Telha SEM vínculo cadastrado continua vendo tudo que está ativo. É o
+ * comportamento antigo, de propósito: catálogo velho não quebra ao subir
+ * a versão nova.
+ *
+ * @param {'complementos'|'perfis'} quais
+ */
+function compativeisDaTelha(catalogo, telha, quais) {
+  const todos = (catalogo[quais] || []).filter((x) => x.ativo !== false);
+  const vinculo = telha && telha.compativeis && telha.compativeis[quais];
+  if (!Array.isArray(vinculo)) return todos;             // sem vínculo: tudo
+  return todos.filter((x) => vinculo.indexOf(x.id) >= 0);
+}
+
+/**
  * ESTRUTURA (terças) a partir do maior corte e do comprimento do galpão.
  * Mesma regra do WhatsApp: nº de terças = maior corte ÷ vão máximo + 1.
  */
 function calcularEstruturaPerfis(maiorCorteM, comprimentoGalpaoM, telhas, catalogo, perfilId) {
-  const ativos = (catalogo.perfis || []).filter((p) => p.ativo !== false);
+  // respeita o vínculo da telha: perfil não compatível não entra sozinho
+  const ativos = compativeisDaTelha(catalogo, telhas && telhas[0], 'perfis');
   // com id, usa exatamente o perfil pedido (pode ser viga, ripa, etc.)
   const perfil = ativos.find((p) => p.id === perfilId)
     || ativos.find((p) => p.tipo === 'terca');
@@ -353,5 +372,5 @@ function parseCortes(texto) {
 
 module.exports = {
   calcularRomaneio, parseCortes, opcoesDeCorte, corteComTamanho,
-  complementosPorPerimetro, calcularEstruturaPerfis,
+  complementosPorPerimetro, calcularEstruturaPerfis, compativeisDaTelha,
 };

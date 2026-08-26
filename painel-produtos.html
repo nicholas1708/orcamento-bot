@@ -135,12 +135,41 @@ function pintarTelhas(){
 }
 
 /* ── Lista: complementos ──────────────────────────────────────────── */
+/**
+ * Em quais telhas este acabamento está marcado.
+ * Zero = ele existe no cadastro mas não entra em orçamento nenhum. É o furo
+ * que aparece quando alguém cadastra a peça e esquece de ligar na telha.
+ */
+function telhasQueUsam(itemId, quais){
+  return telhas.filter(t=>{
+    const v=t.compativeis&&t.compativeis[quais];
+    return Array.isArray(v) ? v.indexOf(itemId)>=0 : true;   // sem vínculo = aceita tudo
+  });
+}
+
+/** Coluna "Vai em": em quantas telhas a peça está marcada. */
+function usadoEm(itemId, quais){
+  const u=telhasQueUsam(itemId, quais);
+  if(!u.length)return '<span class="tag bad">nenhuma telha</span>';
+  // o nome da telha é longo; o que diferencia está depois do travessão (a cor)
+  const curtos=u.map(t=>String(t.nome).split('—').pop().trim());
+  return `<span class="tag info">${u.length} telha(s)</span>`
+    +`<div class="sec">${esc(curtos.join(' · '))}</div>`;
+}
+
 function pintarComplementos(){
   const lista=filtra(complementos);
+  const orfaos=complementos.filter(c=>c.ativo!==false&&!telhasQueUsam(c.id,'complementos').length);
   g('conteudo').innerHTML=`
+    ${orfaos.length?`<div class="msg warn" style="margin-bottom:16px">
+      <b>${orfaos.length} acabamento(s) fora de qualquer telha:</b>
+      ${esc(orfaos.map(c=>c.nome).join(' · '))}.<br>
+      Eles não vão aparecer em orçamento nenhum. Abra a telha em
+      <a href="#" onclick="aba='telhas';pintar();return false">Telhas</a> e marque onde cada um entra.
+    </div>`:''}
     <div class="tabela"><table>
       <thead><tr><th>Produto</th><th>Tipo</th><th>Como é vendido</th>
-        <th>Preço</th><th>Vínculo do cálculo</th><th>Situação</th><th></th></tr></thead>
+        <th>Preço</th><th>Vínculo do cálculo</th><th>Vai em</th><th>Situação</th><th></th></tr></thead>
       <tbody>${lista.map(c=>{
         const vinculo=c.tipo==='fixacao'
           ?(c.consumo_por_m2>0?`<span class="tag ok">${NUM(c.consumo_por_m2,2)} por m²</span>`
@@ -158,6 +187,7 @@ function pintarComplementos(){
           <td class="num"><span class="prim">R$ ${BRL(c.preco)}</span>
             <div class="sec">${esc(c.unidade||'UN')}</div></td>
           <td>${vinculo}</td>
+          <td>${usadoEm(c.id,'complementos')}</td>
           <td>${c.ativo===false?'<span class="tag off">inativo</span>':'<span class="tag ok">ativo</span>'}</td>
           <td class="acao" onclick="event.stopPropagation()">
             <button class="btn g sm" onclick="editarComplemento('${esc(c.id)}')">Abrir</button>
@@ -282,6 +312,22 @@ function editarTelha(id){
      </div>
 
      <div class="card">
+       <h2>O que acompanha esta telha</h2>
+       <p class="d">Marque os acabamentos e perfis que servem <b>nesta</b> telha.
+         É essa lista que o cliente vê no orçamento e é dela que sai a quantidade —
+         cumeeira galvalume não pode ser oferecida numa telha branca.</p>
+       ${telhasParaCopiar(id)}
+       <div id="pr-vinc-aviso" class="msg" hidden style="margin-bottom:14px"></div>
+       ${caixinhas('pr-comp', complementos, p?(p.compativeis?.complementos??null):undefined,
+                   'Nenhum acabamento cadastrado ainda — cadastre na aba Acabamentos primeiro.',
+                   'buscar acabamento: cumeeira, frontal, lateral, parafuso…')}
+       <h2 style="margin-top:18px">Estrutura compatível</h2>
+       ${caixinhas('pr-perf', perfis, p?(p.compativeis?.perfis??null):undefined,
+                   'Nenhum perfil cadastrado ainda.',
+                   'buscar perfil: terça, viga…')}
+     </div>
+
+     <div class="card">
        <h2>Extras</h2>
        <div class="grade">
          <div class="campo"><label>Já vem com forro / isolamento?</label>
@@ -305,6 +351,156 @@ function editarTelha(id){
      </div>`
   );
   pintarFaixas();
+  conferirVinculo();          // telha nova já abre avisando que falta escolher
+}
+
+/**
+ * Lista de caixinhas de vínculo.
+ *
+ * ⚠️ TELHA NOVA NASCE COM NADA MARCADO — de propósito.
+ * Antes ela nascia com tudo marcado, o que virava "aceita tudo" e devolvia
+ * o defeito antigo: telha branca saindo com cumeeira galvalume, sem ninguém
+ * perceber. Melhor a telha nova avisar que falta escolher do que sair errada.
+ *
+ * @param marcados  array de ids  → marca exatamente esses
+ *                  null          → telha antiga, sem vínculo: marca tudo
+ *                  undefined     → telha NOVA: não marca nada
+ */
+function caixinhas(pref, itens, marcados, vazio, dica){
+  const lista=(itens||[]).filter(x=>x.ativo!==false);
+  if(!lista.length)return `<p class="d">${vazio}</p>`;
+  const marcado=(id)=>Array.isArray(marcados) ? marcados.indexOf(id)>=0 : marcados===null;
+  const rotulo=(x)=>[x.codigo,APLICA[x.aplica_em]||x.aplica_em,x.tipo].filter(Boolean).join(' · ');
+
+  return `
+    <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
+      <div class="campo busca" style="flex:1;min-width:200px;margin:0">
+        <input id="${pref}-busca" placeholder="${esc(dica||'buscar…')}"
+          oninput="filtrarCaixinhas('${pref}')"></div>
+      <button type="button" class="btn g sm" onclick="marcarTodas('${pref}',true)">Marcar</button>
+      <button type="button" class="btn g sm" onclick="marcarTodas('${pref}',false)">Desmarcar</button>
+    </div>
+    <div id="${pref}-cont" class="sec" style="margin-bottom:8px"></div>
+    <div id="${pref}-grade" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px">
+    ${lista.map(x=>`<label class="${pref}-cx"
+        data-busca="${esc(semAcento((x.nome||'')+' '+rotulo(x)))}"
+        style="display:flex;gap:9px;align-items:flex-start;
+        border:1px solid var(--line);padding:10px;cursor:pointer">
+      <input type="checkbox" class="${pref}-chk" value="${esc(x.id)}"
+        onchange="conferirVinculo()" ${marcado(x.id)?'checked':''} style="margin-top:2px">
+      <span><b style="font-size:13px">${esc(x.nome)}</b>
+        <small style="display:block;color:var(--muted)">${esc(rotulo(x)||'—')}</small></span>
+    </label>`).join('')}
+    </div>
+    <div class="vazio" id="${pref}-nada" hidden style="padding:22px">
+      Nenhum item com esse nome.
+    </div>`;
+}
+
+const semAcento=(s)=>String(s||'').toLowerCase()
+  .normalize('NFD').replace(new RegExp('[\\u0300-\\u036f]','g'),'');
+
+/**
+ * Busca dentro da lista de vínculo.
+ *
+ * ⚠️ Esconde, não redesenha. Redesenhar perderia o que já está marcado nos
+ * itens que saíram da tela — e `marcadas()` lê TODAS as caixinhas, inclusive
+ * as escondidas. Buscar nunca desmarca nada.
+ */
+function filtrarCaixinhas(pref){
+  const termo=semAcento(g(pref+'-busca')?.value);
+  let visiveis=0;
+  document.querySelectorAll('.'+pref+'-cx').forEach(el=>{
+    const bate=!termo||el.dataset.busca.includes(termo);
+    el.style.display=bate?'':'none';
+    if(bate)visiveis++;
+  });
+  const nada=g(pref+'-nada');
+  if(nada)nada.hidden=visiveis>0;
+  contarCaixinhas(pref);
+}
+
+/** "3 de 20 marcados" — com a busca ativa, dá o retrato do todo, não do filtro. */
+function contarCaixinhas(pref){
+  const el=g(pref+'-cont');
+  if(!el)return;
+  const todas=document.querySelectorAll('.'+pref+'-chk').length;
+  const on=document.querySelectorAll('.'+pref+'-chk:checked').length;
+  const filtrando=!!g(pref+'-busca')?.value.trim();
+  el.innerHTML=`<b>${on}</b> de ${todas} marcados`
+    +(filtrando?' · a busca só esconde, não desmarca':'');
+}
+
+/**
+ * Atalho da segunda telha em diante: puxa o vínculo de uma já cadastrada.
+ * Telha nova quase sempre repete tudo da irmã e muda só a cumeeira.
+ */
+function telhasParaCopiar(idAtual){
+  const outras=telhas.filter(t=>t.id!==idAtual);
+  if(!outras.length)return '';
+  return `<div class="campo" style="max-width:420px;margin-bottom:14px">
+    <label>Copiar de outra telha</label>
+    <select onchange="if(this.value)copiarVinculo(this.value);this.value=''">
+      <option value="">— escolha uma telha já cadastrada —</option>
+      ${outras.map(t=>`<option value="${esc(t.id)}">${esc(t.nome)}</option>`).join('')}
+    </select>
+    <small>traz as marcações dela e você ajusta só a diferença</small>
+  </div>`;
+}
+
+/**
+ * Marca/desmarca só o que está VISÍVEL.
+ * Com a busca ativa isso é o esperado: procuro "cumeeira", clico Marcar, e
+ * marco as cumeeiras — sem varrer o resto da lista junto.
+ */
+function marcarTodas(pref,ligar){
+  document.querySelectorAll('.'+pref+'-cx').forEach(el=>{
+    if(el.style.display==='none')return;
+    const chk=el.querySelector('.'+pref+'-chk');
+    if(chk)chk.checked=ligar;
+  });
+  conferirVinculo();
+}
+
+/**
+ * Ids marcados — sempre a lista de verdade.
+ *
+ * Não devolve mais null quando está tudo marcado. Guardar a lista explícita
+ * é o que faz o vínculo continuar valendo depois: se amanhã você cadastrar
+ * uma cumeeira de outra cor, ela NÃO entra sozinha nas telhas antigas.
+ */
+function marcadas(pref){
+  const els=[...document.querySelectorAll('.'+pref+'-chk')];
+  if(!els.length)return null;
+  return els.filter(e=>e.checked).map(e=>e.value);
+}
+
+/** Aviso ao vivo: telha sem acabamento marcado sai pelada no orçamento. */
+function conferirVinculo(){
+  contarCaixinhas('pr-comp');
+  contarCaixinhas('pr-perf');
+  const el=g('pr-vinc-aviso');
+  if(!el)return;
+  const n=document.querySelectorAll('.pr-comp-chk:checked').length;
+  if(n)return aviso('pr-vinc-aviso','',null);
+  aviso('pr-vinc-aviso','warn',
+    'Nenhum acabamento marcado: esta telha vai sair no orçamento <b>sem cumeeira, '
+    +'sem frontal, sem lateral e sem parafuso</b>. Marque o que acompanha ela.');
+}
+
+/** Copia o vínculo de uma telha já cadastrada — atalho da segunda telha em diante. */
+function copiarVinculo(id){
+  const t=telhas.find(x=>x.id===id);
+  if(!t)return;
+  const põe=(pref,ids)=>document.querySelectorAll('.'+pref+'-chk').forEach(e=>{
+    // telha sem vínculo (cadastro antigo) valia por "tudo"
+    e.checked=Array.isArray(ids)?ids.indexOf(e.value)>=0:true;
+  });
+  põe('pr-comp',t.compativeis?.complementos);
+  põe('pr-perf',t.compativeis?.perfis);
+  conferirVinculo();
+  aviso('pr-vinc-aviso','info',
+    `Copiado de <b>${esc(t.nome)}</b>. Ajuste o que for diferente — a cumeeira quase sempre é.`);
 }
 
 function pintarFaixas(){
@@ -348,6 +544,14 @@ async function salvarTelha(){
   if(!dec(v('pr-cmax')))return aviso('pr-msg','bad','Informe o comprimento máximo de fabricação.');
   if(!fx.length)return aviso('pr-msg','bad','Informe ao menos um preço.');
 
+  // deixa passar, mas não deixa acontecer sem querer
+  const semAcab=document.querySelectorAll('.pr-comp-chk').length
+    && !document.querySelectorAll('.pr-comp-chk:checked').length;
+  if(semAcab && !confirm(
+    'Nenhum acabamento marcado para esta telha.\n\n'
+    +'Ela vai sair no orçamento só com as telhas — sem cumeeira, sem frontal, '
+    +'sem lateral e sem parafuso.\n\nSalvar assim mesmo?'))return;
+
   const corpo={
     id:v('pr-id')||null, codigo:v('pr-codigo')||null, nome:v('pr-nome'),
     familia:v('pr-familia')||'Outros',
@@ -358,6 +562,7 @@ async function salvarTelha(){
     comprimento_maximo_m:dec(v('pr-cmax')), comprimento_minimo_m:dec(v('pr-cmin')),
     transpasse_m:dec(v('pr-transp')), vao_maximo_m:dec(v('pr-vao')),
     inclinacao_minima_pct:dec(v('pr-incl')), promocao_ate_m:dec(v('pr-promo')),
+    compativeis:{complementos:marcadas('pr-comp'), perfis:marcadas('pr-perf')},
     forro_integrado:g('pr-forro').value==='sim',
     ativo:g('pr-ativo').value==='sim',
     imagem:v('pr-img')||null, observacao:v('pr-obs')||null,

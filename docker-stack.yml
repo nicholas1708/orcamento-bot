@@ -30,10 +30,15 @@ services:
       EMPRESA_NOME: "DEFINIR_NO_PORTAINER"
       EMPRESA_TELEFONE: "DEFINIR_NO_PORTAINER"
       EMPRESA_CIDADE: "DEFINIR_NO_PORTAINER"
+    # ⚠️ O container é DESCARTÁVEL: some e é recriado da imagem a cada deploy.
+    # Tudo que a empresa cadastra tem que estar num volume, senão volta ao que
+    # está no repositório e o cadastro se perde.
     volumes:
+      - orcamento-dados:/app/dados         # ⚠️ catálogo em uso + vendedores — o cadastro
+      - orcamento-fotos:/app/img           # ⚠️ fotos enviadas pelo painel
       - orcamento-sessions:/app/sessions   # fichas de conversa sobrevivem a redeploy
       - orcamento-pdfs:/app/out            # PDFs gerados
-      - orcamento-imgs:/app/img-cache      # fotos dos produtos (baixadas 1x)
+      - orcamento-imgs:/app/img-cache      # cache de fotos baixadas do CDN
       - orcamento-clientes:/app/clientes   # cadastro de clientes recorrentes
       - orcamento-hist:/app/orcamentos     # histórico exibido no painel
     networks:
@@ -56,6 +61,8 @@ networks:
     external: true
 
 volumes:
+  orcamento-dados:
+  orcamento-fotos:
   orcamento-sessions:
   orcamento-pdfs:
   orcamento-imgs:

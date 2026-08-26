@@ -104,6 +104,14 @@ async function processar(chatId, textoRaw) {
       .map((p) => ({ ...p, _avulso: 'perfil' })),
   ];
 
+  /** Terças que servem na telha escolhida (sem vínculo no cadastro, todas). */
+  const tercasDisponiveis = () => {
+    const { compativeisDaTelha } = require('./romaneio');
+    const P = ficha.pedido || {};
+    const telha = (catalogo.telhas || []).find((t) => t.id === (P.grupos || [])[0]?.telhaId);
+    return compativeisDaTelha(catalogo, telha, 'perfis').filter((p) => p.tipo === 'terca');
+  };
+
   const perguntarItemAvulso = () => {
     const lista = itensAvulsos();
     if (!lista.length) {
@@ -520,7 +528,7 @@ async function processar(chatId, textoRaw) {
       if (!e) { pedirDados(); break; }
 
       // mais de uma terça cadastrada? quem escolhe é o cliente
-      const tercas = (catalogo.perfis || []).filter((p) => p.ativo !== false && p.tipo === 'terca');
+      const tercas = tercasDisponiveis();
       if (tercas.length > 1) {
         say(menu('🔧 Qual perfil de estrutura?', tercas.map((p) =>
           `${p.nome} — R$ ${BRL(p.preco)}/m (vence até ${String(p.vao_maximo_m).replace('.', ',')}m)`)));
@@ -532,7 +540,7 @@ async function processar(chatId, textoRaw) {
     }
 
     case 'ESTRUTURA_PERFIL': {
-      const tercas = (catalogo.perfis || []).filter((p) => p.ativo !== false && p.tipo === 'terca');
+      const tercas = tercasDisponiveis();
       const p = await escolhaInteligente(texto, tercas, tercas.map((x) => x.nome), 'perfil de estrutura');
       if (!p) { erro(R.T.erroOpcao); break; }
       ficha.tentativasErro = 0;
@@ -843,7 +851,10 @@ function aplicarComplementos(P, catalogo, comprimentoGalpaoM, quedas, say) {
   const maiorCorte = P.grupos.reduce(
     (m, g) => Math.max(m, ...g.cortes.map((c) => Number(c.comprimentoM) || 0)), 0);
 
-  P.complementos = complementosSugeridos(comprimentoGalpaoM, maiorCorte, quedas, catalogo);
+  // só o que está vinculado à telha escolhida (cumeeira da cor certa)
+  const telha = (catalogo.telhas || []).find((t) => t.id === P.grupos[0]?.telhaId);
+
+  P.complementos = complementosSugeridos(comprimentoGalpaoM, maiorCorte, quedas, catalogo, telha);
 
   if (!P.complementos.length) {
     say('⚠️ Nenhum acabamento cadastrado no catálogo — seguindo só com as telhas.');
@@ -860,7 +871,9 @@ function aplicarComplementos(P, catalogo, comprimentoGalpaoM, quedas, say) {
 
 /** Terças pelo maior corte do orçamento e pelo vão máximo da telha mais restritiva. */
 function calcularEstrutura(P, catalogo, comprimentoGalpaoM, say) {
-  const ativos = (catalogo.perfis || []).filter((p) => p.ativo !== false);
+  const { compativeisDaTelha } = require('./romaneio');
+  const telha = (catalogo.telhas || []).find((t) => t.id === P.grupos[0]?.telhaId);
+  const ativos = compativeisDaTelha(catalogo, telha, 'perfis');
   const perfil = (P.perfilEscolhido && ativos.find((p) => p.id === P.perfilEscolhido))
     || ativos.find((p) => p.tipo === 'terca');
   if (!perfil) { say('⚠️ Perfil de terça não cadastrado — estrutura não incluída.'); return; }

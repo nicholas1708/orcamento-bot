@@ -13,6 +13,13 @@
     "email": "contato@4arepresentacao.com.br",
     "site": "www.4arepresentacao.com.br",
     "vendedor_padrao": "André Luis",
+    "_pix_nota": "Pix ESTÁTICO: o QR é gerado pelo sistema, sem banco e sem taxa. Não avisa quando é pago — a conciliação é no extrato. Deixe 'chave' vazia para não mostrar Pix no orçamento.",
+    "pix": {
+      "chave": "44627801000157",
+      "nome": "4A COMERCIO E REPRESENTACAO",
+      "cidade": "CEDRAL",
+      "banco": "SICOOB"
+    },
     "logo": "https://d4polyhz8pjtz.cloudfront.net/5223/logo-3768-20221005184441-06-15-2023-15-51-14-000000.png"
   },
   "pagamento": {
@@ -96,6 +103,8 @@
           "preco": 120.73
         }
       ],
+      "preco_tabela": 141.75,
+      "_preco_tabela_nota": "Preço CHEIO de tabela, usado só como 'de' na vitrine e na LP. NÃO é o preço cobrado — quem cobra é faixas_preco.",
       "largura_util_m": 1.0,
       "comprimento_maximo_m": 8.0,
       "comprimento_minimo_m": 0.5,
@@ -108,6 +117,11 @@
       "promocao_ate_m": 8.0,
       "_promocao_nota": "Os preços das faixas são PROMOCIONAIS e valem para peças de até 8m. Peça maior sai da promoção e entra em outra base de cálculo — o sistema encaminha ao vendedor.",
       "imagem": "/img/telha-confort-pir-galvalume-branco.jpg",
+      "_compativeis_nota": "Acabamentos e perfis que ACOMPANHAM esta telha. Só estes entram no cálculo automático. Face superior galvalume → cumeeira galvalume.",
+      "compativeis": {
+        "complementos": ["P148384", "P143019", "P152327", "P142962", "P6391P4", "PPA-101"],
+        "perfis": ["PF-TERCA-C150", "PF-TERCA-C100", "PF-VIGA-U200"]
+      },
       "ativo": true
     },
     {
@@ -150,6 +164,8 @@
           "preco": 131.35
         }
       ],
+      "preco_tabela": 141.75,
+      "_preco_tabela_nota": "Preço CHEIO de tabela, usado só como 'de' na vitrine e na LP. NÃO é o preço cobrado — quem cobra é faixas_preco.",
       "largura_util_m": 1.0,
       "comprimento_maximo_m": 8.0,
       "comprimento_minimo_m": 0.5,
@@ -162,6 +178,11 @@
       "promocao_ate_m": 8.0,
       "_promocao_nota": "Os preços das faixas são PROMOCIONAIS e valem para peças de até 8m. Peça maior sai da promoção e entra em outra base de cálculo — o sistema encaminha ao vendedor.",
       "imagem": "/img/telha-confort-pir-branco-branco.jpg",
+      "_compativeis_nota": "Face superior BRANCA → cumeeira BRANCA (P148474), não a galvalume. Era esse o erro antes do vínculo existir.",
+      "compativeis": {
+        "complementos": ["P148474", "P143019", "P152327", "P142962", "P6391P4", "PPA-101"],
+        "perfis": ["PF-TERCA-C150", "PF-TERCA-C100", "PF-VIGA-U200"]
+      },
       "ativo": true
     }
   ],
@@ -195,8 +216,8 @@
       "unidade": "UN",
       "preco": 53.88,
       "aplica_em": "cumeeira",
-      "ativo": false,
-      "_nota": "alternativa branca da cumeeira — ative se for usada"
+      "ativo": true,
+      "_nota": "cumeeira BRANCA — vinculada à telha Branco/Branco (P358768)"
     },
     {
       "id": "P143019",
@@ -224,6 +245,8 @@
       "venda_por": "metro",
       "unidade": "M²",
       "preco": 27.48,
+      "comprimento_barra_m": 3.0,
+      "_barra_nota": "Vem em barra fechada de 3m (ver descricao_completa). Cobra por metro, mas fatura barra inteira: 16,12m viram 18m.",
       "aplica_em": "lateral",
       "ativo": true,
       "_nota": "vendido em barras de 3m, mas COBRADO POR METRO (conferido no orçamento 11454: 20 m² x 27,48 = 549,60)"
@@ -239,6 +262,7 @@
       "venda_por": "metro",
       "unidade": "M²",
       "preco": 47.95,
+      "comprimento_barra_m": 3.0,
       "aplica_em": "interno",
       "ativo": true
     },

@@ -124,6 +124,15 @@ function validarCatalogo(catalogo) {
     if (c.tipo === 'fixacao' && !(Number(c.consumo_por_m2) > 0)) {
       problemas.push(`${eu}: sem consumo por m² — a quantidade não é calculada sozinha.`);
     }
+    // Peça cadastrada e ligada em telha nenhuma nunca chega no orçamento.
+    // É o furo mais fácil de criar: cadastra o acabamento e esquece a telha.
+    const usam = (catalogo.telhas || []).filter((t) => {
+      const v = t.compativeis && t.compativeis.complementos;
+      return Array.isArray(v) ? v.indexOf(c.id) >= 0 : true;   // sem vínculo = aceita tudo
+    });
+    if (!usam.length) {
+      problemas.push(`${eu}: não está marcado em nenhuma telha — não vai aparecer em orçamento nenhum. Abra a telha e marque onde ele entra.`);
+    }
     if (c.aplica_em && c.venda_por !== 'metro' && c.venda_por !== 'barra'
         && !(Number(c.rendimento_m) > 0)) {
       alertas.push(`${eu}: sem rendimento por metro — o sistema assume 1 peça por metro.`);

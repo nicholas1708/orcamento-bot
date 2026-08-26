@@ -144,14 +144,16 @@ function aplicarLista(linhas, catalogo, ambiente) {
  * @param {number|null} compTelhaM          maior corte (define as laterais)
  * @param {number} quedas
  */
-function complementosSugeridos(comprimentoGalpaoM, compTelhaM, quedas, catalogo) {
-  const { complementosPorPerimetro } = require('./romaneio');
-  const ativos = (catalogo.complementos || []).filter((c) => c.ativo !== false);
+function complementosSugeridos(comprimentoGalpaoM, compTelhaM, quedas, catalogo, telha) {
+  const { complementosPorPerimetro, compativeisDaTelha } = require('./romaneio');
+  // só o que está VINCULADO à telha escolhida (sem vínculo, tudo que é ativo)
+  const ativos = compativeisDaTelha(catalogo, telha, 'complementos');
   const out = [];
 
   // pelo perímetro: só dá pra calcular sabendo as medidas do telhado
   if (comprimentoGalpaoM > 0 && compTelhaM > 0) {
-    const { complementos } = complementosPorPerimetro(comprimentoGalpaoM, compTelhaM, quedas, catalogo);
+    const { complementos } = complementosPorPerimetro(
+      comprimentoGalpaoM, compTelhaM, quedas, catalogo, telha);
     for (const c of complementos) out.push({ produtoId: c.produtoId, metros: c.metros });
   }
 

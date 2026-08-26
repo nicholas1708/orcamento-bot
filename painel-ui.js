@@ -5,11 +5,18 @@
    ═══════════════════════════════════════════════════════════════════ */
 const LOGO = 'https://d4polyhz8pjtz.cloudfront.net/5223/logo-3768-20221005184441-06-15-2023-15-51-14-000000.png';
 
+// admin:true = só o dono vê no menu. O servidor também barra a rota; esconder
+// aqui é só para o vendedor não bater numa porta trancada.
 const PAGINAS = [
-  { id: 'orcamentos', href: '/painel',           ic: '📄', nome: 'Orçamentos' },
-  { id: 'clientes',   href: '/painel/clientes',  ic: '👤', nome: 'Clientes' },
-  { id: 'produtos',   href: '/painel/produtos',  ic: '🧱', nome: 'Produtos' },
+  { id: 'orcamentos', href: '/painel',            ic: '📄', nome: 'Orçamentos' },
+  { id: 'clientes',   href: '/painel/clientes',   ic: '👤', nome: 'Clientes' },
+  { id: 'produtos',   href: '/painel/produtos',   ic: '🧱', nome: 'Produtos', admin: true },
+  { id: 'vendedores', href: '/painel/vendedores', ic: '🤝', nome: 'Vendedores', admin: true },
 ];
+
+/** Quem está logado. Preenchido por montarShell; null até a resposta chegar. */
+let EU = null;
+const souAdmin = () => !EU || EU.papel === 'admin';
 
 /* ── atalhos ──────────────────────────────────────────────────────── */
 const g = (id) => document.getElementById(id);
@@ -100,9 +107,10 @@ function montarShell(atual, titulo, sub, acoes = '') {
             <span class="tag" id="cnt-${p.id}" hidden></span></a>`).join('')}
           <div class="sec">Ferramentas</div>
           <a class="item" href="/painel/dados"><span class="ic">📥</span>Importar planilha</a>
+
           <a class="item" href="/orcamento" target="_blank"><span class="ic">↗</span>Abrir orçamento</a>
         </menu>
-        <div class="pe">4A Comércio e Representação<br>de Materiais de Construção</div>
+        <div class="pe" id="nav-eu">4A Comércio e Representação<br>de Materiais de Construção</div>
       </nav>
       <div class="main">
         <div class="topo">
@@ -118,7 +126,35 @@ function montarShell(atual, titulo, sub, acoes = '') {
         <div class="conteudo" id="gv-corpo"></div></div>
     </div>`;
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') fecharGaveta(); });
+  identificar();
   return g('corpo');
+}
+
+/**
+ * Descobre quem está logado e ajusta o menu.
+ * Falhou? Deixa como está — a rota do servidor continua protegida, e é melhor
+ * um menu a mais do que o painel não abrir.
+ */
+async function identificar() {
+  try {
+    const r = await fetch('/api/painel/eu');
+    if (!r.ok) return;
+    EU = await r.json();
+  } catch { return; }
+
+  if (EU.papel !== 'admin') {
+    for (const p of PAGINAS) {
+      if (!p.admin) continue;
+      document.querySelectorAll(`a.item[href="${p.href}"]`).forEach((a) => a.remove());
+    }
+    document.querySelectorAll('a.item[href="/painel/dados"]').forEach((a) => a.remove());
+  }
+  const pe = g('nav-eu');
+  if (pe) {
+    pe.innerHTML = `<b>${esc(EU.nome)}</b><br>`
+      + (EU.papel === 'admin' ? 'Administrador' : 'Vendedor');
+  }
+  document.dispatchEvent(new CustomEvent('eu', { detail: EU }));
 }
 
 /** Marca no menu quantos registros cada área tem. */

@@ -28,6 +28,11 @@
   .marca span{font-family:'Barlow Condensed';font-weight:700;text-transform:uppercase;font-size:13.5px;
     letter-spacing:.06em;line-height:1.1;color:var(--ink);border-left:2px solid var(--brand);padding-left:11px}
   .marca span i{display:block;font-style:normal;color:var(--brand)}
+  /* faixa do vendedor — só aparece quando o cliente veio pelo link dele */
+  #vend{display:flex;align-items:center;gap:9px;background:var(--brand);color:#fff;
+    padding:9px 13px;margin-bottom:14px;font-size:13px}
+  #vend b{font-family:'Barlow Condensed';text-transform:uppercase;letter-spacing:.05em;font-size:14px}
+  #vend small{opacity:.85}
   .topo{display:flex;align-items:center;gap:10px;margin-bottom:20px}
   .voltar{background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);padding:2px 6px;visibility:hidden}
   .voltar.on{visibility:visible}
@@ -143,6 +148,8 @@
          alt="4A Comércio e Representação de Materiais de Construção">
     <span>Orçamento<i>de telhas</i></span>
   </div>
+  <!-- preenchido só quando o cliente veio pelo link de um vendedor -->
+  <div id="vend" hidden></div>
   <div class="topo">
     <button class="voltar" id="bv" onclick="voltar()">←</button>
     <div class="barra"><i id="pg"></i></div>
@@ -583,7 +590,7 @@ function desenhar(){
     inicializarSelecao();
     const acab=complementosAplicaveis().filter(c=>c.tipo==='acabamento');
     const fix=complementosAplicaveis().filter(c=>c.tipo==='fixacao');
-    const perfis=(cat.perfis||[]).filter(p=>p.ativo!==false);
+    const perfis=perfisAplicaveis();
 
     const item=(x,marcado,onclick,detalhe)=>
       cartao(x,onclick,{marcado,detalhe});
@@ -756,8 +763,21 @@ function desenhar(){
  * pra não parecer que o cliente está levando uma peça que não vai no PDF.
  */
 function complementosAplicaveis(){
+  const t=telhaA()||{};
+  // só o que está VINCULADO a esta telha (sem vínculo, tudo que é ativo).
+  // É o que impede telha branca aparecer com cumeeira galvalume.
+  const vinculo=t.compativeis&&t.compativeis.complementos;
   return (cat.complementos||[]).filter(c=>
-    c.ativo!==false && !(c.aplica_em==='cumeeira' && A.quedas!==2));
+    c.ativo!==false
+    && (!Array.isArray(vinculo)||vinculo.indexOf(c.id)>=0)
+    && !(c.aplica_em==='cumeeira' && A.quedas!==2));
+}
+/** Perfis que acompanham a telha escolhida. */
+function perfisAplicaveis(){
+  const t=telhaA()||{};
+  const vinculo=t.compativeis&&t.compativeis.perfis;
+  return (cat.perfis||[]).filter(p=>
+    p.ativo!==false && (!Array.isArray(vinculo)||vinculo.indexOf(p.id)>=0));
 }
 
 function inicializarSelecao(){
@@ -927,9 +947,22 @@ function corpoDoPedido(){
       opcaoCorte:A.opcaoCorte,               // como emendar, quando a água é longa
       tamanhoPreferidoM:A.tamanhoPreferidoM,
       complementosIds:marcados.filter(id=>aplicaveis.includes(id)),
-      perfisIds:marcados.filter(id=>(cat.perfis||[]).some(p=>p.id===id))};
+      perfisIds:marcados.filter(id=>perfisAplicaveis().some(p=>p.id===id))};
   }
   return {modo:'itens',itens:B.itens.map(x=>({id:x.id,tipo:x.tipo,qtd:+x.qtd,comp:+x.comp||null}))};
+}
+
+/* Link do vendedor: /orcamento?v=slug. Vai junto em toda chamada.
+   Quem confere é o servidor — aqui é só transporte. */
+const VSLUG=new URLSearchParams(location.search).get('v')||null;
+
+/** Faixa "Atendimento: Fulano". Só o nome e o telefone, nunca dado interno. */
+function mostrarVendedor(v){
+  const el=document.getElementById('vend');
+  if(!el||!v||!v.nome)return;
+  el.innerHTML=`<b>Atendimento: ${esc(v.nome)}</b>`
+    +(v.telefone?` <small>· ${esc(v.telefone)}</small>`:'');
+  el.hidden=false;
 }
 
 async function carregarLista(){
@@ -937,7 +970,7 @@ async function carregarLista(){
   let d;
   try{
     const r=await fetch('/api/lista',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({pedido:corpoDoPedido()})});
+      body:JSON.stringify({pedido:corpoDoPedido(),vendedorSlug:VSLUG})});
     const txt=await r.text();
     try{ d=JSON.parse(txt); }
     catch{
@@ -1149,7 +1182,8 @@ async function gerar(){
       .map(l=>({id:l.id,tipo:l.tipo,qtd:+l.qtd,comp:+l.comp||null})),
     ambiente:R.ambiente||null};
   const d=await fetch('/api/orcamento',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({pedido:corpo,cliente,vendedor:new URLSearchParams(location.search).get('vendedor')||null})})
+    body:JSON.stringify({pedido:corpo,cliente,vendedorSlug:VSLUG,
+      vendedor:new URLSearchParams(location.search).get('vendedor')||null})})
     .then(r=>r.json()).catch(()=>({error:'Falha ao gerar — tente de novo.'}));
   ocupado(false);
   if(d.error)return err(d.error);
@@ -1167,8 +1201,11 @@ try{
     _de3d=JSON.parse(p);sessionStorage.removeItem('pedido3d');
   }
 }catch(e){}
-fetch('/api/catalogo').then(r=>r.json()).then(c=>{
+fetch('/api/catalogo'+(VSLUG?'?v='+encodeURIComponent(VSLUG):'')).then(r=>r.json()).then(c=>{
   cat=c;
+  // Link de vendedor: o cliente vê com quem está falando, e a vitrine já
+  // chegou reduzida à linha dele (o servidor filtrou).
+  if(c.vendedor)mostrarVendedor(c.vendedor);
   if(_de3d){                                   // monta a ficha vinda do 3D
     if(_de3d.modo==='auto'){
       modo='A';A.telhaId=_de3d.telhaId;A.cg=_de3d.comprimentoGalpaoM;A.lg=_de3d.larguraGalpaoM;

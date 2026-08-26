@@ -34,6 +34,9 @@ g('corpo').innerHTML=`
     <div class="campo"><label>Quem gerou</label><select id="f-origem" onchange="carregar()">
       <option value="">Todos</option><option value="cliente">Cliente</option>
       <option value="vendedor">Vendedor</option></select></div>
+    <!-- só o admin vê: o vendedor já recebe a lista dele filtrada pelo servidor -->
+    <div class="campo" id="cx-vendedor" hidden><label>Vendedor</label>
+      <select id="f-vendedor" onchange="carregar()"><option value="">Todos</option></select></div>
     <div class="campo"><label>Canal</label><select id="f-canal" onchange="carregar()">
       <option value="">Todos</option><option value="web">Site</option>
       <option value="whatsapp">WhatsApp</option></select></div>
@@ -62,10 +65,23 @@ g('corpo').innerHTML=`
 let timer;
 const deb=()=>{clearTimeout(timer);timer=setTimeout(carregar,350);};
 
+// O menu já sabe quem entrou (painel-ui.js). Com vendedores cadastrados,
+// o admin ganha o filtro por vendedor; o vendedor não vê nem o campo.
+function filtroVendedor(eu){
+  if(!eu||eu.papel!=='admin'||!(eu.vendedores||[]).length)return;
+  g('f-vendedor').innerHTML='<option value="">Todos</option>'
+    +eu.vendedores.map(v=>`<option value="${esc(v.id)}">${esc(v.nome)}${v.ativo===false?' (inativo)':''}</option>`).join('')
+    +'<option value="sem">— sem vendedor (link público)</option>';
+  g('cx-vendedor').hidden=false;
+}
+document.addEventListener('eu',(ev)=>filtroVendedor(ev.detail));
+filtroVendedor(EU);        // caso a resposta já tenha chegado antes daqui
+
 async function carregar(){
   const q=new URLSearchParams();
   for(const [p,id] of [['busca','f-busca'],['de','f-de'],['ate','f-ate'],
-                       ['origem','f-origem'],['canal','f-canal'],['status','f-status']]){
+                       ['origem','f-origem'],['canal','f-canal'],['status','f-status'],
+                       ['vendedor','f-vendedor']]){
     const v=g(id)?.value;if(v)q.set(p,v);
   }
   try{

@@ -52,4 +52,62 @@ function caminhoBackup() {
     : BACKUP;
 }
 
-module.exports = { caminhoCatalogo, caminhoBackup, DIR };
+/**
+ * MIGRAÇÃO ÚNICA: leva o vínculo acabamento↔telha para o catálogo EM USO.
+ *
+ * O problema que ela resolve: a semente do repositório já traz `compativeis`
+ * nas telhas, mas a semente só é copiada na PRIMEIRA execução. Num servidor
+ * que já roda há tempo, `dados/catalogo.json` existe e nunca é sobrescrito —
+ * então o vínculo novo nunca chegaria, e a telha branca continuaria saindo
+ * com cumeeira galvalume.
+ *
+ * Regras que a tornam segura de rodar em toda subida:
+ *   · só mexe em telha que NÃO tem vínculo nenhum — nunca sobrescreve escolha
+ *   · só copia id que existe de verdade no catálogo em uso
+ *   · telha cadastrada depois (não está na semente) fica de fora, e o painel
+ *     avisa que ela está sem acabamento
+ *   · grava backup antes e é idempotente: na segunda vez não faz nada
+ */
+function migrarVinculos() {
+  const arq = caminhoCatalogo();
+  if (arq === SEMENTE) return { migradas: 0 };      // rodando do repositório
+
+  let vivo, semente;
+  try {
+    vivo = JSON.parse(fs.readFileSync(arq, 'utf8'));
+    semente = JSON.parse(fs.readFileSync(SEMENTE, 'utf8'));
+  } catch (e) {
+    console.warn(`[vínculos] não consegui ler os catálogos (${e.message}) — nada migrado.`);
+    return { migradas: 0 };
+  }
+
+  const existentes = (ids, lista) =>
+    (ids || []).filter((id) => (lista || []).some((x) => x.id === id));
+
+  const nomes = [];
+  for (const t of vivo.telhas || []) {
+    if (t.compativeis) continue;                    // já escolhido: não encosta
+    const ref = (semente.telhas || []).find((x) => x.id === t.id);
+    if (!ref || !ref.compativeis) continue;         // telha só do servidor
+    t.compativeis = {
+      complementos: existentes(ref.compativeis.complementos, vivo.complementos),
+      perfis: existentes(ref.compativeis.perfis, vivo.perfis),
+    };
+    nomes.push(t.nome || t.id);
+  }
+
+  if (!nomes.length) return { migradas: 0 };
+
+  try {
+    // backup próprio, para não apagar o backup do último salvamento do painel
+    fs.writeFileSync(path.join(DIR, 'catalogo.antes-do-vinculo.json'), fs.readFileSync(arq));
+    fs.writeFileSync(arq, JSON.stringify(vivo, null, 2));
+    console.log(`[vínculos] acabamentos vinculados em ${nomes.length} telha(s): ${nomes.join(' · ')}`);
+  } catch (e) {
+    console.warn(`[vínculos] não consegui gravar (${e.message}) — catálogo intacto.`);
+    return { migradas: 0 };
+  }
+  return { migradas: nomes.length, telhas: nomes };
+}
+
+module.exports = { caminhoCatalogo, caminhoBackup, migrarVinculos, DIR };

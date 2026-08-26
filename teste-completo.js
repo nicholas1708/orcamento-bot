@@ -79,7 +79,7 @@ function afirma(rotulo, condicao, detalhe = '') {
 
   // ── 2) LISTA DE CONFERÊNCIA ────────────────────────────────────────
   console.log('\n2) Lista de conferência (sem preço)');
-  const complementos = complementosSugeridos(L, rom.compTelha, quedas, catalogo)
+  const complementos = complementosSugeridos(L, rom.compTelha, quedas, catalogo, telha)
     .map((c) => {
       const sug = rom.complementos.find((x) => x.produtoId === c.produtoId);
       return sug ? { produtoId: c.produtoId, metros: sug.metros } : c;

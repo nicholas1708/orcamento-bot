@@ -8,8 +8,10 @@ RUN npm install --omit=dev
 
 COPY . .
 
-# fichas de conversa, PDFs gerados e cache de imagens (volumes no stack)
-RUN mkdir -p sessions out img-cache clientes orcamentos
+# Tudo que é DADO e não código. Cada uma destas é volume no stack — sem isso
+# o deploy apaga cadastro de produto, foto e vendedor, porque o container é
+# descartado e recriado a partir da imagem.
+RUN mkdir -p sessions out img-cache clientes orcamentos dados img
 
 EXPOSE 3000
 CMD ["node", "server.js"]
