@@ -16,7 +16,8 @@
     "_pix_nota": "Pix ESTÁTICO: o QR é gerado pelo sistema, sem banco e sem taxa. Não avisa quando é pago — a conciliação é no extrato. Deixe 'chave' vazia para não mostrar Pix no orçamento.",
     "pix": {
       "chave": "44627801000157",
-      "nome": "4A COMERCIO E REPRESENTACAO",
+      "_nome_nota": "Titular da conta ligada à chave. O BR Code corta em 25 caracteres — este cabe em exatamente 25. Confirmado com o cliente em 27/08.",
+      "nome": "A L DE LIMA REPRESENTACAO",
       "cidade": "CEDRAL",
       "banco": "SICOOB"
     },

@@ -5,6 +5,8 @@ img-cache/
 clientes/
 orcamentos/
 cache-geo.json
+lixeira/
+COMMIT.txt
 .env
 # catálogo EM USO (o do repositório é só a semente), vendedores e os backups
 dados/

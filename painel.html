@@ -22,7 +22,8 @@ const SIT={novo:['Novo','info'],em_negociacao:['Em negociação','warn'],
 let dados=[];
 
 montarShell('orcamentos','Orçamentos','Gerados pelo site e pelo WhatsApp',
-  `<button class="btn g" onclick="exportar()">⤓ Exportar CSV</button>
+  `<button class="btn g" id="bt-limpar" hidden onclick="abrirLimpeza()">🧹 Limpar testes</button>
+   <button class="btn g" onclick="exportar()">⤓ Exportar CSV</button>
    <button class="btn" onclick="carregar()">Atualizar</button>`);
 
 g('corpo').innerHTML=`
@@ -74,8 +75,14 @@ function filtroVendedor(eu){
     +'<option value="sem">— sem vendedor (link público)</option>';
   g('cx-vendedor').hidden=false;
 }
-document.addEventListener('eu',(ev)=>filtroVendedor(ev.detail));
+/* Limpar testes é só do admin — o vendedor não vê nem o botão.
+   O servidor também barra a rota; isto aqui é só para não bater em porta trancada. */
+function ajustarAdmin(eu){
+  if(eu&&eu.papel==='admin')g('bt-limpar').hidden=false;
+}
+document.addEventListener('eu',(ev)=>{filtroVendedor(ev.detail);ajustarAdmin(ev.detail);});
 filtroVendedor(EU);        // caso a resposta já tenha chegado antes daqui
+ajustarAdmin(EU);
 
 async function carregar(){
   const q=new URLSearchParams();
@@ -210,6 +217,74 @@ function verFicha(i){
 async function mudar(numero,status){
   try{ await enviar('/api/painel/status',{numero,status}); carregar(); }
   catch(e){ alert(e.message); }
+}
+
+/* ═══════════════ LIMPAR TESTES ═══════════════
+   Duas etapas de propósito: primeiro mostra o que existe, depois pede o
+   clique final. E não apaga — move para lixeira/, que tem volta. */
+async function abrirLimpeza(){
+  let d;
+  try{ d=await (await fetch('/api/painel/limpeza')).json(); }
+  catch{ return alert('Não consegui ler o que existe para limpar.'); }
+
+  const mb=(b)=>(b/1024/1024).toFixed(1).replace('.',',');
+  const item=(i)=>`
+    <label style="display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);
+        padding:12px;margin-bottom:8px;${i.sempre?'background:var(--bg-soft)':'cursor:pointer'}">
+      <input type="checkbox" class="lm-chk" value="${i.id}" ${i.sempre?'checked disabled':''}
+        style="margin-top:2px">
+      <span style="flex:1"><b style="font-size:13.5px">${esc(i.rotulo)}</b>
+        <small style="display:block;color:var(--muted)">
+          ${i.quantidade} arquivo(s) · ${mb(i.bytes)} MB${i.sempre?' · sempre vai junto':''}</small></span>
+    </label>`;
+
+  const total=d.itens.filter(i=>i.sempre).reduce((s,i)=>s+i.quantidade,0);
+
+  abrirGaveta(
+    `<h2>Limpar testes</h2>
+     <div style="font-size:13px;color:var(--muted)">Zera o histórico antes de entrar em produção</div>`,
+    `<div id="lm-msg" class="msg" hidden></div>
+     <div class="card">
+       <h2>O que sai</h2>
+       <p class="d">Orçamento e PDF andam juntos — separar deixaria link quebrado
+         no painel. O resto é opcional.</p>
+       ${d.itens.map(item).join('')}
+     </div>
+     <div class="card">
+       <h2>O que fica</h2>
+       <p class="d">Catálogo, produtos, preços, fotos e vendedores. Nada disso é tocado.</p>
+     </div>
+     <div class="msg info">
+       <b>Tem volta.</b> Os arquivos são movidos para uma pasta <code>lixeira/</code>
+       com data e hora, não apagados. Se levar algo que não devia, dá para
+       recuperar. Quando conferir, você apaga a pasta.
+     </div>
+     <div style="display:flex;gap:9px;position:sticky;bottom:0;background:var(--bg-soft);padding:14px 0">
+       <button class="btn r" id="lm-ok" onclick="executarLimpeza()"
+         ${total?'':'disabled'}>Mover para a lixeira</button>
+       <button class="btn g" onclick="fecharGaveta()">Cancelar</button>
+     </div>`
+  );
+  if(!total)aviso('lm-msg','info','Não há orçamento nenhum para limpar.');
+}
+
+async function executarLimpeza(){
+  const marcadas=[...document.querySelectorAll('.lm-chk:checked:not(:disabled)')].map(e=>e.value);
+  const btn=g('lm-ok');
+  btn.disabled=true;btn.textContent='Movendo…';
+  try{
+    const r=await enviar('/api/painel/limpeza',{
+      clientes:marcadas.includes('clientes'),
+      conversas:marcadas.includes('conversas'),
+    });
+    aviso('lm-msg','ok',`<b>${r.movidos} arquivo(s)</b> movidos para <code>${esc(r.pasta)}/</code>.`);
+    btn.textContent='Pronto ✓';
+    await carregar();
+    setTimeout(fecharGaveta,2200);
+  }catch(e){
+    aviso('lm-msg','bad',esc(e.message));
+    btn.disabled=false;btn.textContent='Mover para a lixeira';
+  }
 }
 
 function exportar(){

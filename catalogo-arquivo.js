@@ -84,6 +84,20 @@ function migrarVinculos() {
   const existentes = (ids, lista) =>
     (ids || []).filter((id) => (lista || []).some((x) => x.id === id));
 
+  // ── Pix e outros dados da empresa ─────────────────────────────────
+  // Mesma armadilha do vínculo: `empresa.pix` entrou na semente depois que o
+  // servidor já rodava, e a semente não é recopiada. Sem isso o bloco "Pague
+  // com Pix" some do PDF em silêncio — pixDoOrcamento devolve null quando não
+  // acha chave. Só preenche o que está FALTANDO; nunca troca valor existente.
+  const novosCampos = [];
+  vivo.empresa = vivo.empresa || {};
+  for (const campo of ['pix', 'logo', 'whatsapp', 'telefones']) {
+    if (vivo.empresa[campo] === undefined && semente.empresa?.[campo] !== undefined) {
+      vivo.empresa[campo] = semente.empresa[campo];
+      novosCampos.push(campo);
+    }
+  }
+
   const nomes = [];
   for (const t of vivo.telhas || []) {
     if (t.compativeis) continue;                    // já escolhido: não encosta
@@ -96,18 +110,23 @@ function migrarVinculos() {
     nomes.push(t.nome || t.id);
   }
 
-  if (!nomes.length) return { migradas: 0 };
+  if (!nomes.length && !novosCampos.length) return { migradas: 0, campos: [] };
 
   try {
     // backup próprio, para não apagar o backup do último salvamento do painel
     fs.writeFileSync(path.join(DIR, 'catalogo.antes-do-vinculo.json'), fs.readFileSync(arq));
     fs.writeFileSync(arq, JSON.stringify(vivo, null, 2));
-    console.log(`[vínculos] acabamentos vinculados em ${nomes.length} telha(s): ${nomes.join(' · ')}`);
+    if (nomes.length) {
+      console.log(`[vínculos] acabamentos vinculados em ${nomes.length} telha(s): ${nomes.join(' · ')}`);
+    }
+    if (novosCampos.length) {
+      console.log(`[vínculos] dados da empresa preenchidos: ${novosCampos.join(', ')}`);
+    }
   } catch (e) {
     console.warn(`[vínculos] não consegui gravar (${e.message}) — catálogo intacto.`);
-    return { migradas: 0 };
+    return { migradas: 0, campos: [] };
   }
-  return { migradas: nomes.length, telhas: nomes };
+  return { migradas: nomes.length, telhas: nomes, campos: novosCampos };
 }
 
 module.exports = { caminhoCatalogo, caminhoBackup, migrarVinculos, DIR };

@@ -122,6 +122,25 @@ app.get('/api/painel/orcamentos', exigirLogin, (req, res) => {
   res.json({ orcamentos: lista, estatisticas: orcamentosDb.estatisticas(lista) });
 });
 
+// ── PAINEL › LIMPAR TESTES (só admin) ─────────────────────────────────
+// Tira os orçamentos de teste antes de entrar em produção. Move para
+// lixeira/, não apaga: erro de clique tem volta. Mesmo código do limpar.js.
+app.get('/api/painel/limpeza', exigirAdmin, (_req, res) => {
+  res.json({ itens: require('./limpar').inventario() });
+});
+
+app.post('/api/painel/limpeza', exigirAdmin, (req, res) => {
+  try {
+    const { clientes, conversas } = req.body || {};
+    const r = require('./limpar').limpar({ clientes: !!clientes, conversas: !!conversas });
+    console.log(`[painel] limpeza: ${r.movidos} arquivo(s) → ${r.pasta}`);
+    res.json({ ok: true, ...r });
+  } catch (e) {
+    console.error('Erro /api/painel/limpeza:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── PAINEL › VENDEDORES (só admin) ────────────────────────────────────
 // Cada vendedor tem seu link (/orcamento?v=slug) e a lista de telhas que
 // pode vender. Preço não muda por vendedor — o motor é o mesmo para todos.
@@ -390,8 +409,30 @@ app.get('/api/painel/produtos', exigirAdmin, (_req, res) => {
  */
 app.get('/api/painel/diagnostico', exigirAdmin, (_req, res) => {
   const { validarCatalogo } = require('./pricing');
-  const r = validarCatalogo(lerCat());
-  res.json({ problemas: r.problemas || [], alertas: r.alertas || [] });
+  const cat = lerCat();
+  const r = validarCatalogo(cat);
+
+  // RETRATO DO QUE ESTÁ NO AR. Serve para responder "por que tal coisa não
+  // aparece?" sem precisar entrar no container: mostra qual catálogo está em
+  // uso, se ele é volume (sobrevive ao deploy) e se o código novo subiu.
+  const arqCat = caminhoCatalogo();
+  const temModulo = (m) => { try { require.resolve(m); return true; } catch { return false; } };
+
+  res.json({
+    problemas: r.problemas || [],
+    alertas: r.alertas || [],
+    sistema: {
+      versao: require('./package.json').version,
+      catalogoEmUso: arqCat,
+      catalogoEhVolume: arqCat !== path.join(__dirname, 'catalogo.json'),
+      pixNoCatalogo: !!cat.empresa?.pix?.chave,
+      chavePix: cat.empresa?.pix?.chave || null,
+      codigoPixPresente: temModulo('./pix'),
+      qrcodeInstalado: temModulo('qrcode'),
+      telhasSemVinculo: (cat.telhas || []).filter((t) => !t.compativeis).map((t) => t.nome),
+      vendedoresCadastrados: vendedoresDb.listar().length,
+    },
+  });
 });
 
 /** Cadastro de perfis de estrutura (terças, vigas). */
@@ -1031,6 +1072,14 @@ app.post('/api/orcamento', async (req, res) => {
     }
 
     console.log(`[WEB] Orçamento ${numero} — ${cliente.nome} (${cliente.telefone}) — ${orcamento.metragemTotal}mts — R$ ${orcamento.totalAvista}`);
+
+    // Pix na tela também, não só no PDF. O QR vai como data URL para a tela
+    // não precisar de mais uma rota — são ~1,5 KB.
+    // Sem chave cadastrada devolve null e o bloco some sozinho.
+    const { pixDoOrcamento } = require('./pix');
+    const pix = await pixDoOrcamento(catalogo, { numero, valor: orcamento.totalAvista })
+      .catch((e) => { console.warn('[web] Pix não gerado:', e.message); return null; });
+
     res.json({
       numero,
       totalProdutos: orcamento.totalProdutos,
@@ -1042,6 +1091,10 @@ app.post('/api/orcamento', async (req, res) => {
       pagamentos: orcamento.pagamentos,
       avisos: orcamento.avisos,
       pdf: '/out/' + path.basename(pdfPath),
+      pix: pix ? {
+        payload: pix.payload, chave: pix.chave, nome: pix.nome, banco: pix.banco,
+        qr: pix.png ? 'data:image/png;base64,' + pix.png.toString('base64') : null,
+      } : null,
     });
   } catch (e) {
     if (!e.publico) console.error('Erro /api/orcamento:', e);

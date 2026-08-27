@@ -5,8 +5,11 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node test.js && node teste-vinculo.js && node teste-migracao.js && node teste-vendedores.js && node teste-2aguas.js && node teste-completo.js",
+    "test": "node test.js && node teste-pix.js && node teste-vinculo.js && node teste-migracao.js && node teste-vendedores.js && node teste-2aguas.js && node teste-completo.js",
     "test:motor": "node test.js",
+    "conferir": "node conferir.js",
+    "limpar": "node limpar.js",
+    "test:pix": "node teste-pix.js",
     "test:vinculo": "node teste-vinculo.js",
     "test:migracao": "node teste-migracao.js",
     "test:vendedores": "node teste-vendedores.js",

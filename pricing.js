@@ -149,6 +149,34 @@ function validarCatalogo(catalogo) {
     if (!p.codigo) alertas.push(`${eu}: sem código do ERP.`);
   }
 
+  // ── PIX ───────────────────────────────────────────────────────────
+  // Sem chave, o bloco "Pague com Pix" some do PDF e da tela SEM avisar —
+  // pixDoOrcamento devolve null de propósito. Já custou um "por que não está
+  // gerando?", então aqui vira problema visível.
+  const pix = catalogo.empresa?.pix;
+  if (!pix?.chave) {
+    problemas.push('Pix: sem chave em empresa.pix — o bloco de pagamento não aparece no orçamento nem no PDF.');
+  } else {
+    const d = String(pix.chave).replace(/\D/g, '');
+    const ehCpfCnpj = d.length === 11 || d.length === 14;
+    const ehEmail = String(pix.chave).includes('@');
+    const ehAleatoria = /^[0-9a-f-]{36}$/i.test(String(pix.chave).trim());
+    if (!ehCpfCnpj && !ehEmail && !ehAleatoria && !/^\+?\d{12,13}$/.test(d)) {
+      problemas.push(`Pix: a chave "${pix.chave}" não parece CPF/CNPJ, e-mail, telefone nem chave aleatória.`);
+    }
+    const cnpj = String(catalogo.empresa?.cnpj || '').replace(/\D/g, '');
+    if (d.length === 14 && cnpj && d !== cnpj) {
+      problemas.push(`Pix: a chave (${d}) é um CNPJ diferente do CNPJ da empresa (${cnpj}) — confira para não receber na conta errada.`);
+    }
+    if (!pix.nome) alertas.push('Pix: sem nome do favorecido — o app do banco vai mostrar a razão social truncada.');
+    if (!pix.cidade) alertas.push('Pix: sem cidade do favorecido — assume CEDRAL.');
+    try {
+      require('qrcode');
+    } catch {
+      alertas.push('Pix: pacote "qrcode" não instalado — sai só o copia e cola, sem o QR. Rode npm install.');
+    }
+  }
+
   // ── UNIDADES (origem do material → distância e frete) ─────────────
   const ativas = (catalogo.unidades || []).filter((u) => u.ativa !== false);
   if (!ativas.length) problemas.push('Nenhuma unidade ativa cadastrada — não dá para medir a distância da obra.');

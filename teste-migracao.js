@@ -95,6 +95,23 @@ afirma('não vinculou acabamento que não existe aqui',
   !ler().telhas.find((t) => t.id === 'P358768').compativeis.complementos.includes('P142962'));
 afirma('e as duas conhecidas foram migradas', r4.migradas === 2, `${r4.migradas}`);
 
+/* ── 4b) Pix chega no catálogo do servidor ─────────────────────────── */
+console.log('\n4b) Pix (o motivo de o bloco sumir do PDF)');
+const semPix = clone();
+delete semPix.empresa.pix;
+escrever(semPix);
+migrarVinculos();
+afirma('chave Pix preenchida',
+  ler().empresa.pix?.chave === semente.empresa.pix.chave, ler().empresa.pix?.chave);
+
+// e não pode trocar chave que já está lá — dinheiro indo pra conta errada
+const outraChave = clone();
+outraChave.empresa.pix = { chave: 'financeiro@4a.com.br', nome: 'X', cidade: 'Y' };
+escrever(outraChave);
+migrarVinculos();
+afirma('chave já cadastrada é intocável',
+  ler().empresa.pix.chave === 'financeiro@4a.com.br', ler().empresa.pix.chave);
+
 /* ── 5) arquivo corrompido não derruba o serviço ───────────────────── */
 console.log('\n5) Catálogo corrompido');
 fs.writeFileSync(EM_USO, '{ isso não é json');

@@ -133,6 +133,20 @@
   .fim a.pdf{display:block;margin-top:16px;padding:16px;background:var(--brand);color:#fff;font-weight:700;
     text-decoration:none;font-family:'Barlow Condensed';font-size:18px;text-transform:uppercase;letter-spacing:.05em}
   .fim a.pdf:hover{background:var(--brand-dd)}
+  /* Pix da tela final */
+  .pix{margin-top:16px;border:1px solid var(--line);padding:18px;text-align:center}
+  .pix-tit{font-family:'Barlow Condensed';font-weight:700;text-transform:uppercase;
+    letter-spacing:.06em;font-size:15px;color:var(--brand-dd);margin-bottom:12px}
+  .pix-qr{width:172px;height:172px;display:block;margin:0 auto 12px;image-rendering:pixelated}
+  .pix-quem{font-size:13px;line-height:1.5;margin-bottom:12px}
+  .pix-quem span{color:var(--muted);font-size:12px;word-break:break-all}
+  .pix-copia{width:100%;padding:13px;background:#fff;color:var(--brand-dd);
+    border:1px solid var(--brand);font-weight:700;text-transform:uppercase;
+    font-size:13px;letter-spacing:.04em;cursor:pointer}
+  .pix-copia:hover{background:var(--brand);color:#fff}
+  .pix textarea{display:none;width:100%;margin-top:8px;font-family:monospace;
+    font-size:10px;height:76px;border:1px solid var(--line);padding:8px;resize:none}
+  .pix-aviso{font-size:11.5px;color:var(--muted);line-height:1.5;margin-top:11px;text-align:left}
   .fim a.zap{display:block;margin-top:12px;padding:16px;background:var(--wa);color:#fff;font-weight:700;
     text-decoration:none;font-family:'Barlow Condensed';font-size:18px;text-transform:uppercase;letter-spacing:.05em}
   .fim button{margin-top:14px;background:none;border:none;color:var(--muted);cursor:pointer;
@@ -746,8 +760,51 @@ function desenhar(){
       <div class="parc">${r.pagamentos.map(p=>`<div><span>${p.parcelas}x</span>
         <span>R$ ${BRL(p.valorParcela)}</span></div>`).join('')}</div>
       <a class="pdf" href="${r.pdf}" target="_blank">📄 Baixar orçamento completo</a>
+      ${blocoPix(r)}
       <button onclick="location.reload()">Fazer outro orçamento</button></div>`);
   }
+}
+
+/**
+ * PIX NA TELA FINAL.
+ *
+ * Some sozinho quando não há chave cadastrada — nunca mostra bloco de
+ * pagamento vazio.
+ *
+ * ⚠️ Pix estático não avisa quando é pago: a baixa é pelo extrato. Por isso o
+ * texto deixa claro que pagar NÃO confirma o pedido — quem confirma é a
+ * equipe, depois de conferir estoque e prazo. Sem esse aviso o cliente paga
+ * achando que fechou.
+ */
+function blocoPix(r){
+  const p=r&&r.pix;
+  if(!p||!p.payload)return '';
+  return `
+    <div class="pix">
+      <div class="pix-tit">Pague com Pix</div>
+      ${p.qr?`<img src="${p.qr}" alt="QR Code do Pix" class="pix-qr">`:''}
+      <div class="pix-quem">${esc(p.nome)}${p.banco?' · '+esc(p.banco):''}<br>
+        <span>Chave: ${esc(p.chave)}</span></div>
+      <button type="button" class="pix-copia" onclick="copiarPix(this)">Copiar código Pix</button>
+      <textarea id="pix-payload" readonly>${esc(p.payload)}</textarea>
+      <p class="pix-aviso">Confira o favorecido antes de pagar. O pagamento
+        <b>não confirma o pedido</b> — a equipe confere estoque e prazo e entra
+        em contato.</p>
+    </div>`;
+}
+
+async function copiarPix(btn){
+  const t=g('pix-payload');
+  if(!t)return;
+  try{
+    await navigator.clipboard.writeText(t.value);
+    btn.textContent='Copiado ✓';
+  }catch{
+    // clipboard bloqueado (http, navegador antigo): mostra pra copiar na mão
+    t.style.display='block';t.select();
+    btn.textContent='Selecione e copie';
+  }
+  setTimeout(()=>{btn.textContent='Copiar código Pix';},2200);
 }
 
 /* ══════════════ AÇÕES ══════════════ */

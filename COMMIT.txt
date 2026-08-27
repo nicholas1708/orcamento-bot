@@ -1,20 +1,19 @@
-Rede de vendedores, vinculo acabamento-telha e volumes que faltavam
+Vinculo acabamento-telha, rede de vendedores, Pix na tela e volumes que faltavam
 
 VINCULO ACABAMENTO <-> TELHA
-Cada telha passa a declarar quais acabamentos e perfis a acompanham
-(campo compativeis). Antes o codigo pegava qualquer complemento ativo com
-o aplica_em certo, entao a telha BRANCA saia com cumeeira GALVALUME.
-Vale nos quatro caminhos: calculo automatico, wizard do site, WhatsApp e
-sugestao de acabamentos. Telha sem vinculo cadastrado continua aceitando
-tudo que esta ativo, para catalogo antigo nao quebrar.
+Cada telha declara quais acabamentos e perfis a acompanham (compativeis).
+Antes o codigo pegava qualquer complemento ativo com o aplica_em certo, entao
+a telha BRANCA saia com cumeeira GALVALUME. Vale nos quatro caminhos: calculo
+automatico, wizard do site, WhatsApp e sugestao de acabamentos. Telha sem
+vinculo continua aceitando tudo, para catalogo antigo nao quebrar.
 
 Corrigido no caminho: os ids dos parafusos no vinculo estavam sem o "P"
 (6391P4 em vez de P6391P4), o que tiraria parafuso de todo orcamento.
 
 CADASTRO DO VINCULO (painel > Produtos)
-- telha nova nasce com nada marcado (antes nascia com tudo, o que virava
-  "aceita tudo" e devolvia o defeito calado)
-- busca dentro da lista; esconde, nao desmarca
+- telha nova nasce com nada marcado; antes nascia com tudo, o que virava
+  "aceita tudo" e devolvia o defeito calado
+- busca dentro da lista de acabamentos; esconde, nao desmarca
 - Marcar/Desmarcar agem so no que esta visivel
 - contador "N de M marcados"
 - "Copiar de outra telha" para a segunda telha em diante
@@ -23,9 +22,9 @@ CADASTRO DO VINCULO (painel > Produtos)
 - diagnostico trata acabamento orfao como problema
 
 REDE DE VENDEDORES
-Novo vendedores.js: cadastro em dados/vendedores.json, senha com scrypt e
-sal por usuario. Basic auth agora com usuario; admin + PAINEL_SENHA
-continua valendo sempre, como saida de emergencia.
+Novo vendedores.js: cadastro em dados/vendedores.json, senha com scrypt e sal
+por usuario. Basic auth agora com usuario; admin + PAINEL_SENHA continua
+valendo sempre, como saida de emergencia.
 
 - exigirSenha virou exigirLogin + exigirAdmin
 - so o admin cadastra produto, vendedor, importa planilha e ve diagnostico
@@ -35,24 +34,45 @@ continua valendo sempre, como saida de emergencia.
   do que nao e dele. Cliente de outro responde 404, nao 403
 - trava no servidor em montarPedido: nao adianta trocar o telhaId no POST
 - admin ve tudo, com filtro por vendedor e o nome na coluna Origem
-- O MOTOR NAO MUDA: engine, romaneio e pricing nao sabem que vendedor
-  existe. Preco e o mesmo por qualquer link
+- O MOTOR NAO MUDA: engine, romaneio e pricing nao sabem que vendedor existe.
+  Preco e o mesmo por qualquer link
+
+PIX
+- bloco de pagamento na TELA FINAL do orcamento, nao so no PDF: QR, favorecido,
+  botao de copiar e o aviso de que pagar nao confirma o pedido
+- favorecido passa a ser "A L DE LIMA REPRESENTACAO" (titular da conta ligada
+  a chave; cabe nos 25 caracteres do BR Code sem cortar)
+- diagnostico do painel passa a acusar Pix ausente ou chave suspeita, em vez
+  de o bloco sumir em silencio
 
 VOLUMES QUE FALTAVAM (deploy apagava cadastro)
-/app/dados e /app/img nao tinham volume: catalogo em uso, fotos enviadas
-pelo painel e vendedores eram perdidos a cada atualizacao. Adicionados
+/app/dados e /app/img nao tinham volume: catalogo em uso, fotos enviadas pelo
+painel e vendedores eram perdidos a cada atualizacao. Adicionados
 orcamento-dados e orcamento-fotos no stack e no Dockerfile.
 
-MIGRACAO DO VINCULO
-A semente so e copiada na primeira execucao, entao num servidor que ja roda
-o vinculo novo nunca chegaria. migrarVinculos() roda na subida: preenche so
-telha sem vinculo, nunca sobrescreve escolha do painel, so usa id que existe
-no catalogo em uso, faz backup antes e e idempotente.
+MIGRACAO NA SUBIDA
+A semente so e copiada na primeira execucao, entao num servidor que ja roda o
+vinculo e a chave Pix nunca chegariam. migrarVinculos() preenche so o que esta
+faltando, nunca sobrescreve escolha do painel, so usa id que existe no
+catalogo em uso, faz backup antes e e idempotente.
+
+FERRAMENTAS
+- conferir.js: mostra o calculo passo a passo de uma telha e uma medida, para
+  comparar com o que o vendedor faz a mao. Sinaliza largura util maior que a
+  total, comprimento maximo ausente e acabamento sem vinculo
+- limpar.js + botao "Limpar testes" no painel (so admin): zera orcamentos,
+  PDFs e, opcionalmente, clientes e conversas. MOVE para lixeira/<data-hora>,
+  nao apaga. Botao e linha de comando rodam o mesmo codigo
+- /api/painel/diagnostico ganhou bloco "sistema": versao, catalogo em uso, se
+  e volume, se o Pix esta no catalogo, se o codigo do Pix subiu, telhas sem
+  vinculo. Serve para responder "por que tal coisa nao aparece" sem entrar no
+  container
 
 TESTES
-Novos: teste-vinculo.js, teste-migracao.js, teste-vendedores.js.
-npm test encadeia os seis. Os de migracao e vendedores usam pasta
-temporaria, nao encostam em cadastro real.
+Novos: teste-pix.js (CRC16 contra o vetor oficial, estrutura do payload,
+tipos de chave), teste-vinculo.js, teste-migracao.js, teste-vendedores.js.
+npm test encadeia os seis. Migracao e vendedores usam pasta temporaria, nao
+encostam em cadastro real.
 
-NAO EXECUTADOS nesta sessao: o ambiente Linux nao subiu. Rodar npm test
-antes de publicar.
+NAO EXECUTADOS nesta sessao: o ambiente Linux nao subiu. Rodar npm test antes
+de publicar.
