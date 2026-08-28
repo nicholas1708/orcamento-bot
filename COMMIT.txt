@@ -1,4 +1,29 @@
-Vinculo acabamento-telha, rede de vendedores, Pix na tela e volumes que faltavam
+Orcamento interno, vinculo acabamento-telha, rede de vendedores e Pix na tela
+
+ORCAMENTO PELO PAINEL (+ Novo orcamento)
+O vendedor monta o orcamento por dentro, no mesmo assistente do site, em
+/painel/novo. Serve para o caso que travava: cliente acima dos 150 m2 virava
+PROP- sem valor a vista.
+
+- sem limite de metragem nem de pecas no modo interno: esse limite existe para
+  o CLIENTE nao fechar sozinho um pedido grande, e no painel ja tem vendedor
+- o raio de 600 km CONTINUA travando para todo mundo, inclusive no painel. Ali
+  nao e papelada: o frete esta embutido no preco por metro e fora do raio ele
+  nao cobre a entrega. Fechar a 900 km na tabela seria vender no prejuizo
+- busca de cliente ja cadastrado que preenche a ficha inteira, mostrando SO os
+  clientes que passaram pelo link daquele vendedor
+- vitrine reduzida a linha do vendedor, igual ao link publico
+- numeracao INT-, canal "painel", nome de quem fez gravado no orcamento
+- pedido grande fechado no painel fica registrado no aviso do orcamento: se
+  der problema depois, e preciso saber que passou por decisao de gente
+
+O corpo do POST /api/orcamento virou a funcao gerarOrcamento(), usada pelo
+site e pelo painel. Duplicar a regra de preco em dois lugares diverge em
+poucas semanas e ninguem percebe.
+
+⚠️ O vendedor sai da SESSAO, nunca do corpo do POST — senao daria para lancar
+orcamento no nome de outro.
+
 
 VINCULO ACABAMENTO <-> TELHA
 Cada telha declara quais acabamentos e perfis a acompanham (compativeis).
@@ -70,9 +95,13 @@ FERRAMENTAS
 
 TESTES
 Novos: teste-pix.js (CRC16 contra o vetor oficial, estrutura do payload,
-tipos de chave), teste-vinculo.js, teste-migracao.js, teste-vendedores.js.
-npm test encadeia os seis. Migracao e vendedores usam pasta temporaria, nao
-encostam em cadastro real.
+tipos de chave), teste-vinculo.js, teste-migracao.js, teste-vendedores.js e
+teste-interno.js. npm test encadeia os oito. Migracao e vendedores usam pasta
+temporaria, nao encostam em cadastro real.
+
+O teste-interno.js termina lendo o proprio server.js para cobrar que as duas
+linhas criticas continuem la (limite ignorado so quando interno, raio fora do
+interno). Sem isso alguem "simplifica" a decisao e o teste segue verde.
 
 NAO EXECUTADOS nesta sessao: o ambiente Linux nao subiu. Rodar npm test antes
 de publicar.

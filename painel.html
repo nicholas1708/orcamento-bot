@@ -24,7 +24,8 @@ let dados=[];
 montarShell('orcamentos','Orçamentos','Gerados pelo site e pelo WhatsApp',
   `<button class="btn g" id="bt-limpar" hidden onclick="abrirLimpeza()">🧹 Limpar testes</button>
    <button class="btn g" onclick="exportar()">⤓ Exportar CSV</button>
-   <button class="btn" onclick="carregar()">Atualizar</button>`);
+   <button class="btn g" onclick="carregar()">Atualizar</button>
+   <button class="btn" onclick="location.href='/painel/novo'">+ Novo orçamento</button>`);
 
 g('corpo').innerHTML=`
   <div class="filtros">

@@ -122,6 +122,78 @@ app.get('/api/painel/orcamentos', exigirLogin, (req, res) => {
   res.json({ orcamentos: lista, estatisticas: orcamentosDb.estatisticas(lista) });
 });
 
+// ── PAINEL › NOVO ORÇAMENTO (vendedor logado) ─────────────────────────
+// Mesmo assistente do site, só que autenticado e sem o limite de metragem
+// do autoatendimento. O raio de 600 km continua valendo — ver gerarOrcamento.
+app.get('/painel/novo', exigirLogin, (_req, res) =>
+  res.sendFile(path.join(__dirname, 'orcamento.html')));
+
+/** Quem sou eu + o que posso vender. O assistente interno começa por aqui. */
+app.get('/api/painel/contexto', exigirLogin, async (req, res) => {
+  try {
+    const c = await getCatalogo();
+    res.json({
+      interno: true,
+      usuario: { nome: req.usuario.nome, papel: req.usuario.papel },
+      // admin vende tudo; vendedor, só a linha dele
+      telhasPermitidas: vendedoresDb.telhasDoVendedor(c, req.usuario).map((t) => t.id),
+      limiteM2: c.regras?.metragem_maxima_autoatendimento_m || null,
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/**
+ * Clientes que ESTE vendedor pode escolher no assistente.
+ * Reaproveita telefonesVisiveis: quem não passou pelo link dele não aparece,
+ * nem por busca. Admin vê todos.
+ */
+app.get('/api/painel/meus-clientes', exigirLogin, (req, res) => {
+  const clientesDb = require('./clientes');
+  const meus = telefonesVisiveis(req.usuario);
+  const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const b = norm(req.query.busca);
+
+  let lista = clientesDb.listar().filter((c) => !meus || meus.has(c.telefone));
+  if (b) {
+    lista = lista.filter((c) => norm(c.nome).includes(b)
+      || String(c.telefone || '').includes(b.replace(/\D/g, ''))
+      || norm(c.cidade).includes(b) || norm(c.documento).includes(b));
+  }
+  // só o que o assistente precisa para preencher a ficha
+  res.json({ clientes: lista.slice(0, 40).map((c) => ({
+    nome: c.nome, telefone: c.telefone, documento: c.documento, email: c.email || null,
+    cep: c.cep, rua: c.rua, numero: c.numero, bairro: c.bairro,
+    complemento: c.complemento || null, cidade: c.cidade, estado: c.estado,
+    endereco: c.endereco,
+  })) });
+});
+
+app.post('/api/painel/orcamento', exigirLogin, async (req, res) => {
+  try {
+    // ⚠️ O vendedor é SEMPRE quem está logado. Nada do que a tela mandar muda
+    // isso — senão daria para lançar orçamento no nome de outro.
+    const vend = req.usuario.papel === 'admin' ? null : vendedoresDb.buscarPorId(req.usuario.id);
+    res.json(await gerarOrcamento({
+      pedido: req.body?.pedido, cliente: req.body?.cliente, vend, interno: true,
+    }));
+  } catch (e) {
+    if (!e.publico) console.error('Erro /api/painel/orcamento:', e);
+    res.status(e.publico ? 400 : 500).json({ error: e.message });
+  }
+});
+
+/** Lista de conferência do assistente interno (sem preço, como no site). */
+app.post('/api/painel/lista', exigirLogin, async (req, res) => {
+  try {
+    const { montarLista } = require('./lista');
+    const catalogo = await getCatalogo();
+    const vend = req.usuario.papel === 'admin' ? null : vendedoresDb.buscarPorId(req.usuario.id);
+    res.json(montarLista(montarPedido(req.body?.pedido, catalogo, vend), catalogo));
+  } catch (e) {
+    res.status(e.publico ? 400 : 500).json({ error: e.message });
+  }
+});
+
 // ── PAINEL › LIMPAR TESTES (só admin) ─────────────────────────────────
 // Tira os orçamentos de teste antes de entrar em produção. Move para
 // lixeira/, não apaga: erro de clique tem volta. Mesmo código do limpar.js.
@@ -955,35 +1027,47 @@ app.post('/api/lista', async (req, res) => {
   }
 });
 
-app.post('/api/orcamento', async (req, res) => {
-  try {
-    const { pedido, cliente } = req.body || {};
-    // REGRA: sem endereço não existe orçamento (entrega/frete dependem dele)
-    if (!cliente?.nome || !cliente?.cidade) {
-      return res.status(400).json({ error: 'Nome e cidade são obrigatórios.' });
-    }
-    if (!enderecoValido(cliente.endereco)) {
-      return res.status(400).json({ error: 'Endereço com rua e número — ex: "Rua Exemplo, 120". Sem número, escreva S/N.' });
-    }
-    if (!cliente?.telefone || String(cliente.telefone).replace(/\D/g, '').length < 10) {
-      return res.status(400).json({ error: 'Informe um telefone/WhatsApp válido com DDD.' });
-    }
-    // CEP define a unidade de origem e a regra dos 600 km
-    if (String(cliente.cep || '').replace(/\D/g, '').length !== 8) {
-      return res.status(400).json({ error: 'Informe o CEP da obra.' });
-    }
-    // documento vai no orçamento e na nota
-    if (!documentoValido(cliente.documento)) {
-      return res.status(400).json({ error: 'Informe um CPF ou CNPJ válido.' });
-    }
-    const catalogo = await getCatalogo();
+/**
+ * GERA O ORÇAMENTO — usado pelo site e pelo painel, com a MESMA regra de preço.
+ *
+ * @param {object} p
+ *   pedido, cliente  — o que veio da tela
+ *   vend             — vendedor dono (do cadastro, nunca do que a tela mandou)
+ *   interno          — true quando um vendedor logado está montando no painel
+ *
+ * ⚠️ O QUE `interno` MUDA, e só isso:
+ *   · ignora o limite de metragem/peças do autoatendimento. Esse limite existe
+ *     para o CLIENTE não fechar sozinho um pedido grande sem ninguém olhar —
+ *     o vendedor logado é justamente esse alguém.
+ *   · NÃO ignora o raio de 600 km. Ali é outra coisa: o frete está EMBUTIDO no
+ *     preço por metro e fora do raio ele não cobre a entrega. Liberar seria
+ *     vender no prejuízo sem ninguém perceber.
+ *
+ * O PREÇO É O MESMO nos dois modos. `interno` não toca em desconto, faixa nem
+ * frete — só decide se o valor pode ser mostrado.
+ */
+async function gerarOrcamento({ pedido, cliente, vend, interno = false }) {
+  // REGRA: sem endereço não existe orçamento (entrega/frete dependem dele)
+  if (!cliente?.nome || !cliente?.cidade) {
+    throw erroCliente('Nome e cidade são obrigatórios.');
+  }
+  if (!enderecoValido(cliente.endereco)) {
+    throw erroCliente('Endereço com rua e número — ex: "Rua Exemplo, 120". Sem número, escreva S/N.');
+  }
+  if (!cliente?.telefone || String(cliente.telefone).replace(/\D/g, '').length < 10) {
+    throw erroCliente('Informe um telefone/WhatsApp válido com DDD.');
+  }
+  // CEP define a unidade de origem e a regra dos 600 km
+  if (String(cliente.cep || '').replace(/\D/g, '').length !== 8) {
+    throw erroCliente('Informe o CEP da obra.');
+  }
+  // documento vai no orçamento e na nota
+  if (!documentoValido(cliente.documento)) {
+    throw erroCliente('Informe um CPF ou CNPJ válido.');
+  }
+  const catalogo = await getCatalogo();
 
-    // ── DE QUEM É ESTE ORÇAMENTO ──────────────────────────────────────
-    // O slug vem da tela, mas o vendedor sai do CADASTRO. Slug inventado,
-    // apagado ou desativado simplesmente não vira dono — vira orçamento sem
-    // vendedor, que só o admin enxerga.
-    const vend = vendedoresDb.buscarPorSlug(req.body?.vendedorSlug || req.body?.v);
-
+  {
     // ── Traduz o que veio da tela para o formato do motor ─────────────
     // (o montarPedido também barra telha fora da linha do vendedor)
     const { grupos, complementos, perfis } = montarPedido(pedido, catalogo, vend);
@@ -1006,10 +1090,17 @@ app.post('/api/orcamento', async (req, res) => {
     // Obra além do raio da fábrica OU pedido grande: o orçamento é gerado
     // e fica no painel, mas o cliente é direcionado ao comercial.
     const limiteM2 = catalogo.regras?.metragem_maxima_autoatendimento_m || Infinity;
-    const grande = orcamento.metragemTotal > limiteM2;
+    const limitePecas = catalogo.regras?.quantidade_maxima_pecas || Infinity;
+    // No painel esses dois limites não valem: eles existem para o cliente não
+    // fechar sozinho um pedido grande, e aqui já tem um vendedor conferindo.
+    const grande = !interno
+      && (orcamento.metragemTotal > limiteM2 || orcamento.totalPecas > limitePecas);
+    // O raio continua valendo para todo mundo: o frete está embutido no preço
+    // e fora dele o preço não cobre a entrega. Não é papelada, é prejuízo.
     const encaminhar = frete.foraDoRaio || grande;
 
-    const numero = (encaminhar ? 'PROP-' : 'WEB-') + Date.now().toString(36).toUpperCase();
+    const numero = (encaminhar ? 'PROP-' : (interno ? 'INT-' : 'WEB-'))
+      + Date.now().toString(36).toUpperCase();
     // token aleatório no nome: deixa o link do PDF impossível de adivinhar
     const token = require('crypto').randomBytes(8).toString('hex');
     const pdfPath = path.join(__dirname, 'out', `orcamento-${numero}-${token}.pdf`);
@@ -1024,21 +1115,29 @@ app.post('/api/orcamento', async (req, res) => {
     require('./clientes').salvar(cliente);
 
     // registra no histórico para o painel (com o motivo, quando encaminhado)
+    // Pedido grande fechado no painel fica registrado — se der problema
+    // depois, é preciso saber que passou por decisão de gente, não do robô.
+    const extras = [];
+    if (encaminhar) {
+      extras.push(frete.foraDoRaio
+        ? `ENCAMINHADO AO COMERCIAL: obra a ${frete.km} km da fábrica (limite ${catalogo.fretes.raio_maximo_km} km). Valor não exibido ao cliente.`
+        : `ENCAMINHADO AO COMERCIAL: ${orcamento.metragemTotal} m² acima do limite de ${limiteM2} m². Valor não exibido ao cliente.`);
+    } else if (interno && orcamento.metragemTotal > limiteM2) {
+      extras.push(`Fechado no painel por ${vend ? vend.nome : 'administrador'}: `
+        + `${orcamento.metragemTotal} m² acima do limite de autoatendimento (${limiteM2} m²).`);
+    }
+
     orcamentosDb.salvar({
-      numero, canal: 'web',
-      origem: vend || req.body?.vendedor ? 'vendedor' : 'cliente',
-      vendedor: vend ? vend.nome : (req.body?.vendedor || null),
+      numero, canal: interno ? 'painel' : 'web',
+      origem: interno || vend ? 'vendedor' : 'cliente',
+      vendedor: vend ? vend.nome : null,
       vendedorId: vend ? vend.id : null,          // é por aqui que o painel filtra
       vendedorSlug: vend ? vend.slug : null,
       cliente,
       orcamento: {
         ...orcamento,
         escalarParaVendedor: orcamento.escalarParaVendedor || encaminhar,
-        avisos: encaminhar
-          ? [...orcamento.avisos, frete.foraDoRaio
-              ? `ENCAMINHADO AO COMERCIAL: obra a ${frete.km} km da fábrica (limite ${catalogo.fretes.raio_maximo_km} km). Valor não exibido ao cliente.`
-              : `ENCAMINHADO AO COMERCIAL: ${orcamento.metragemTotal} m² acima do limite de ${limiteM2} m². Valor não exibido ao cliente.`]
-          : orcamento.avisos,
+        avisos: extras.length ? [...orcamento.avisos, ...extras] : orcamento.avisos,
       },
       grupos, pdfPath,
     });
@@ -1054,7 +1153,7 @@ app.post('/api/orcamento', async (req, res) => {
         `${orcamento.totalPecas} peças · ${orcamento.metragemTotal} mts\n${cliente.nome}`
       );
       // ⚠️ NÃO devolve valores: o cliente fala com o comercial
-      return res.json({
+      return {
         encaminhado: true,
         motivo: frete.foraDoRaio ? 'distancia' : 'volume',
         numero,
@@ -1063,15 +1162,18 @@ app.post('/api/orcamento', async (req, res) => {
           ? (frete.mensagemCliente || 'Sua obra está fora da nossa área de entrega automática.')
           : 'Seu pedido tem um volume que rende condição especial — nosso comercial monta a melhor proposta pra você.',
         whatsapp: zap ? `https://wa.me/${zap}?text=${texto}` : null,
+        pdf: '/out/' + path.basename(pdfPath),   // o painel precisa do arquivo
         resumo: {
           metragemTotal: orcamento.metragemTotal,
           totalPecas: orcamento.totalPecas,
           produtos: orcamento.resumoPorProduto,
         },
-      });
+      };
     }
 
-    console.log(`[WEB] Orçamento ${numero} — ${cliente.nome} (${cliente.telefone}) — ${orcamento.metragemTotal}mts — R$ ${orcamento.totalAvista}`);
+    console.log(`[${interno ? 'PAINEL' : 'WEB'}] Orçamento ${numero} — ${cliente.nome} `
+      + `(${cliente.telefone}) — ${orcamento.metragemTotal}mts — R$ ${orcamento.totalAvista}`
+      + (vend ? ` — ${vend.nome}` : ''));
 
     // Pix na tela também, não só no PDF. O QR vai como data URL para a tela
     // não precisar de mais uma rota — são ~1,5 KB.
@@ -1080,7 +1182,7 @@ app.post('/api/orcamento', async (req, res) => {
     const pix = await pixDoOrcamento(catalogo, { numero, valor: orcamento.totalAvista })
       .catch((e) => { console.warn('[web] Pix não gerado:', e.message); return null; });
 
-    res.json({
+    return {
       numero,
       totalProdutos: orcamento.totalProdutos,
       totalFrete: orcamento.totalFrete,
@@ -1095,7 +1197,17 @@ app.post('/api/orcamento', async (req, res) => {
         payload: pix.payload, chave: pix.chave, nome: pix.nome, banco: pix.banco,
         qr: pix.png ? 'data:image/png;base64,' + pix.png.toString('base64') : null,
       } : null,
-    });
+    };
+  }
+}
+
+/** Rota pública do site: o vendedor sai do slug do link, se houver. */
+app.post('/api/orcamento', async (req, res) => {
+  try {
+    const vend = vendedoresDb.buscarPorSlug(req.body?.vendedorSlug || req.body?.v);
+    res.json(await gerarOrcamento({
+      pedido: req.body?.pedido, cliente: req.body?.cliente, vend, interno: false,
+    }));
   } catch (e) {
     if (!e.publico) console.error('Erro /api/orcamento:', e);
     res.status(e.publico ? 400 : 500).json({ error: e.message });

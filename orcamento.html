@@ -33,6 +33,9 @@
     padding:9px 13px;margin-bottom:14px;font-size:13px}
   #vend b{font-family:'Barlow Condensed';text-transform:uppercase;letter-spacing:.05em;font-size:14px}
   #vend small{opacity:.85}
+  #vend a{color:#fff}
+  /* busca de cliente já cadastrado (só no modo interno) */
+  #dlista{max-height:230px;overflow:auto}
   .topo{display:flex;align-items:center;gap:10px;margin-bottom:20px}
   .voltar{background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);padding:2px 6px;visibility:hidden}
   .voltar.on{visibility:visible}
@@ -707,8 +710,17 @@ function desenhar(){
 
   /* dados */
   if(passo===passoConferir()+1){
-    el(`<h1>Seus dados</h1><p class="sub">Precisamos do endereço para entregar e do documento para emitir.</p>
-      <div class="campo"><label>Seu nome</label><input id="dn" value="${cliente.nome}" placeholder="Nome ou empresa"></div>
+    el(`<h1>${INTERNO?'Dados do cliente':'Seus dados'}</h1>
+      <p class="sub">${INTERNO
+        ? 'Busque um cliente que você já atendeu ou preencha na mão.'
+        : 'Precisamos do endereço para entregar e do documento para emitir.'}</p>
+      ${INTERNO?`
+      <div class="campo"><label>Cliente já cadastrado</label>
+        <input id="dbusca" placeholder="nome, telefone ou CPF/CNPJ" oninput="buscarCliente(this.value)"
+          autocomplete="off">
+        <small class="dica">Só aparecem os clientes que passaram por você.</small>
+        <div id="dlista"></div></div>`:''}
+      <div class="campo"><label>${INTERNO?'Nome do cliente':'Seu nome'}</label><input id="dn" value="${cliente.nome}" placeholder="Nome ou empresa"></div>
       <div class="campo"><label>CPF ou CNPJ</label>
         <input id="dd" inputmode="numeric" value="${cliente.documento}" placeholder="000.000.000-00"></div>
       <div class="campo"><label>WhatsApp</label><input id="dt" inputmode="tel" value="${cliente.telefone}" placeholder="(17) 99999-9999"></div>
@@ -738,7 +750,7 @@ function desenhar(){
         <div class="campo"><label>Estado</label>
           <input id="du" value="${cliente.estado}" placeholder="SP" maxlength="2" style="text-transform:uppercase"></div>
       </div>
-      <button class="btn" onclick="okDados()">Ver meu orçamento</button>`);
+      <button class="btn" onclick="okDados()">${INTERNO?'Gerar orçamento':'Ver meu orçamento'}</button>`);
   }
 
   /* resultado */
@@ -1013,6 +1025,67 @@ function corpoDoPedido(){
    Quem confere é o servidor — aqui é só transporte. */
 const VSLUG=new URLSearchParams(location.search).get('v')||null;
 
+/* ═══════════════ MODO INTERNO ═══════════════
+   A mesma tela servida em /painel/novo, com o vendedor logado. Muda três
+   coisas: as rotas são as autenticadas, aparece a busca de cliente, e o
+   limite de metragem do autoatendimento não trava (quem confere é ele).
+
+   O vendedor sai da SESSÃO, no servidor — não daqui. Esta constante só
+   decide o que desenhar. */
+const INTERNO=location.pathname==='/painel/novo';
+const rota=(publica,interna)=>INTERNO?interna:publica;
+let CTX=null;                       // quem está logado e o que pode vender
+
+/** Busca entre os clientes do próprio vendedor. */
+let _tbusca;
+function buscarCliente(termo){
+  clearTimeout(_tbusca);
+  _tbusca=setTimeout(async()=>{
+    const cx=g('dlista');
+    if(!cx)return;
+    if(String(termo).trim().length<2){cx.innerHTML='';return;}
+    let d;
+    try{ d=await (await fetch('/api/painel/meus-clientes?busca='+encodeURIComponent(termo))).json(); }
+    catch{ return; }
+    const lista=d.clientes||[];
+    if(!lista.length){
+      cx.innerHTML='<div class="dica" style="padding:8px 0">Nenhum cliente seu com esse nome — preencha abaixo.</div>';
+      return;
+    }
+    // guarda os objetos e referencia por índice: nome com aspas quebraria o onclick
+    window._clientes=lista;
+    cx.innerHTML=lista.map((c,i)=>`
+      <div onclick="usarCliente(${i})" style="border:1px solid var(--line);border-top:none;
+          padding:10px 12px;cursor:pointer;font-size:13px">
+        <b>${esc(c.nome||'—')}</b>
+        <div style="color:var(--muted);font-size:12px">${esc(c.telefone||'')} · ${esc(c.cidade||'')}</div>
+      </div>`).join('');
+  },300);
+}
+
+/** Joga o cliente escolhido nos campos do formulário. */
+function usarCliente(i){
+  const c=(window._clientes||[])[i];
+  if(!c)return;
+  Object.assign(cliente,{
+    nome:c.nome||'',documento:c.documento||'',telefone:c.telefone||'',email:c.email||'',
+    cep:c.cep||'',rua:c.rua||'',numero:c.numero||'',bairro:c.bairro||'',
+    complemento:c.complemento||'',cidade:c.cidade||'',estado:c.estado||'',
+  });
+  render();                         // redesenha o passo com tudo preenchido
+}
+
+/** Faixa do modo interno — deixa claro que não é a tela do cliente. */
+function faixaInterna(ctx){
+  const el=document.getElementById('vend');
+  if(!el)return;
+  el.style.background='var(--ink)';
+  el.innerHTML=`<b>Orçamento interno · ${esc(ctx.usuario?.nome||'')}</b>`
+    +`<small>· sem limite de metragem</small>`
+    +`<a href="/painel" style="margin-left:auto;color:#fff;font-size:12px">← voltar ao painel</a>`;
+  el.hidden=false;
+}
+
 /** Faixa "Atendimento: Fulano". Só o nome e o telefone, nunca dado interno. */
 function mostrarVendedor(v){
   const el=document.getElementById('vend');
@@ -1026,7 +1099,8 @@ async function carregarLista(){
   R.carregando=true;
   let d;
   try{
-    const r=await fetch('/api/lista',{method:'POST',headers:{'Content-Type':'application/json'},
+    const r=await fetch(rota('/api/lista','/api/painel/lista'),
+      {method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({pedido:corpoDoPedido(),vendedorSlug:VSLUG})});
     const txt=await r.text();
     try{ d=JSON.parse(txt); }
@@ -1238,9 +1312,9 @@ async function gerar(){
     itens:(R.linhas||[]).filter(l=>+l.qtd>0)
       .map(l=>({id:l.id,tipo:l.tipo,qtd:+l.qtd,comp:+l.comp||null})),
     ambiente:R.ambiente||null};
-  const d=await fetch('/api/orcamento',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({pedido:corpo,cliente,vendedorSlug:VSLUG,
-      vendedor:new URLSearchParams(location.search).get('vendedor')||null})})
+  const d=await fetch(rota('/api/orcamento','/api/painel/orcamento'),
+    {method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({pedido:corpo,cliente,vendedorSlug:VSLUG})})
     .then(r=>r.json()).catch(()=>({error:'Falha ao gerar — tente de novo.'}));
   ocupado(false);
   if(d.error)return err(d.error);
@@ -1258,11 +1332,24 @@ try{
     _de3d=JSON.parse(p);sessionStorage.removeItem('pedido3d');
   }
 }catch(e){}
-fetch('/api/catalogo'+(VSLUG?'?v='+encodeURIComponent(VSLUG):'')).then(r=>r.json()).then(c=>{
+Promise.all([
+  fetch('/api/catalogo'+(VSLUG?'?v='+encodeURIComponent(VSLUG):'')).then(r=>r.json()),
+  // no painel, quem manda é a sessão: pergunta ao servidor o que ele vende
+  INTERNO?fetch('/api/painel/contexto').then(r=>r.json()).catch(()=>null):null,
+]).then(([c,ctx])=>{
   cat=c;
+  CTX=ctx;
+  if(INTERNO&&ctx){
+    // vitrine reduzida à linha do vendedor logado. O servidor confere de novo
+    // na hora de gerar — isto aqui é só para ele não ver o que não pode vender.
+    if(Array.isArray(ctx.telhasPermitidas)){
+      cat.telhas=(cat.telhas||[]).filter(t=>ctx.telhasPermitidas.includes(t.id));
+    }
+    faixaInterna(ctx);
+  }
   // Link de vendedor: o cliente vê com quem está falando, e a vitrine já
   // chegou reduzida à linha dele (o servidor filtrou).
-  if(c.vendedor)mostrarVendedor(c.vendedor);
+  else if(c.vendedor)mostrarVendedor(c.vendedor);
   if(_de3d){                                   // monta a ficha vinda do 3D
     if(_de3d.modo==='auto'){
       modo='A';A.telhaId=_de3d.telhaId;A.cg=_de3d.comprimentoGalpaoM;A.lg=_de3d.larguraGalpaoM;
