@@ -170,8 +170,11 @@ function verFicha(i){
 
   abrirGaveta(
     `<h2>${esc(o.numero)}</h2>
-     <div style="font-size:13px;color:var(--muted)">${data(o.criadoEm)}</div>
-     <div style="margin-top:6px"><span class="tag ${cor}">${rot}</span></div>`,
+     <div style="font-size:13px;color:var(--muted)">${data(o.criadoEm)}${
+       (o.revisao||1)>1?` · revisado ${data(o.atualizadoEm)}`:''}</div>
+     <div style="margin-top:6px"><span class="tag ${cor}">${rot}</span>${
+       (o.revisao||1)>1?` <span class="tag info">revisão ${o.revisao}</span>`:''}${
+       o.vendedor?` <span class="tag brand">${esc(o.vendedor)}</span>`:''}</div>`,
     `<div class="card">
       <span class="eyebrow">Cliente</span>
       ${ficha([
@@ -211,8 +214,42 @@ function verFicha(i){
         <span><b>${(SIT[h.status]||[h.status])[0]}</b>${h.nota?' — '+esc(h.nota):''}</span></div>`).join('')}
     </div>
 
-    ${o.pdf?`<a class="btn wide" href="${o.pdf}" target="_blank">📄 Abrir PDF do orçamento</a>`:''}`
+    ${(o.pdfsAnteriores||[]).length?`<div class="card">
+      <span class="eyebrow">Revisões anteriores</span>
+      <p class="d">Continuam no ar — o cliente pode estar com um desses links.</p>
+      ${o.pdfsAnteriores.map(p=>`<div style="font-size:13px;padding:5px 0">
+        <a href="${p.pdf}" target="_blank" style="color:var(--brand-dd)">Revisão ${p.revisao}</a>
+        <span style="color:var(--muted)"> · ${dataCurta(p.em)}</span></div>`).join('')}
+    </div>`:''}
+
+    <div style="display:flex;gap:9px;margin-top:4px">
+      ${o.pdf?`<a class="btn g" href="${o.pdf}" target="_blank" style="flex:1;text-align:center">
+        📄 Abrir PDF${(o.revisao||1)>1?` (rev. ${o.revisao})`:''}</a>`:''}
+      ${botaoEditar(o)}
+    </div>`
   );
+}
+
+/**
+ * Editar gera uma revisão nova, com o mesmo número.
+ * Orçamento fechado é documento de venda: o botão explica por que não dá,
+ * em vez de sumir e deixar o vendedor procurando.
+ */
+function botaoEditar(o){
+  if(o.status==='fechado'){
+    return `<button class="btn g" style="flex:1" disabled
+      title="Venda fechada. O administrador precisa voltar o status para 'em negociação'."
+      >🔒 Fechado — não editável</button>`;
+  }
+  if(!o.pedido){
+    // gravado antes de o sistema guardar a entrada do motor
+    return `<button class="btn g" style="flex:1" disabled
+      title="Orçamento anterior a esta versão do sistema: não guardou os acabamentos."
+      >Não editável</button>`;
+  }
+  return `<button class="btn" style="flex:1"
+    onclick="location.href='/painel/novo?editar=${encodeURIComponent(o.numero)}'"
+    >✎ Editar (vira revisão ${(o.revisao||1)+1})</button>`;
 }
 
 async function mudar(numero,status){

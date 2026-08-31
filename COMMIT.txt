@@ -1,4 +1,26 @@
-Orcamento interno, vinculo acabamento-telha, rede de vendedores e Pix na tela
+Editar orcamento, orcamento interno, vinculo acabamento-telha e rede de vendedores
+
+EDITAR ORCAMENTO (revisoes)
+Mudou alguma coisa? Nao refaz do zero: abre, ajusta e gera revisao.
+
+- botao Editar na ficha do orcamento abre /painel/novo?editar=NUMERO com o
+  pedido e o cliente ja carregados, direto na conferencia
+- MESMO NUMERO, revisao incrementa. O cliente ja tem um PDF na mao: trocar o
+  valor sem deixar rastro faria o documento dele parar de bater com o sistema
+- PDF novo sai carimbado "REVISAO N - substitui as versoes anteriores"
+- PDFs antigos continuam no ar e listados na ficha: o cliente pode estar com
+  aquele link
+- historico registra quem revisou e o antes/depois de metragem, pecas e valor
+- orcamento FECHADO e travado; o admin volta o status antes de editar
+- revisar NAO troca o dono nem a data de criacao. Se o admin revisa o
+  orcamento do Adriano, o PDF continua assinado pelo Adriano
+
+⚠️ Para isso funcionar, o orcamento passou a gravar o PEDIDO do motor
+({grupos, complementos, perfis}). Antes so sobrava o resumo de exibicao, sem
+produtoId nem quantidade em formato de motor — reabrir traria o orcamento sem
+acabamento e sem parafuso. Orcamento gerado antes desta versao nao e editavel,
+e o painel diz isso no lugar de falhar.
+
 
 ORCAMENTO PELO PAINEL (+ Novo orcamento)
 O vendedor monta o orcamento por dentro, no mesmo assistente do site, em
@@ -96,8 +118,12 @@ FERRAMENTAS
 TESTES
 Novos: teste-pix.js (CRC16 contra o vetor oficial, estrutura do payload,
 tipos de chave), teste-vinculo.js, teste-migracao.js, teste-vendedores.js e
-teste-interno.js. npm test encadeia os oito. Migracao e vendedores usam pasta
-temporaria, nao encostam em cadastro real.
+teste-interno.js e teste-revisao.js. npm test encadeia os nove. Migracao,
+vendedores e revisao usam pasta temporaria, nao encostam em cadastro real.
+
+O teste-revisao.js prova o que mais importa: reabrir e salvar SEM MEXER EM
+NADA da exatamente o mesmo valor, item a item. Se der diferente, o pedido nao
+foi gravado direito e toda edicao estaria perdendo acabamento em silencio.
 
 O teste-interno.js termina lendo o proprio server.js para cobrar que as duas
 linhas criticas continuem la (limite ignorado so quando interno, raio fora do

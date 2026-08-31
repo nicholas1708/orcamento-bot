@@ -1036,6 +1036,35 @@ const INTERNO=location.pathname==='/painel/novo';
 const rota=(publica,interna)=>INTERNO?interna:publica;
 let CTX=null;                       // quem está logado e o que pode vender
 
+/* Editando um orçamento existente: /painel/novo?editar=WEB-XXXX.
+   O número não muda — muda a revisão. */
+const EDITAR=INTERNO?(new URLSearchParams(location.search).get('editar')||null):null;
+let REV=null;                       // revisão atual, para avisar na tela
+let _pedidoOriginal=null;           // o que estava gravado, para o corpo do POST
+
+/**
+ * Monta a lista de conferência a partir de um pedido JÁ GRAVADO.
+ *
+ * Usa o formato antigo do motor ({grupos, complementos, perfis}) em vez do
+ * modo 'auto': recalcular pelas medidas jogaria fora qualquer ajuste manual
+ * que o vendedor tenha feito na revisão anterior.
+ */
+async function carregarListaDoPedido(pedido,ambiente){
+  R.carregando=true;render();
+  let d;
+  try{
+    const r=await fetch('/api/painel/lista',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({pedido:{...pedido,ambiente:ambiente||null}})});
+    d=await r.json();
+  }catch(e){ d={error:'Não consegui carregar o orçamento para editar.'}; }
+  R.carregando=false;
+  if(d.error){R.linhas=[];render();return err(d.error);}
+  R.linhas=d.linhas||[];
+  R.ambiente=d.ambiente||ambiente||null;
+  render();
+}
+
 /** Busca entre os clientes do próprio vendedor. */
 let _tbusca;
 function buscarCliente(termo){
@@ -1080,8 +1109,9 @@ function faixaInterna(ctx){
   const el=document.getElementById('vend');
   if(!el)return;
   el.style.background='var(--ink)';
-  el.innerHTML=`<b>Orçamento interno · ${esc(ctx.usuario?.nome||'')}</b>`
-    +`<small>· sem limite de metragem</small>`
+  el.innerHTML=(EDITAR
+      ? `<b>Editando ${esc(EDITAR)}</b><small>· vira revisão ${(REV||1)+1}, mesmo número</small>`
+      : `<b>Orçamento interno · ${esc(ctx.usuario?.nome||'')}</b><small>· sem limite de metragem</small>`)
     +`<a href="/painel" style="margin-left:auto;color:#fff;font-size:12px">← voltar ao painel</a>`;
   el.hidden=false;
 }
@@ -1314,7 +1344,7 @@ async function gerar(){
     ambiente:R.ambiente||null};
   const d=await fetch(rota('/api/orcamento','/api/painel/orcamento'),
     {method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({pedido:corpo,cliente,vendedorSlug:VSLUG})})
+    body:JSON.stringify({pedido:corpo,cliente,vendedorSlug:VSLUG,editar:EDITAR})})
     .then(r=>r.json()).catch(()=>({error:'Falha ao gerar — tente de novo.'}));
   ocupado(false);
   if(d.error)return err(d.error);
@@ -1336,7 +1366,9 @@ Promise.all([
   fetch('/api/catalogo'+(VSLUG?'?v='+encodeURIComponent(VSLUG):'')).then(r=>r.json()),
   // no painel, quem manda é a sessão: pergunta ao servidor o que ele vende
   INTERNO?fetch('/api/painel/contexto').then(r=>r.json()).catch(()=>null):null,
-]).then(([c,ctx])=>{
+  // editando? traz o pedido e o cliente do orçamento existente
+  EDITAR?fetch('/api/painel/orcamento/'+encodeURIComponent(EDITAR)).then(r=>r.json()):null,
+]).then(([c,ctx,orig])=>{
   cat=c;
   CTX=ctx;
   if(INTERNO&&ctx){
@@ -1350,6 +1382,30 @@ Promise.all([
   // Link de vendedor: o cliente vê com quem está falando, e a vitrine já
   // chegou reduzida à linha dele (o servidor filtrou).
   else if(c.vendedor)mostrarVendedor(c.vendedor);
+
+  // ── EDITANDO UM ORÇAMENTO EXISTENTE ────────────────────────────────
+  if(EDITAR){
+    if(!orig||orig.error){
+      T.innerHTML=`<h1>Não consegui abrir</h1>
+        <p class="sub">${esc(orig&&orig.error||'Orçamento não encontrado.')}</p>
+        <a class="btn" href="/painel" style="display:inline-block;margin-top:16px">← Voltar ao painel</a>`;
+      return;
+    }
+    REV=orig.revisao||1;
+    if(ctx)faixaInterna(ctx);          // agora a faixa sabe a revisão
+    Object.assign(cliente,orig.cliente||{});
+    // reconstrói a lista de conferência a partir do pedido gravado, em vez de
+    // recalcular pelas medidas: o vendedor pode ter ajustado item na mão da
+    // última vez, e recalcular jogaria esse ajuste fora
+    R.linhas=null;R.ambiente=orig.ambiente||null;
+    _pedidoOriginal=orig.pedido;
+    passo=passoConferir();
+    hist.push(0);
+    render();
+    carregarListaDoPedido(orig.pedido,orig.ambiente);
+    return;
+  }
+
   if(_de3d){                                   // monta a ficha vinda do 3D
     if(_de3d.modo==='auto'){
       modo='A';A.telhaId=_de3d.telhaId;A.cg=_de3d.comprimentoGalpaoM;A.lg=_de3d.larguraGalpaoM;

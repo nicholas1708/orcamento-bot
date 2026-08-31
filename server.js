@@ -168,13 +168,62 @@ app.get('/api/painel/meus-clientes', exigirLogin, (req, res) => {
   })) });
 });
 
+/**
+ * Pode mexer neste orçamento? Devolve o registro ou lança o motivo.
+ *
+ * Duas travas:
+ *   · vendedor só alcança o que é dele (404, não 403: nem fica sabendo que existe)
+ *   · orçamento FECHADO é documento de venda. Só o admin edita, e mesmo assim
+ *     precisa voltar o status antes — para não alterar valor de venda fechada
+ *     com um clique errado.
+ */
+function orcamentoEditavel(numero, usuario) {
+  const o = orcamentosDb.obter(numero);
+  if (!o) throw erroCliente('Orçamento não encontrado.');
+  if (usuario.papel !== 'admin' && o.vendedorId !== usuario.id) {
+    throw erroCliente('Orçamento não encontrado.');
+  }
+  if (o.status === 'fechado') {
+    throw erroCliente(usuario.papel === 'admin'
+      ? 'Este orçamento está FECHADO. Volte o status para "em negociação" antes de editar.'
+      : 'Este orçamento está fechado e só o administrador pode reabrir.');
+  }
+  return o;
+}
+
+/** Abre um orçamento para editar: devolve o pedido e o cliente. */
+app.get('/api/painel/orcamento/:numero', exigirLogin, (req, res) => {
+  try {
+    const o = orcamentoEditavel(req.params.numero, req.usuario);
+    if (!o.pedido) {
+      // gravado antes de o sistema guardar a entrada do motor
+      throw erroCliente('Este orçamento é anterior à edição e não pode ser reaberto — '
+        + 'ele não guardou os acabamentos. Monte um novo a partir dele.');
+    }
+    res.json({
+      numero: o.numero, revisao: o.revisao || 1, status: o.status,
+      cliente: o.cliente, pedido: o.pedido,
+      ambiente: (o.cortes || []).find((c) => c.ambiente)?.ambiente || null,
+      totalAvista: o.totalAvista, metragemTotal: o.metragemTotal,
+    });
+  } catch (e) {
+    res.status(e.publico ? 400 : 500).json({ error: e.message });
+  }
+});
+
 app.post('/api/painel/orcamento', exigirLogin, async (req, res) => {
   try {
     // ⚠️ O vendedor é SEMPRE quem está logado. Nada do que a tela mandar muda
     // isso — senão daria para lançar orçamento no nome de outro.
     const vend = req.usuario.papel === 'admin' ? null : vendedoresDb.buscarPorId(req.usuario.id);
+
+    // Editando? Confere a permissão de novo aqui: quem abriu a tela pode ter
+    // ficado com ela aberta enquanto o status mudava.
+    const editando = req.body?.editar
+      ? orcamentoEditavel(req.body.editar, req.usuario) : null;
+
     res.json(await gerarOrcamento({
-      pedido: req.body?.pedido, cliente: req.body?.cliente, vend, interno: true,
+      pedido: req.body?.pedido, cliente: req.body?.cliente, vend, interno: true, editando,
     }));
   } catch (e) {
     if (!e.publico) console.error('Erro /api/painel/orcamento:', e);
@@ -1046,7 +1095,7 @@ app.post('/api/lista', async (req, res) => {
  * O PREÇO É O MESMO nos dois modos. `interno` não toca em desconto, faixa nem
  * frete — só decide se o valor pode ser mostrado.
  */
-async function gerarOrcamento({ pedido, cliente, vend, interno = false }) {
+async function gerarOrcamento({ pedido, cliente, vend, interno = false, editando = null }) {
   // REGRA: sem endereço não existe orçamento (entrega/frete dependem dele)
   if (!cliente?.nome || !cliente?.cidade) {
     throw erroCliente('Nome e cidade são obrigatórios.');
@@ -1099,15 +1148,26 @@ async function gerarOrcamento({ pedido, cliente, vend, interno = false }) {
     // e fora dele o preço não cobre a entrega. Não é papelada, é prejuízo.
     const encaminhar = frete.foraDoRaio || grande;
 
-    const numero = (encaminhar ? 'PROP-' : (interno ? 'INT-' : 'WEB-'))
-      + Date.now().toString(36).toUpperCase();
-    // token aleatório no nome: deixa o link do PDF impossível de adivinhar
+    // Editando: o número NÃO muda — é por ele que cliente e vendedor se
+    // entendem no telefone. Muda a revisão, e o PDF sai carimbado.
+    const numero = editando
+      ? editando.numero
+      : (encaminhar ? 'PROP-' : (interno ? 'INT-' : 'WEB-')) + Date.now().toString(36).toUpperCase();
+    const revisao = editando ? (Number(editando.revisao) || 1) + 1 : 1;
+
+    // token aleatório no nome: deixa o link do PDF impossível de adivinhar.
+    // Nome novo a cada revisão, para o PDF antigo continuar valendo no link
+    // que o cliente já recebeu.
     const token = require('crypto').randomBytes(8).toString('hex');
-    const pdfPath = path.join(__dirname, 'out', `orcamento-${numero}-${token}.pdf`);
+    const pdfPath = path.join(__dirname, 'out',
+      `orcamento-${numero}${revisao > 1 ? '-r' + revisao : ''}-${token}.pdf`);
     await gerarPDF({
       cliente,
-      // veio pelo link de um vendedor? é o nome dele que assina o documento
-      pedido: { numero, vendedor: vend ? vend.nome : catalogo.empresa.vendedor_padrao },
+      // Quem assina é o DONO do orçamento, não quem está editando: se o admin
+      // revisa o orçamento do Adriano, o cliente continua vendo o Adriano.
+      pedido: { numero, revisao,
+        vendedor: (editando && editando.vendedor)
+          || (vend ? vend.nome : catalogo.empresa.vendedor_padrao) },
       orcamento, catalogo,
     }, pdfPath);
 
@@ -1127,20 +1187,33 @@ async function gerarOrcamento({ pedido, cliente, vend, interno = false }) {
         + `${orcamento.metragemTotal} m² acima do limite de autoatendimento (${limiteM2} m²).`);
     }
 
-    orcamentosDb.salvar({
-      numero, canal: interno ? 'painel' : 'web',
-      origem: interno || vend ? 'vendedor' : 'cliente',
-      vendedor: vend ? vend.nome : null,
-      vendedorId: vend ? vend.id : null,          // é por aqui que o painel filtra
-      vendedorSlug: vend ? vend.slug : null,
+    const gravado = {
       cliente,
       orcamento: {
         ...orcamento,
         escalarParaVendedor: orcamento.escalarParaVendedor || encaminhar,
         avisos: extras.length ? [...orcamento.avisos, ...extras] : orcamento.avisos,
       },
-      grupos, pdfPath,
-    });
+      grupos,
+      // entrada do motor, para conseguir reabrir e editar depois
+      pedido: { grupos, complementos, perfis },
+      pdfPath,
+    };
+
+    if (editando) {
+      // ⚠️ Revisar NÃO troca o dono nem a data de criação: quem criou, criou.
+      // Editar o orçamento de alguém não transfere a venda para quem editou.
+      orcamentosDb.revisar(numero, { ...gravado, por: vend ? vend.nome : 'administrador' });
+    } else {
+      orcamentosDb.salvar({
+        numero, canal: interno ? 'painel' : 'web',
+        origem: interno || vend ? 'vendedor' : 'cliente',
+        vendedor: vend ? vend.nome : null,
+        vendedorId: vend ? vend.id : null,        // é por aqui que o painel filtra
+        vendedorSlug: vend ? vend.slug : null,
+        ...gravado,
+      });
+    }
 
     if (encaminhar) {
       const motivo = frete.foraDoRaio
@@ -1184,6 +1257,7 @@ async function gerarOrcamento({ pedido, cliente, vend, interno = false }) {
 
     return {
       numero,
+      revisao,
       totalProdutos: orcamento.totalProdutos,
       totalFrete: orcamento.totalFrete,
       totalAvista: orcamento.totalAvista,

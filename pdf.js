@@ -104,12 +104,26 @@ async function gerarPDF({ cliente, pedido, orcamento, catalogo }, destino) {
 
   // ── TÍTULO ────────────────────────────────────────────────────────
   const yT = doc.y;
+  const rev = Number(pedido.revisao) || 1;
   doc.rect(M, yT, W, 18).fill('#f0f0f0');
   doc.fillColor('#000').font('Helvetica-Bold').fontSize(11)
     .text(`ORÇAMENTO Nº ${pedido.numero}`, M, yT + 4, { width: W, align: 'center' });
   doc.font('Helvetica-Bold').fontSize(9)
     .text(dataBR(Date.now()), M, yT + 5, { width: W - 8, align: 'right' });
   doc.y = yT + 24;
+
+  // ⚠️ REVISÃO — o cliente pode estar com o PDF anterior na mão. Sem este
+  // aviso ele compara dois documentos de mesmo número e valor diferente sem
+  // saber qual vale.
+  if (rev > 1) {
+    const yR = doc.y;
+    doc.rect(M, yR, W, 14).fill('#FFF4CE');
+    doc.fillColor('#7a5b00').font('Helvetica-Bold').fontSize(8)
+      .text(`REVISÃO ${rev} — substitui as versões anteriores deste orçamento`,
+        M + 6, yR + 3.5, { width: W - 12 });
+    doc.fillColor('#000');
+    doc.y = yR + 20;
+  }
 
   // ── FORMAS DE PAGAMENTO ───────────────────────────────────────────
   doc.font('Helvetica').fontSize(7.5).fillColor('#000');
