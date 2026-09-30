@@ -12,6 +12,7 @@ const PAGINAS = [
   { id: 'clientes',   href: '/painel/clientes',   ic: '👤', nome: 'Clientes' },
   { id: 'produtos',   href: '/painel/produtos',   ic: '🧱', nome: 'Produtos', admin: true },
   { id: 'vendedores', href: '/painel/vendedores', ic: '🤝', nome: 'Vendedores', admin: true },
+  { id: 'config',     href: '/painel/config',     ic: '⚙️', nome: 'Configurações', admin: true },
 ];
 
 /** Quem está logado. Preenchido por montarShell; null até a resposta chegar. */

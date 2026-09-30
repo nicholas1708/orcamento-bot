@@ -131,21 +131,48 @@ async function distanciaKm(origem, destino) {
 }
 
 /**
- * Unidade ativa mais próxima do destino que tenha o produto.
+ * DE ONDE O MATERIAL SAI — a unidade ativa mais próxima da obra que atenda o
+ * pedido.
+ *
+ * Duas formas de vincular produto e unidade, nesta ordem:
+ *
+ *   1. `unidadesPermitidas` — os ids marcados no CADASTRO DA TELHA
+ *      ("esta telha sai de Cedral"). É o caminho novo e o que manda.
+ *   2. `unidade.produtos` — lista de códigos dentro da unidade. Caminho
+ *      antigo, mantido para catálogo que já usava. Lista vazia não filtra
+ *      nada — e era por isso que toda telha saía da Kingspan mais próxima.
+ *
+ * Nenhum dos dois preenchido = qualquer unidade serve, vence a mais perto.
+ *
+ * @param {string[]|null} unidadesPermitidas  ids vindos do cadastro da telha.
+ *   ⚠️ `[]` (vazio) é diferente de `null`: vazio quer dizer que houve marcador
+ *   e NENHUMA unidade atende — devolve null em vez de escolher a mais perto.
+ *   Já errei isso uma vez: tratar vazio como "sem restrição" faria o pedido
+ *   sair da unidade errada em silêncio.
  * @returns {{unidade, km}|null}
  */
-async function unidadeMaisProxima(destino, unidades, codigosNecessarios = []) {
+async function unidadeMaisProxima(destino, unidades, codigosNecessarios = [], unidadesPermitidas = null) {
   // UMA consulta externa só: a do endereço do cliente.
   // As unidades têm lat/lon no catálogo — se faltar em alguma, ela é ignorada
   // com aviso, em vez de disparar dezenas de chamadas e travar a geração.
   const b = await localizar(destino);
   if (!b) return null;
 
+  // array (mesmo vazio) = houve marcador e ele manda. null = sem marcador.
+  const restringe = Array.isArray(unidadesPermitidas);
+  if (restringe && !unidadesPermitidas.length) {
+    console.warn('[distancia] as telhas deste pedido saem de lugares diferentes — nenhuma unidade atende o pedido inteiro.');
+    return null;
+  }
+
   let melhor = null;
   const semCoordenada = [];
   for (const u of unidades) {
     if (u.ativa === false) continue;
-    if (Array.isArray(u.produtos) && u.produtos.length && codigosNecessarios.length) {
+    // marcador do produto tem prioridade sobre a lista de códigos da unidade
+    if (restringe) {
+      if (!unidadesPermitidas.includes(u.id)) continue;
+    } else if (Array.isArray(u.produtos) && u.produtos.length && codigosNecessarios.length) {
       const temTudo = codigosNecessarios.every((c) => u.produtos.includes(String(c)));
       if (!temTudo) continue;
     }
@@ -156,7 +183,100 @@ async function unidadeMaisProxima(destino, unidades, codigosNecessarios = []) {
   if (semCoordenada.length) {
     console.warn(`[distancia] unidades sem lat/lon no catálogo (ignoradas): ${semCoordenada.join(', ')}`);
   }
+  // Marcador apontando para unidade sem coordenada é pior que não ter marcador:
+  // o orçamento sai dizendo "não identifiquei a origem" sem explicar por quê.
+  if (!melhor && restringe && semCoordenada.length) {
+    console.warn(`[distancia] o produto aponta para ${unidadesPermitidas.join(', ')}, `
+      + `mas nenhuma dessas tem lat/lon cadastrada.`);
+  }
   return melhor;
 }
 
-module.exports = { cidadeDoCep, coordsDaCidade, distanciaKm, unidadeMaisProxima, localizar, FATOR_RODOVIARIO };
+/**
+ * COMPLETA AS UNIDADES A PARTIR DO CEP.
+ *
+ * Cadastrar unidade exigia lat/lon na mão, o que é pedir para dar errado.
+ * Agora basta o CEP: o sistema resolve cidade, UF e coordenadas uma vez e
+ * guarda no catálogo. Roda na subida, não a cada orçamento.
+ *
+ * ⚠️ CONFERE A CIDADE. Um CEP digitado errado colocaria a fábrica em outro
+ * município e estragaria TODA distância e a regra dos 600 km, em silêncio.
+ * Se o que o CEP devolve não bate com a cidade cadastrada, a unidade não é
+ * ativada e o problema aparece no diagnóstico.
+ *
+ * @returns {{mudou:boolean, resolvidas:string[], avisos:string[]}}
+ */
+async function resolverUnidades(unidades = []) {
+  const semAcento = (s) => String(s || '').toLowerCase().trim()
+    .normalize('NFD').replace(new RegExp('[\\u0300-\\u036f]', 'g'), '');
+
+  let mudou = false;
+  const resolvidas = [];
+  const avisos = [];
+
+  for (const u of unidades) {
+    if (Number.isFinite(u.lat) && Number.isFinite(u.lon)) continue;   // já tem
+    if (!soDigitos(u.cep) || soDigitos(u.cep).length !== 8) {
+      if (u.ativa !== false) avisos.push(`Unidade ${u.nome || u.id}: sem CEP e sem coordenadas — fica de fora do cálculo.`);
+      continue;
+    }
+
+    const end = await cidadeDoCep(u.cep);
+    if (!end) { avisos.push(`Unidade ${u.nome || u.id}: não consegui resolver o CEP ${u.cep}.`); continue; }
+
+    // o CEP manda, mas discordar da cidade cadastrada é sinal de digitação errada
+    if (u.cidade && semAcento(u.cidade) !== semAcento(end.cidade)) {
+      u.ativa = false;
+      u._pendente = `⚠️ CEP ${u.cep} é de ${end.cidade}/${end.uf}, não de ${u.cidade}. `
+        + 'Unidade desativada para não estragar o cálculo de distância. Confira o CEP.';
+      mudou = true;
+      avisos.push(`Unidade ${u.nome || u.id}: ${u._pendente}`);
+      continue;
+    }
+
+    const coord = await coordsDaCidade(end.cidade, end.uf);
+    if (!coord) { avisos.push(`Unidade ${u.nome || u.id}: não consegui as coordenadas de ${end.cidade}/${end.uf}.`); continue; }
+
+    u.cidade = u.cidade || end.cidade;
+    u.uf = u.uf || end.uf;
+    if (!u.endereco && end.rua) u.endereco = [end.rua, end.bairro].filter(Boolean).join(' - ');
+    u.lat = coord.lat;
+    u.lon = coord.lon;
+    delete u._pendente;
+    if (u.ativa === false) u.ativa = true;    // faltava só o endereço
+    mudou = true;
+    resolvidas.push(`${u.nome || u.id} → ${end.cidade}/${end.uf}`);
+  }
+
+  return { mudou, resolvidas, avisos };
+}
+
+/**
+ * DE ONDE SAI O PEDIDO — decidido pela TELHA, e só por ela.
+ *
+ * ⚠️ REGRA DE OPERAÇÃO DA 4A, confirmada pelo cliente:
+ * a carga sai inteira do mesmo lugar. Se a telha sai de X, a cumeeira, o
+ * frontal, o parafuso e a estrutura saem de X também. NUNCA existe telha de
+ * um lugar e acabamento de outro.
+ *
+ * Por isso o acabamento NÃO tem marcador de origem — seria um campo a mais
+ * para preencher, que só criaria a chance de contradizer a telha. Se alguém
+ * pensar em adicionar, a resposta é esta nota.
+ *
+ * @param {object[]} telhas  SÓ as telhas do pedido
+ * @returns {string[]|null}  ids das unidades · null = ninguém marcou, qualquer
+ *   uma serve · [] = as telhas do pedido apontam para lugares que não se
+ *   cruzam, e aí ninguém serve (ver aviso no frete)
+ */
+function unidadesDoPedido(telhas = []) {
+  const listas = telhas
+    .map((t) => (Array.isArray(t?.unidades) && t.unidades.length ? t.unidades : null))
+    .filter(Boolean);
+  if (!listas.length) return null;                       // ninguém marcou nada
+  // Interseção. Duas telhas de origens diferentes no mesmo pedido dão lista
+  // vazia — é carga dupla, que a operação não faz. Vira aviso, não chute.
+  return listas.reduce((a, b) => a.filter((id) => b.includes(id)));
+}
+
+module.exports = { cidadeDoCep, coordsDaCidade, distanciaKm, unidadeMaisProxima,
+  unidadesDoPedido, resolverUnidades, localizar, FATOR_RODOVIARIO };

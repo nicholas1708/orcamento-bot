@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node test.js && node teste-pix.js && node teste-vinculo.js && node teste-migracao.js && node teste-vendedores.js && node teste-interno.js && node teste-revisao.js && node teste-2aguas.js && node teste-completo.js",
+    "test": "node test.js && node teste-pix.js && node teste-vinculo.js && node teste-migracao.js && node teste-vendedores.js && node teste-interno.js && node teste-revisao.js && node teste-origem.js && node teste-obrigatorios.js && node teste-pagamento.js && node teste-2aguas.js && node teste-completo.js",
     "test:motor": "node test.js",
     "conferir": "node conferir.js",
     "limpar": "node limpar.js",
@@ -15,6 +15,9 @@
     "test:vendedores": "node teste-vendedores.js",
     "test:interno": "node teste-interno.js",
     "test:revisao": "node teste-revisao.js",
+    "test:origem": "node teste-origem.js",
+    "test:obrigatorios": "node teste-obrigatorios.js",
+    "test:pagamento": "node teste-pagamento.js",
     "test:2aguas": "node teste-2aguas.js",
     "test:completo": "node teste-completo.js"
   },

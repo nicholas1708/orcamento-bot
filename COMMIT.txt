@@ -1,133 +1,153 @@
-Editar orcamento, orcamento interno, vinculo acabamento-telha e rede de vendedores
+Pagamento online, editar orcamento, origem por unidade e campos obrigatorios
+
+PAGAMENTO ONLINE — INFINITEPAY (novo)
+Checkout com Pix e cartao em ate 12x no mesmo link. Diferente do Pix estatico
+do PDF, este AVISA quando e pago: o orcamento vira fechado sozinho.
+
+- botao "Pagar agora" na tela final do cliente
+- card "Cobrar do cliente" no painel: gera o link, copia ou manda no WhatsApp
+- link gerado no clique, nao junto com o orcamento (a maioria nunca e paga)
+- tela /pago para o retorno do checkout, que pergunta ao servidor ate a baixa
+  entrar em vez de dizer "pago" por conta propria
+
+⚠️ O WEBHOOK NAO E PROVA. A URL e publica: qualquer um pode mandar um POST
+dizendo "pago". O corpo que chega serve so para saber QUAL pedido conferir; a
+confirmacao vem do /payment_check da InfinitePay, consultado antes de gravar.
+
+⚠️ A rota publica de gerar link exige o token do PDF. O numero do orcamento
+vem do relogio e e adivinhavel; o token de 16 hex nao. Sem isso dava para
+varrer os orcamentos alheios.
+
+⚠️ Cobra o total a vista numa linha so, nao item a item: somar itens
+arredondados em centavos pode nao fechar com o total do PDF, e ai o cliente e
+cobrado alguns centavos diferentes do que viu.
+
+PAINEL > CONFIGURACOES (novo, so admin)
+Pagina para o dono configurar sem editar JSON na mao: InfiniteTag, endereco
+publico do sistema, e a chave Pix.
+
+- botao "Testar conexao" cria um link real de R$ 1,00 e diz se a tag esta
+  certa, antes de ligar para os clientes
+- faixa no topo mostrando O QUE O CLIENTE VE HOJE
+- NADA aparece ao cliente enquanto nao estiver configurado E ligado. A trava
+  esta em quatro camadas: uma funcao so decide, a resposta do orcamento
+  carrega o sinal, o painel esconde do vendedor, e a rota recusa se chamada
+  direto. Botao que da erro ao clicar e pior que botao nenhum.
+
+LIMITE DE AUTOATENDIMENTO LIBERADO
+A pedido do cliente: metragem_maxima_autoatendimento_m e quantidade_maxima_pecas
+passam a null. Antes eram 150 m2 / 200 pecas, e acima disso o orcamento virava
+PROP- e ia ao comercial sem mostrar preco.
+
+⚠️ O raio de 600 km NAO foi liberado, de proposito: ali o frete esta embutido
+no preco por metro e fora do raio ele nao cobre a entrega. Isso e prejuizo,
+nao papelada. Para voltar a limitar a metragem, basta por um numero no
+catalogo — o codigo ja trata null como sem limite.
+
+DE ONDE O MATERIAL SAI
+O produto passa a apontar a unidade, em vez de a unidade listar codigos. As 7
+unidades estavam com a lista vazia, o que DESLIGA o filtro — entao toda telha,
+PIR ou EPS, saia da Kingspan mais proxima. E isso nao afetava so o texto do
+PDF: o raio de 600 km era medido dessa unidade errada.
+
+- card "De onde sai" no cadastro da telha
+- unidade de Cedral cadastrada (CEP 15895-314, o mesmo do endereco da empresa;
+  o 15985-314 informado antes tinha os digitos trocados)
+- unidade agora se resolve pelo CEP na subida: cidade, UF e coordenadas. Se o
+  CEP devolver cidade diferente da cadastrada, a unidade e DESATIVADA com o
+  motivo, em vez de entrar calada e estragar toda distancia
+- REGRA DE OPERACAO: quem manda e a telha. Se ela sai de X, cumeeira, frontal,
+  parafuso e estrutura saem de X. Acabamento nao tem marcador de origem, e nao
+  vai ter — seria campo a mais para preencher, so criando chance de
+  contradizer a telha
+- duas telhas de origens diferentes no mesmo pedido: para e avisa, porque a
+  carga sai de um lugar so
 
 EDITAR ORCAMENTO (revisoes)
 Mudou alguma coisa? Nao refaz do zero: abre, ajusta e gera revisao.
 
-- botao Editar na ficha do orcamento abre /painel/novo?editar=NUMERO com o
-  pedido e o cliente ja carregados, direto na conferencia
-- MESMO NUMERO, revisao incrementa. O cliente ja tem um PDF na mao: trocar o
-  valor sem deixar rastro faria o documento dele parar de bater com o sistema
-- PDF novo sai carimbado "REVISAO N - substitui as versoes anteriores"
-- PDFs antigos continuam no ar e listados na ficha: o cliente pode estar com
+- MESMO NUMERO, revisao incrementa; PDF carimbado "REVISAO N"
+- PDFs antigos continuam no ar e listados na ficha — o cliente pode estar com
   aquele link
 - historico registra quem revisou e o antes/depois de metragem, pecas e valor
-- orcamento FECHADO e travado; o admin volta o status antes de editar
-- revisar NAO troca o dono nem a data de criacao. Se o admin revisa o
+- orcamento FECHADO e travado; so o admin reabre
+- revisar nao troca o dono nem a data de criacao: se o admin revisa o
   orcamento do Adriano, o PDF continua assinado pelo Adriano
 
 ⚠️ Para isso funcionar, o orcamento passou a gravar o PEDIDO do motor
 ({grupos, complementos, perfis}). Antes so sobrava o resumo de exibicao, sem
-produtoId nem quantidade em formato de motor — reabrir traria o orcamento sem
-acabamento e sem parafuso. Orcamento gerado antes desta versao nao e editavel,
-e o painel diz isso no lugar de falhar.
+produtoId nem quantidade em formato de motor. Orcamento gerado antes desta
+versao nao e editavel, e o painel diz isso no lugar de falhar.
 
+CAMPOS OBRIGATORIOS
+A tela ja validava tudo, mas nao MARCAVA nada — o cliente so descobria o que
+faltava depois de clicar. E o servidor exigia menos que a tela.
 
-ORCAMENTO PELO PAINEL (+ Novo orcamento)
-O vendedor monta o orcamento por dentro, no mesmo assistente do site, em
-/painel/novo. Serve para o caso que travava: cliente acima dos 150 m2 virava
-PROP- sem valor a vista.
+- asterisco em todo campo obrigatorio, com legenda
+- borda vermelha e mensagem embaixo do campo, nao so a faixa no rodape
+- valida ao sair do campo; o erro some quando comeca a corrigir
+- aviso ao vivo acima do botao: "Faltam 3 campos: Rua, Bairro, Estado"
+- ao clicar, marca TODOS os erros de uma vez e rola ate o primeiro
+- servidor passou a exigir rua, numero, bairro e ESTADO, que nao eram
+  conferidos. A UF entra no frete junto com o CEP para achar a unidade de
+  origem — faltando, cidade repetida entre estados cai no lugar errado
 
-- sem limite de metragem nem de pecas no modo interno: esse limite existe para
-  o CLIENTE nao fechar sozinho um pedido grande, e no painel ja tem vendedor
-- o raio de 600 km CONTINUA travando para todo mundo, inclusive no painel. Ali
-  nao e papelada: o frete esta embutido no preco por metro e fora do raio ele
-  nao cobre a entrega. Fechar a 900 km na tabela seria vender no prejuizo
-- busca de cliente ja cadastrado que preenche a ficha inteira, mostrando SO os
-  clientes que passaram pelo link daquele vendedor
-- vitrine reduzida a linha do vendedor, igual ao link publico
-- numeracao INT-, canal "painel", nome de quem fez gravado no orcamento
-- pedido grande fechado no painel fica registrado no aviso do orcamento: se
-  der problema depois, e preciso saber que passou por decisao de gente
-
-O corpo do POST /api/orcamento virou a funcao gerarOrcamento(), usada pelo
-site e pelo painel. Duplicar a regra de preco em dois lugares diverge em
-poucas semanas e ninguem percebe.
-
-⚠️ O vendedor sai da SESSAO, nunca do corpo do POST — senao daria para lancar
-orcamento no nome de outro.
-
-
-VINCULO ACABAMENTO <-> TELHA
-Cada telha declara quais acabamentos e perfis a acompanham (compativeis).
-Antes o codigo pegava qualquer complemento ativo com o aplica_em certo, entao
-a telha BRANCA saia com cumeeira GALVALUME. Vale nos quatro caminhos: calculo
-automatico, wizard do site, WhatsApp e sugestao de acabamentos. Telha sem
-vinculo continua aceitando tudo, para catalogo antigo nao quebrar.
-
-Corrigido no caminho: os ids dos parafusos no vinculo estavam sem o "P"
-(6391P4 em vez de P6391P4), o que tiraria parafuso de todo orcamento.
-
-CADASTRO DO VINCULO (painel > Produtos)
-- telha nova nasce com nada marcado; antes nascia com tudo, o que virava
-  "aceita tudo" e devolvia o defeito calado
-- busca dentro da lista de acabamentos; esconde, nao desmarca
-- Marcar/Desmarcar agem so no que esta visivel
-- contador "N de M marcados"
-- "Copiar de outra telha" para a segunda telha em diante
-- salvar sem acabamento pede confirmacao
-- aba Acabamentos aponta as pecas fora de toda telha, coluna "Vai em"
-- diagnostico trata acabamento orfao como problema
+ORCAMENTO PELO PAINEL
+Botao "+ Novo orcamento": o mesmo assistente do site, logado, com busca de
+cliente que mostra so os clientes daquele vendedor.
 
 REDE DE VENDEDORES
-Novo vendedores.js: cadastro em dados/vendedores.json, senha com scrypt e sal
-por usuario. Basic auth agora com usuario; admin + PAINEL_SENHA continua
-valendo sempre, como saida de emergencia.
+vendedores.js: cadastro em dados/vendedores.json, senha com scrypt e sal por
+usuario. Basic auth agora com usuario; admin + PAINEL_SENHA continua valendo
+sempre, como saida de emergencia.
 
 - exigirSenha virou exigirLogin + exigirAdmin
-- so o admin cadastra produto, vendedor, importa planilha e ve diagnostico
-- link de venda /orcamento?v=slug e /lp?v=slug: vitrine reduzida a linha do
-  vendedor, nome dele na tela e no PDF
-- vendedor so ve os proprios orcamentos, clientes e valores; nao muda status
-  do que nao e dele. Cliente de outro responde 404, nao 403
-- trava no servidor em montarPedido: nao adianta trocar o telhaId no POST
-- admin ve tudo, com filtro por vendedor e o nome na coluna Origem
-- O MOTOR NAO MUDA: engine, romaneio e pricing nao sabem que vendedor existe.
-  Preco e o mesmo por qualquer link
+- link de venda /orcamento?v=slug: vitrine reduzida a linha do vendedor
+- vendedor so ve os proprios orcamentos, clientes e valores
+- trava no servidor: nao adianta trocar o telhaId no POST
+- O MOTOR NAO MUDA: engine, romaneio e pricing nao sabem que vendedor existe
 
-PIX
-- bloco de pagamento na TELA FINAL do orcamento, nao so no PDF: QR, favorecido,
-  botao de copiar e o aviso de que pagar nao confirma o pedido
-- favorecido passa a ser "A L DE LIMA REPRESENTACAO" (titular da conta ligada
-  a chave; cabe nos 25 caracteres do BR Code sem cortar)
-- diagnostico do painel passa a acusar Pix ausente ou chave suspeita, em vez
-  de o bloco sumir em silencio
+VINCULO ACABAMENTO <-> TELHA
+Cada telha declara quais acabamentos e perfis a acompanham. Antes o codigo
+pegava qualquer complemento ativo com o aplica_em certo, entao a telha BRANCA
+saia com cumeeira GALVALUME. Corrigido tambem: os ids dos parafusos no vinculo
+estavam sem o "P" (6391P4 em vez de P6391P4), o que tiraria parafuso de todo
+orcamento.
+
+No cadastro: telha nova nasce sem nada marcado (antes nascia com tudo, o que
+virava "aceita tudo" e devolvia o defeito calado), busca dentro da lista,
+"Copiar de outra telha", e a aba Acabamentos aponta as pecas fora de toda telha.
 
 VOLUMES QUE FALTAVAM (deploy apagava cadastro)
 /app/dados e /app/img nao tinham volume: catalogo em uso, fotos enviadas pelo
 painel e vendedores eram perdidos a cada atualizacao. Adicionados
 orcamento-dados e orcamento-fotos no stack e no Dockerfile.
 
+⚠️ ATUALIZAR O STACK NO PORTAINER junto com a imagem. So subir a imagem nova
+nao resolve — e a configuracao da InfinitePay, que agora e feita pelo painel,
+se perde no deploy seguinte.
+
 MIGRACAO NA SUBIDA
 A semente so e copiada na primeira execucao, entao num servidor que ja roda o
 vinculo e a chave Pix nunca chegariam. migrarVinculos() preenche so o que esta
-faltando, nunca sobrescreve escolha do painel, so usa id que existe no
-catalogo em uso, faz backup antes e e idempotente.
+faltando, nunca sobrescreve escolha do painel, faz backup antes e e idempotente.
 
 FERRAMENTAS
 - conferir.js: mostra o calculo passo a passo de uma telha e uma medida, para
-  comparar com o que o vendedor faz a mao. Sinaliza largura util maior que a
-  total, comprimento maximo ausente e acabamento sem vinculo
-- limpar.js + botao "Limpar testes" no painel (so admin): zera orcamentos,
-  PDFs e, opcionalmente, clientes e conversas. MOVE para lixeira/<data-hora>,
-  nao apaga. Botao e linha de comando rodam o mesmo codigo
+  comparar com o que o vendedor faz a mao
+- limpar.js + botao "Limpar testes" no painel: zera orcamentos e PDFs. MOVE
+  para lixeira/<data-hora>, nao apaga
 - /api/painel/diagnostico ganhou bloco "sistema": versao, catalogo em uso, se
-  e volume, se o Pix esta no catalogo, se o codigo do Pix subiu, telhas sem
-  vinculo. Serve para responder "por que tal coisa nao aparece" sem entrar no
-  container
+  e volume, se o Pix subiu, telhas sem vinculo
 
 TESTES
-Novos: teste-pix.js (CRC16 contra o vetor oficial, estrutura do payload,
-tipos de chave), teste-vinculo.js, teste-migracao.js, teste-vendedores.js e
-teste-interno.js e teste-revisao.js. npm test encadeia os nove. Migracao,
-vendedores e revisao usam pasta temporaria, nao encostam em cadastro real.
+Novos: teste-pix, teste-vinculo, teste-migracao, teste-vendedores,
+teste-interno, teste-revisao, teste-origem, teste-obrigatorios e
+teste-pagamento. npm test encadeia os doze.
 
-O teste-revisao.js prova o que mais importa: reabrir e salvar SEM MEXER EM
-NADA da exatamente o mesmo valor, item a item. Se der diferente, o pedido nao
-foi gravado direito e toda edicao estaria perdendo acabamento em silencio.
+Varios deles leem o proprio server.js no fim para cobrar que as linhas
+criticas continuem la — sem isso alguem "simplifica" a regra e o teste segue
+verde.
 
-O teste-interno.js termina lendo o proprio server.js para cobrar que as duas
-linhas criticas continuem la (limite ignorado so quando interno, raio fora do
-interno). Sem isso alguem "simplifica" a decisao e o teste segue verde.
-
-NAO EXECUTADOS nesta sessao: o ambiente Linux nao subiu. Rodar npm test antes
-de publicar.
+⚠️ NAO EXECUTADOS: o ambiente Linux da sessao nao subiu em nenhuma tentativa
+(HYPERVISOR_VIRT_DISABLED). Rodar npm test antes de publicar.

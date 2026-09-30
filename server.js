@@ -88,8 +88,13 @@ app.get('/painel', exigirSenha, (_req, res) => res.sendFile(path.join(__dirname,
 
 /** Quem está logado — o painel usa para esconder o que o vendedor não pode ver. */
 app.get('/api/painel/eu', exigirLogin, (req, res) => {
-  res.json({ ...req.usuario, vendedores: req.usuario.papel === 'admin'
-    ? vendedoresDb.listar().map((v) => ({ id: v.id, nome: v.nome, ativo: v.ativo })) : [] });
+  let pagamentoOnline = false;
+  try { pagamentoOnline = pagamentoOnlineLigado(lerCat()); } catch { /* catálogo ilegível */ }
+  res.json({ ...req.usuario,
+    // o vendedor não vê "gerar link" enquanto o admin não ligar
+    pagamentoOnline,
+    vendedores: req.usuario.papel === 'admin'
+      ? vendedoresDb.listar().map((v) => ({ id: v.id, nome: v.nome, ativo: v.ativo })) : [] });
 });
 
 app.get('/api/painel/orcamentos', exigirLogin, (req, res) => {
@@ -261,6 +266,110 @@ app.post('/api/painel/limpeza', exigirAdmin, (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+// ── PAINEL › CONFIGURAÇÕES (só admin) ─────────────────────────────────
+// Pagamento online e Pix. Enquanto não estiver configurado e LIGADO, o
+// cliente não vê botão nenhum — nada de botão que dá erro ao clicar.
+app.get('/painel/config', exigirAdmin, (_req, res) =>
+  res.sendFile(path.join(__dirname, 'painel-config.html')));
+
+app.get('/api/painel/config', exigirAdmin, (_req, res) => {
+  const c = lerCat();
+  const ip = c.empresa?.infinitepay || {};
+  const pix = c.empresa?.pix || {};
+  res.json({
+    infinitepay: {
+      handle: ip.handle && ip.handle !== 'DEFINIR_A_INFINITETAG' ? ip.handle : '',
+      url_publica: ip.url_publica || '',
+      ativo: ip.ativo === true,
+    },
+    pix: { chave: pix.chave || '', nome: pix.nome || '', cidade: pix.cidade || '',
+      banco: pix.banco || '', ativo: !!pix.chave },
+    // o que o cliente vê hoje, para a tela poder dizer em vez de o dono adivinhar
+    situacao: {
+      pagamentoOnline: pagamentoOnlineLigado(c),
+      pixEstatico: !!pix.chave,
+    },
+  });
+});
+
+app.post('/api/painel/config', exigirAdmin, (req, res) => {
+  try {
+    const c = lerCat();
+    c.empresa = c.empresa || {};
+    const b = req.body || {};
+
+    if (b.infinitepay) {
+      const ip = b.infinitepay;
+      const handle = String(ip.handle || '').trim().replace(/^\$/, '');
+      const url = String(ip.url_publica || '').trim().replace(/\/+$/, '');
+
+      // ⚠️ Ligar sem os dois campos deixaria o botão aparecer e dar erro.
+      if (ip.ativo === true) {
+        if (!handle) throw erroCliente('Informe a InfiniteTag para ligar o pagamento online.');
+        if (!/^https?:\/\/.+/.test(url)) {
+          throw erroCliente('Informe a URL pública do sistema (com https://) — é por ela que a InfinitePay avisa do pagamento.');
+        }
+      }
+      c.empresa.infinitepay = { ...(c.empresa.infinitepay || {}),
+        handle, url_publica: url, ativo: ip.ativo === true };
+    }
+
+    if (b.pix) {
+      const p = b.pix;
+      const chave = String(p.chave || '').trim();
+      if (chave) {
+        c.empresa.pix = { ...(c.empresa.pix || {}), chave,
+          nome: String(p.nome || '').trim() || null,
+          cidade: String(p.cidade || '').trim() || null,
+          banco: String(p.banco || '').trim() || null };
+      } else {
+        delete c.empresa.pix;          // sem chave, o bloco some do PDF
+      }
+    }
+
+    gravarCat(c);
+    res.json({ ok: true, situacao: { pagamentoOnline: pagamentoOnlineLigado(c),
+      pixEstatico: !!c.empresa.pix?.chave } });
+  } catch (e) {
+    res.status(e.publico ? 400 : 500).json({ error: e.message });
+  }
+});
+
+/**
+ * Testa a InfiniteTag de verdade, criando um link de R$ 1,00.
+ * Não dá para "pingar" a API deles, e é melhor descobrir que a handle está
+ * errada aqui do que no primeiro cliente que tentar pagar. O link criado não
+ * é gravado em orçamento nenhum — se ninguém pagar, morre sozinho.
+ */
+app.post('/api/painel/config/testar', exigirAdmin, async (req, res) => {
+  try {
+    const handle = String(req.body?.handle || '').trim().replace(/^\$/, '');
+    const url = String(req.body?.url_publica || '').trim().replace(/\/+$/, '');
+    if (!handle) throw erroCliente('Informe a InfiniteTag.');
+
+    const { criarLink } = require('./infinitepay');
+    const falso = {
+      numero: 'TESTE-CONEXAO', totalAvista: 1, totalPecas: 0, metragemTotal: 0, cliente: {},
+    };
+    const r = await criarLink(falso, {
+      empresa: { infinitepay: { handle, url_publica: url || 'https://exemplo.com', ativo: true } },
+    });
+    res.json({ ok: true, link: r.url });
+  } catch (e) {
+    const detalhe = e.response?.data?.message || e.response?.data?.error || e.message;
+    res.status(400).json({ error: `Não consegui criar o link: ${detalhe}` });
+  }
+});
+
+/** Uma regra só para "o cliente pode pagar online?". */
+function pagamentoOnlineLigado(catalogo) {
+  const ip = catalogo?.empresa?.infinitepay || {};
+  return ip.ativo === true
+    && !!String(ip.handle || '').trim()
+    && ip.handle !== 'DEFINIR_A_INFINITETAG'
+    && /^https?:\/\/.+/.test(String(ip.url_publica || ''));
+}
 
 // ── PAINEL › VENDEDORES (só admin) ────────────────────────────────────
 // Cada vendedor tem seu link (/orcamento?v=slug) e a lista de telhas que
@@ -521,6 +630,14 @@ app.get('/api/painel/produtos', exigirAdmin, (_req, res) => {
     familias: [...new Set((c.telhas || []).map((t) => t.familia))],
     complementos: c.complementos || [],
     perfis: c.perfis || [],
+    // para o marcador "de onde sai" no cadastro do produto. Inclui as
+    // inativas, marcadas — senão a unidade pendente some da tela e ninguém
+    // descobre que ela é o motivo de o produto sair do lugar errado.
+    unidades: (c.unidades || []).map((u) => ({
+      id: u.id, nome: u.nome, ativo: true,
+      codigo: [u.cidade, u.uf].filter(Boolean).join('/')
+        + (u.ativa === false ? ' · PENDENTE: sem endereço' : ''),
+    })),
   });
 });
 
@@ -718,6 +835,8 @@ app.post('/api/painel/produto', exigirAdmin, (req, res) => {
       observacao: p.observacao || null,
       // vínculo: só estes acabamentos e perfis acompanham a telha.
       // null mantém o comportamento antigo (aceita todos os ativos).
+      // de onde esta telha sai (ids de unidades). Vazio = qualquer uma.
+      unidades: Array.isArray(p.unidades) ? p.unidades : null,
       compativeis: p.compativeis && (
         Array.isArray(p.compativeis.complementos) || Array.isArray(p.compativeis.perfis)
       ) ? {
@@ -1096,23 +1215,33 @@ app.post('/api/lista', async (req, res) => {
  * frete — só decide se o valor pode ser mostrado.
  */
 async function gerarOrcamento({ pedido, cliente, vend, interno = false, editando = null }) {
-  // REGRA: sem endereço não existe orçamento (entrega/frete dependem dele)
-  if (!cliente?.nome || !cliente?.cidade) {
-    throw erroCliente('Nome e cidade são obrigatórios.');
-  }
-  if (!enderecoValido(cliente.endereco)) {
-    throw erroCliente('Endereço com rua e número — ex: "Rua Exemplo, 120". Sem número, escreva S/N.');
-  }
-  if (!cliente?.telefone || String(cliente.telefone).replace(/\D/g, '').length < 10) {
-    throw erroCliente('Informe um telefone/WhatsApp válido com DDD.');
+  // ── CAMPOS OBRIGATÓRIOS ───────────────────────────────────────────
+  // ⚠️ Estas regras são as MESMAS da lista REGRAS em orcamento.html. A tela
+  // avisa cedo; aqui é a autoridade, porque a tela pode ser burlada. Mudou
+  // uma, muda a outra — senão o cliente preenche tudo e leva erro no fim.
+  const txt = (v) => String(v == null ? '' : v).trim();
+  const num = (v) => txt(v).replace(/\D/g, '');
+
+  if (txt(cliente?.nome).length < 2) throw erroCliente('Informe o nome completo ou a razão social.');
+  // documento vai no orçamento e na nota
+  if (!documentoValido(cliente?.documento)) throw erroCliente('Informe um CPF ou CNPJ válido.');
+  if (num(cliente?.telefone).length < 10) throw erroCliente('Informe um telefone/WhatsApp válido com DDD.');
+  if (txt(cliente?.email) && !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(txt(cliente.email))) {
+    throw erroCliente('E-mail com formato inválido.');
   }
   // CEP define a unidade de origem e a regra dos 600 km
-  if (String(cliente.cep || '').replace(/\D/g, '').length !== 8) {
-    throw erroCliente('Informe o CEP da obra.');
-  }
-  // documento vai no orçamento e na nota
-  if (!documentoValido(cliente.documento)) {
-    throw erroCliente('Informe um CPF ou CNPJ válido.');
+  if (num(cliente?.cep).length !== 8) throw erroCliente('Informe o CEP da obra.');
+  if (txt(cliente?.rua).length < 3) throw erroCliente('Informe a rua da obra.');
+  if (!txt(cliente?.numero)) throw erroCliente('Informe o número, ou escreva S/N.');
+  if (txt(cliente?.bairro).length < 2) throw erroCliente('Informe o bairro.');
+  if (txt(cliente?.cidade).length < 2) throw erroCliente('Informe a cidade da obra.');
+  // ⚠️ A UF entra no frete junto com o CEP para achar a unidade de origem.
+  // Faltando, cidade repetida entre estados cai no lugar errado — e a
+  // distância errada leva o raio de 600 km junto.
+  if (!/^[A-Za-z]{2}$/.test(txt(cliente?.estado))) throw erroCliente('Informe o estado com 2 letras (ex: SP).');
+  // rede de segurança: a linha montada ainda precisa ter número
+  if (!enderecoValido(cliente?.endereco)) {
+    throw erroCliente('Endereço com rua e número — ex: "Rua Exemplo, 120". Sem número, escreva S/N.');
   }
   const catalogo = await getCatalogo();
 
@@ -1124,12 +1253,19 @@ async function gerarOrcamento({ pedido, cliente, vend, interno = false, editando
     // frete é cobrado À PARTE: calculado aqui e somado como linha própria
     const { calcularFrete } = require('./frete');
     const previa = calcularOrcamento({ grupos, perfis, complementos }, catalogo);
+    // De onde o material sai: o marcador no cadastro dos produtos do pedido.
+    // Hoje só a telha manda nisso — ver nota em unidadesDoPedido.
+    const { unidadesDoPedido } = require('./distancia');
+    const produtosDoPedido = grupos
+      .map((g) => catalogo.telhas.find((t) => t.id === g.telhaId)).filter(Boolean);
+
     const frete = await calcularFrete(
       { cep: cliente.cep, cidade: cliente.cidade, uf: cliente.estado },
       {
         metragemTotal: previa.metragemTotal,
         totalProdutos: previa.totalProdutos,
-        codigos: grupos.map((g) => catalogo.telhas.find((t) => t.id === g.telhaId)?.codigo).filter(Boolean),
+        codigos: produtosDoPedido.map((t) => t.codigo).filter(Boolean),
+        unidades: unidadesDoPedido(produtosDoPedido),
       },
       catalogo
     );
@@ -1267,6 +1403,9 @@ async function gerarOrcamento({ pedido, cliente, vend, interno = false, editando
       pagamentos: orcamento.pagamentos,
       avisos: orcamento.avisos,
       pdf: '/out/' + path.basename(pdfPath),
+      // ⚠️ Só true depois que o admin configurar E ligar nas Configurações.
+      // Sem isso a tela mostraria um botão de pagar que dá erro no clique.
+      pagamentoOnline: pagamentoOnlineLigado(catalogo),
       pix: pix ? {
         payload: pix.payload, chave: pix.chave, nome: pix.nome, banco: pix.banco,
         qr: pix.png ? 'data:image/png;base64,' + pix.png.toString('base64') : null,
@@ -1274,6 +1413,133 @@ async function gerarOrcamento({ pedido, cliente, vend, interno = false, editando
     };
   }
 }
+
+/* ═══════════════ PAGAMENTO ONLINE (InfinitePay) ═══════════════
+   Pix e cartão no mesmo checkout, com aviso de pagamento por webhook — ao
+   contrário do Pix estático do PDF, que só é conferido no extrato. */
+
+/** O token do nome do PDF faz as vezes de senha do orçamento. */
+function tokenDoOrcamento(o) {
+  const m = String(o?.pdf || '').match(/-([0-9a-f]{16})\.pdf$/i);
+  return m ? m[1] : null;
+}
+
+/**
+ * Gera o link de checkout. Sob demanda, no clique — gerar junto com todo
+ * orçamento criaria link para os 90% que nunca são pagos.
+ *
+ * Público, mas exige o token do PDF: o número do orçamento é previsível
+ * (vem do relógio), o token não. Sem isso dava para varrer os orçamentos.
+ */
+app.post('/api/pagamento', async (req, res) => {
+  try {
+    const { numero, token } = req.body || {};
+    const o = orcamentosDb.obter(numero);
+    if (!o || !token || token !== tokenDoOrcamento(o)) {
+      return res.status(404).json({ error: 'Orçamento não encontrado.' });
+    }
+    res.json(await linkDePagamento(o));
+  } catch (e) {
+    console.error('Erro /api/pagamento:', e.message);
+    res.status(400).json({ error: e.message });
+  }
+});
+
+/** Mesma coisa pelo painel, onde quem manda é o login. */
+app.post('/api/painel/pagamento/:numero', exigirLogin, async (req, res) => {
+  try {
+    const o = orcamentosDb.obter(req.params.numero);
+    if (!o) return res.status(404).json({ error: 'Orçamento não encontrado.' });
+    if (req.usuario.papel !== 'admin' && o.vendedorId !== req.usuario.id) {
+      return res.status(404).json({ error: 'Orçamento não encontrado.' });
+    }
+    res.json(await linkDePagamento(o));
+  } catch (e) {
+    console.error('Erro /api/painel/pagamento:', e.message);
+    res.status(400).json({ error: e.message });
+  }
+});
+
+/** Reaproveita o link já criado — não cria um novo a cada clique. */
+async function linkDePagamento(o) {
+  if (o.pagamento?.pago) {
+    return { jaPago: true, recibo: o.pagamento.recibo || null, link: null };
+  }
+  if (o.pagamento?.link) return { link: o.pagamento.link, reaproveitado: true };
+
+  const catalogo = await getCatalogo();
+  if (!pagamentoOnlineLigado(catalogo)) {
+    throw erroCliente('Pagamento online ainda não está ligado. Configure em Painel › Configurações.');
+  }
+  const { criarLink } = require('./infinitepay');
+  const r = await criarLink(o, catalogo);
+
+  orcamentosDb.registrarPagamento(o.numero, { link: r.url, criadoEm: new Date().toISOString() });
+  return { link: r.url };
+}
+
+/**
+ * WEBHOOK DA INFINITEPAY.
+ *
+ * ⚠️ URL pública: qualquer um pode mandar um POST dizendo "pago". O corpo que
+ * chega serve SÓ para saber qual pedido conferir — a prova vem do
+ * /payment_check, consultado na fonte antes de gravar qualquer coisa.
+ *
+ * Responde rápido (a doc pede < 1s) e com 400 quando algo deu errado, porque
+ * aí eles reenviam.
+ */
+app.post('/webhook/infinitepay', async (req, res) => {
+  const { order_nsu, transaction_nsu, invoice_slug, receipt_url } = req.body || {};
+  try {
+    if (!order_nsu) return res.status(400).json({ error: 'sem order_nsu' });
+
+    const o = orcamentosDb.obter(order_nsu);
+    if (!o) {
+      console.warn(`[infinitepay] webhook para orçamento inexistente: ${order_nsu}`);
+      return res.status(400).json({ error: 'pedido não encontrado' });
+    }
+    if (o.pagamento?.pago) return res.json({ ok: true });     // reenvio, já tratado
+
+    const catalogo = await getCatalogo();
+    const { conferirPagamento } = require('./infinitepay');
+    const conf = await conferirPagamento(
+      { order_nsu, transaction_nsu, slug: invoice_slug }, catalogo);
+
+    if (!conf || !conf.pago) {
+      console.warn(`[infinitepay] ${order_nsu}: webhook dizia pago, a consulta diz que não.`);
+      return res.status(400).json({ error: 'pagamento não confirmado na consulta' });
+    }
+
+    orcamentosDb.registrarPagamento(order_nsu, {
+      pago: true, em: new Date().toISOString(),
+      valor: conf.valor, valorPago: conf.valorPago,
+      parcelas: conf.parcelas, forma: conf.forma,
+      transacao: transaction_nsu || null, recibo: receipt_url || null,
+    });
+    // pagou é o sinal mais forte de fechamento que existe
+    orcamentosDb.atualizarStatus(order_nsu, 'fechado',
+      `Pago por ${conf.forma}${conf.parcelas > 1 ? ` em ${conf.parcelas}x` : ''} — R$ ${conf.valorPago.toFixed(2)}`);
+
+    console.log(`[infinitepay] 💰 ${order_nsu} PAGO — ${conf.forma} ${conf.parcelas}x — R$ ${conf.valorPago}`);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[infinitepay] webhook:', e.message);
+    res.status(400).json({ error: e.message });   // 400 faz eles reenviarem
+  }
+});
+
+/** Para onde a InfinitePay devolve o cliente depois de pagar. */
+app.get('/pago', (_req, res) => res.sendFile(path.join(__dirname, 'pago.html')));
+
+/** A tela de retorno pergunta aqui se a baixa já chegou. */
+app.get('/api/pagamento/:numero', (req, res) => {
+  const o = orcamentosDb.obter(req.params.numero);
+  if (!o) return res.status(404).json({ error: 'Orçamento não encontrado.' });
+  const p = o.pagamento || {};
+  // sem valores: esta rota é pública, responde só o que a tela precisa
+  res.json({ numero: o.numero, pago: !!p.pago, forma: p.forma || null,
+    parcelas: p.parcelas || null, recibo: p.recibo || null });
+});
 
 /** Rota pública do site: o vendedor sai do slug do link, se houver. */
 app.post('/api/orcamento', async (req, res) => {
@@ -1347,6 +1613,27 @@ app.post('/webhook', async (req, res) => {
 // Leva o vínculo acabamento↔telha para o catálogo em uso, quando ele ainda
 // não tem. Só preenche o que está vazio, nunca sobrescreve escolha do painel.
 require('./catalogo-arquivo').migrarVinculos();
+
+/**
+ * Completa as unidades que têm CEP mas não têm coordenada.
+ * Roda uma vez na subida e grava — orçamento nenhum espera por isto.
+ * Falha aqui não derruba o servidor: a unidade fica de fora do cálculo e o
+ * diagnóstico acusa.
+ */
+(async () => {
+  try {
+    const { resolverUnidades } = require('./distancia');
+    const cat = lerCat();
+    const r = await resolverUnidades(cat.unidades || []);
+    for (const a of r.avisos) console.warn(`[unidades] ${a}`);
+    if (r.mudou) {
+      gravarCat(cat);
+      if (r.resolvidas.length) console.log(`[unidades] resolvidas pelo CEP: ${r.resolvidas.join(' · ')}`);
+    }
+  } catch (e) {
+    console.warn('[unidades] não consegui resolver as unidades:', e.message);
+  }
+})();
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`🤖 Bot de orçamentos ouvindo na porta ${port}`));

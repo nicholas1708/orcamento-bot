@@ -14,6 +14,12 @@
     "site": "www.4arepresentacao.com.br",
     "vendedor_padrao": "André Luis",
     "_pix_nota": "Pix ESTÁTICO: o QR é gerado pelo sistema, sem banco e sem taxa. Não avisa quando é pago — a conciliação é no extrato. Deixe 'chave' vazia para não mostrar Pix no orçamento.",
+    "_infinitepay_nota": "Pagamento online (Pix e cartão até 12x no mesmo checkout). 'handle' é a InfiniteTag do app, SEM o $. 'url_publica' é o endereço deste sistema — a InfinitePay precisa dele para devolver o cliente e chamar o webhook. ⚠️ O repasse da taxa de parcelamento ao cliente é configurado no APP da InfinitePay, não aqui.",
+    "infinitepay": {
+      "handle": "DEFINIR_A_INFINITETAG",
+      "url_publica": "https://orcamento.4arepresentacao.com.br",
+      "ativo": false
+    },
     "pix": {
       "chave": "44627801000157",
       "_nome_nota": "Titular da conta ligada à chave. O BR Code corta em 25 caracteres — este cabe em exatamente 25. Confirmado com o cliente em 27/08.",
@@ -342,8 +348,24 @@
     }
   ],
   "_unidades_nota": "lat/lon já preenchidos: sem eles o sistema faria 14 consultas externas a cada orçamento (uma por unidade), o que travava a geração por dezenas de segundos. Com as coordenadas fixas, só o endereço do cliente precisa ser consultado.",
+  "_unidades_nota": "De onde o material SAI. A escolha define a distância até a obra e, com ela, a regra dos 600 km. O produto aponta a unidade pelo campo 'unidades' no cadastro dele (vazio = qualquer uma).",
   "unidades": [
     {
+      "id": "cedral",
+      "nome": "Cedral — SP (EPS)",
+      "cep": "15895-314",
+      "_cep_nota": "Mesmo CEP do endereço da empresa (ver empresa.cidade). O 15985-314 informado antes tinha os dígitos trocados e cairia em outro município. Cidade e coordenadas são resolvidas por este CEP na subida — confira a linha [unidades] no log.",
+      "cidade": "Cedral",
+      "uf": "SP",
+      "lat": null,
+      "lon": null,
+      "endereco": null,
+      "cnpj": "44.627.801/0001-57",
+      "ativa": true,
+      "produtos": []
+    },
+    {
+      "id": "est-101",
       "nome": "Est. 101",
       "cep": "75132-105",
       "cidade": "Anápolis",
@@ -356,6 +378,7 @@
       "produtos": []
     },
     {
+      "id": "est-103",
       "nome": "Est. 103",
       "cep": "78134-302",
       "cidade": "Várzea Grande",
@@ -368,6 +391,7 @@
       "produtos": []
     },
     {
+      "id": "est-104",
       "nome": "Est. 104",
       "cep": "55613-010",
       "cidade": "Vitória de Santo Antão",
@@ -380,6 +404,7 @@
       "produtos": []
     },
     {
+      "id": "est-105",
       "nome": "Est. 105",
       "cep": "37600-000",
       "cidade": "Cambuí",
@@ -392,6 +417,7 @@
       "produtos": []
     },
     {
+      "id": "est-106",
       "nome": "Est. 106",
       "cep": "89245-000",
       "cidade": "Araquari",
@@ -404,6 +430,7 @@
       "produtos": []
     },
     {
+      "id": "est-107",
       "nome": "Est. 107",
       "cep": "37600-000",
       "cidade": "Cambuí",
@@ -416,6 +443,7 @@
       "produtos": []
     },
     {
+      "id": "est-1101",
       "nome": "Est. 1101",
       "cep": "89245-000",
       "cidade": "Araquari",
@@ -445,9 +473,9 @@
     "faixa_tolerancia_pct": 5,
     "_faixa_tolerancia_nota": "REGRA DE DESCONTO DO SISTEMA (decisão comercial da 4A): chegando a até 5% do limite da faixa, o desconto da faixa seguinte já é concedido. Efeito prático: os limites viram 47,5 / 95 / 190 m². ⚠️ Isto faz o sistema cobrar MENOS que o orçamento manual em alguns casos — ex: 100 m² sai a R$ 123,02 aqui e a R$ 126,91 no GestãoClick (diferença de R$ 389 em 100 m²). Zerar para igualar ao orçamento manual.",
     "_faixa_preco_por_opcoes": "'produto' = a faixa vale pela metragem daquele produto · 'pedido' = pela metragem total. CONFIRMAR COM A 4A.",
-    "metragem_maxima_autoatendimento_m": 150,
-    "_metragem_maxima_nota": "Acima disto o orçamento É GERADO e fica no painel, mas o valor NÃO é mostrado ao cliente: ele é direcionado ao comercial pelo WhatsApp. Mesma regra vale para obras além do raio de 600 km da fábrica.",
-    "quantidade_maxima_pecas": 200,
+    "metragem_maxima_autoatendimento_m": null,
+    "quantidade_maxima_pecas": null,
+    "_metragem_maxima_nota": "LIBERADO em 30/09 a pedido do cliente: null = sem limite, o cliente fecha qualquer metragem sozinho, com valor à vista na tela. Antes era 150 m² / 200 peças, e acima disso o orçamento virava PROP- e ia ao comercial sem mostrar preço. ⚠️ Para voltar a limitar, é só pôr um número aqui — o código já trata. O que CONTINUA travando para todo mundo é o raio de 600 km (lá o frete embutido não cobre a entrega) e peça acima de promocao_ate_m.",
     "observacao_pdf": "Orçamento gerado automaticamente. Sujeito a conferência das medidas informadas pelo cliente. Frete grátis para o endereço informado."
   },
   "ilustracoes": {

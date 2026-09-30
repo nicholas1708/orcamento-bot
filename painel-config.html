@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Configurações — Painel 4A</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/painel/ui.css">
+</head>
+<body></body>
+<script src="/painel/ui.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   CONFIGURAÇÕES — só o administrador.
+
+   Formas de receber. O princípio da tela: nada aparece para o cliente
+   enquanto não estiver configurado E ligado aqui. Botão de pagar que dá
+   erro ao clicar é pior que botão nenhum.
+   ═══════════════════════════════════════════════════════════════════ */
+let cfg = null;
+
+montarShell('config', 'Configurações', 'Como a empresa recebe',
+  `<button class="btn" onclick="salvar()">Salvar alterações</button>`);
+
+g('corpo').innerHTML = `<div id="tela"><div class="vazio">Carregando…</div></div>`;
+
+async function carregar() {
+  try { cfg = await pegar('/api/painel/config'); }
+  catch (e) { g('tela').innerHTML = `<div class="msg bad">${esc(e.message)}</div>`; return; }
+  pintar();
+}
+
+/** Faixa do topo: o que o cliente está vendo AGORA. */
+function situacao() {
+  const s = cfg.situacao || {};
+  const linha = (ok, ligado, desligado) =>
+    `<div style="display:flex;gap:9px;align-items:center;padding:5px 0">
+      <span class="tag ${ok ? 'ok' : 'off'}">${ok ? 'ligado' : 'desligado'}</span>
+      <span style="font-size:13.5px">${ok ? ligado : desligado}</span></div>`;
+  return `<div class="card">
+    <span class="eyebrow">O que o cliente vê hoje</span>
+    ${linha(s.pagamentoOnline,
+      'Botão <b>Pagar agora</b> na tela final e link de cobrança no painel.',
+      'Nenhum botão de pagar — o cliente só recebe o orçamento.')}
+    ${linha(s.pixEstatico,
+      'Bloco <b>Pague com Pix</b> no PDF e na tela, com QR e copia e cola.',
+      'Sem bloco de Pix no orçamento.')}
+  </div>`;
+}
+
+function pintar() {
+  const ip = cfg.infinitepay || {}, pix = cfg.pix || {};
+  g('tela').innerHTML = `
+    <div id="msg" class="msg" hidden></div>
+    ${situacao()}
+
+    <div class="card">
+      <h2>Pagamento online — InfinitePay</h2>
+      <p class="d">Um link de checkout com <b>Pix e cartão em até 12x</b>. Quando o
+        cliente paga, o orçamento é marcado como fechado sozinho — diferente do
+        Pix do PDF, que só é conferido no extrato.</p>
+
+      <div class="grade g2">
+        <div class="campo"><label>InfiniteTag <i>*</i></label>
+          <input id="ip-handle" value="${esc(ip.handle || '')}" placeholder="suaempresa">
+          <small>seu nome de usuário no app da InfinitePay, <b>sem o $</b></small></div>
+        <div class="campo"><label>Endereço público do sistema <i>*</i></label>
+          <input id="ip-url" value="${esc(ip.url_publica || '')}" placeholder="https://orcamento.suaempresa.com.br">
+          <small>é por aqui que a InfinitePay avisa que o cliente pagou</small></div>
+      </div>
+
+      <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:14px">
+        <button class="btn g" onclick="testar()">Testar conexão</button>
+        <div id="teste" style="flex:1;min-width:200px;align-self:center;font-size:13px"></div>
+      </div>
+
+      <div class="campo" style="margin-top:18px;max-width:320px">
+        <label>Mostrar o botão de pagar para o cliente?</label>
+        <select id="ip-ativo">
+          <option value="nao">Não — ainda estou configurando</option>
+          <option value="sim" ${ip.ativo ? 'selected' : ''}>Sim, pode cobrar online</option>
+        </select>
+        <small>enquanto estiver "não", nada disso aparece no orçamento</small>
+      </div>
+
+      <div class="msg warn" style="margin-top:14px">
+        <b>Confira no app da InfinitePay antes de ligar:</b> o repasse da taxa de
+        parcelamento ao cliente é configurado <b>lá</b>, não aqui. Se ficar
+        desligado, a taxa das 12x sai da sua margem.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Pix direto na conta</h2>
+      <p class="d">QR e copia e cola no PDF e na tela, sem intermediário e sem taxa.
+        <b>Não avisa quando é pago</b> — a baixa é pelo extrato, na mão.
+        Deixe a chave em branco para tirar o bloco do orçamento.</p>
+
+      <div class="grade g2">
+        <div class="campo"><label>Chave Pix</label>
+          <input id="px-chave" value="${esc(pix.chave || '')}" placeholder="CNPJ, telefone, e-mail ou chave aleatória">
+          <small>a mesma que aparece no comprovante do cliente</small></div>
+        <div class="campo"><label>Nome do favorecido</label>
+          <input id="px-nome" value="${esc(pix.nome || '')}" maxlength="25"
+            placeholder="A L DE LIMA REPRESENTACAO">
+          <small>o padrão do Pix corta em <b>25 caracteres</b></small></div>
+        <div class="campo"><label>Cidade do favorecido</label>
+          <input id="px-cidade" value="${esc(pix.cidade || '')}" maxlength="15" placeholder="CEDRAL"></div>
+        <div class="campo"><label>Banco</label>
+          <input id="px-banco" value="${esc(pix.banco || '')}" placeholder="SICOOB">
+          <small>só informativo, aparece ao lado do favorecido</small></div>
+      </div>
+
+      <div class="msg bad" style="margin-top:14px">
+        <b>Confira a chave com calma.</b> Chave errada manda o dinheiro do cliente
+        para a conta de outra pessoa, e o sistema não tem como perceber.
+      </div>
+    </div>
+
+    <div style="display:flex;gap:9px;position:sticky;bottom:0;background:var(--bg-soft);padding:14px 0">
+      <button class="btn" onclick="salvar()">Salvar alterações</button>
+      <button class="btn g" onclick="carregar()">Descartar</button>
+    </div>`;
+}
+
+async function testar() {
+  const cx = g('teste');
+  cx.innerHTML = '<span style="color:var(--muted)">Criando um link de teste de R$ 1,00…</span>';
+  try {
+    const r = await enviar('/api/painel/config/testar', {
+      handle: g('ip-handle').value.trim(),
+      url_publica: g('ip-url').value.trim(),
+    });
+    cx.innerHTML = `<span style="color:var(--ok)">✓ Conexão certa.</span>
+      <a href="${esc(r.link)}" target="_blank" style="color:var(--brand-dd);font-weight:600">ver o link</a>
+      <br><span style="color:var(--muted);font-size:12px">Link de teste, ninguém precisa pagar — se ficar sem pagamento, ele expira sozinho.</span>`;
+  } catch (e) {
+    cx.innerHTML = `<span style="color:var(--bad)">✕ ${esc(e.message)}</span>`;
+  }
+}
+
+async function salvar() {
+  const v = (id) => g(id)?.value?.trim() || '';
+  try {
+    const r = await enviar('/api/painel/config', {
+      infinitepay: {
+        handle: v('ip-handle'),
+        url_publica: v('ip-url'),
+        ativo: g('ip-ativo').value === 'sim',
+      },
+      pix: {
+        chave: v('px-chave'), nome: v('px-nome'),
+        cidade: v('px-cidade'), banco: v('px-banco'),
+      },
+    });
+    cfg.situacao = r.situacao;
+    aviso('msg', 'ok', 'Salvo. ' + (r.situacao.pagamentoOnline
+      ? 'O botão de pagar já está aparecendo para o cliente.'
+      : 'O pagamento online continua desligado para o cliente.'));
+    await carregar();
+  } catch (e) { aviso('msg', 'bad', esc(e.message)); }
+}
+
+carregar();
+</script>
+</html>

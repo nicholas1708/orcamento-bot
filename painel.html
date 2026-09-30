@@ -222,12 +222,84 @@ function verFicha(i){
         <span style="color:var(--muted)"> · ${dataCurta(p.em)}</span></div>`).join('')}
     </div>`:''}
 
+    ${blocoPagamento(o)}
+
     <div style="display:flex;gap:9px;margin-top:4px">
       ${o.pdf?`<a class="btn g" href="${o.pdf}" target="_blank" style="flex:1;text-align:center">
         📄 Abrir PDF${(o.revisao||1)>1?` (rev. ${o.revisao})`:''}</a>`:''}
       ${botaoEditar(o)}
     </div>`
   );
+}
+
+/* ═══════════════ PAGAMENTO ONLINE ═══════════════
+   Link de checkout da InfinitePay (Pix ou cartão em até 12x). O vendedor
+   gera e manda por WhatsApp; quando o cliente paga, o webhook marca sozinho. */
+function blocoPagamento(o){
+  const p=o.pagamento||{};
+
+  // pagamento já recebido continua aparecendo mesmo se depois for desligado —
+  // é histórico da venda, não configuração
+  if(!p.pago&&!(EU&&EU.pagamentoOnline)){
+    return souAdmin()
+      ? `<div class="msg info">Pagamento online desligado.
+          <a href="/painel/config" style="color:var(--brand-dd);font-weight:600">Configurar</a></div>`
+      : '';
+  }
+
+  if(p.pago){
+    return `<div class="msg ok">
+      <b>💰 Pago</b> — ${esc(p.forma||'')}${p.parcelas>1?` em ${p.parcelas}x`:''}
+      · R$ ${BRL(p.valorPago||p.valor)} · ${dataCurta(p.em)}
+      ${p.recibo?`<br><a href="${esc(p.recibo)}" target="_blank" style="color:var(--brand-dd);font-weight:600">Ver comprovante</a>`:''}
+    </div>`;
+  }
+
+  const zap=zapLink(o.cliente?.telefone);
+  return `<div class="card">
+    <span class="eyebrow">Cobrar do cliente</span>
+    <p class="d">Link de pagamento com Pix ou cartão em até 12x. A baixa entra
+      sozinha no painel quando o cliente pagar.</p>
+    <div id="pg-${esc(o.numero)}">
+      ${p.link
+        ? linkPronto(o,p.link,zap)
+        : `<button class="btn" onclick="gerarPagamento('${esc(o.numero)}')">Gerar link de pagamento</button>`}
+    </div>
+  </div>`;
+}
+
+function linkPronto(o,link,zap){
+  const texto=encodeURIComponent(
+    `Olá${o.cliente?.nome?' '+String(o.cliente.nome).split(' ')[0]:''}! `
+    +`Segue o link para pagamento do orçamento ${o.numero}:\n${link}`);
+  return `
+    <div style="font-size:12px;word-break:break-all;color:var(--muted);margin-bottom:9px">${esc(link)}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn g sm" onclick="copiarLink('${esc(link)}',this)">Copiar link</button>
+      ${zap?`<a class="btn g sm" target="_blank"
+        href="${zap.split('?')[0]}?text=${texto}">Mandar no WhatsApp</a>`:''}
+      <a class="btn g sm" href="${esc(link)}" target="_blank">Abrir</a>
+    </div>`;
+}
+
+async function gerarPagamento(numero){
+  const cx=g('pg-'+numero);
+  cx.innerHTML='<div class="sec">Gerando...</div>';
+  try{
+    const r=await enviar('/api/painel/pagamento/'+encodeURIComponent(numero));
+    if(r.jaPago){cx.innerHTML='<div class="msg ok">Este orçamento já está pago.</div>';return;}
+    const o=dados.find(x=>x.numero===numero)||{numero};
+    cx.innerHTML=linkPronto(o,r.link,zapLink(o.cliente?.telefone));
+  }catch(e){
+    cx.innerHTML=`<div class="msg bad">${esc(e.message)}</div>`
+      +`<button class="btn g sm" style="margin-top:8px" onclick="gerarPagamento('${esc(numero)}')">Tentar de novo</button>`;
+  }
+}
+
+async function copiarLink(link,btn){
+  try{ await navigator.clipboard.writeText(link); btn.textContent='Copiado ✓'; }
+  catch{ btn.textContent='Copie da tela'; }
+  setTimeout(()=>{btn.textContent='Copiar link';},1800);
 }
 
 /**

@@ -36,6 +36,17 @@
   #vend a{color:#fff}
   /* busca de cliente já cadastrado (só no modo interno) */
   #dlista{max-height:230px;overflow:auto}
+  /* ── campos obrigatórios ──────────────────────────────────────────
+     O asterisco é o único aviso ANTES do erro: sem ele o cliente só
+     descobre o que faltava depois de clicar. */
+  .campo label i{font-style:normal;color:var(--brand);font-weight:700;margin-left:1px}
+  .campo label i.opc{color:var(--muted);font-weight:400;font-size:.92em}
+  .legenda-obrig{font-size:12px;color:var(--muted);margin:-8px 0 16px}
+  .legenda-obrig b{color:var(--brand)}
+  .erro-campo{font-size:12px;color:#C0392B;margin-top:4px;line-height:1.4}
+  .campo.ruim input{border-color:#C0392B;background:#FFF6F5}
+  .campo.ruim input:focus{border-color:#C0392B;box-shadow:0 0 0 3px rgba(192,57,43,.12)}
+  .falta{font-size:12.5px;color:#7a5b00;background:#FFF4CE;padding:10px 12px;margin-bottom:12px;line-height:1.5}
   .topo{display:flex;align-items:center;gap:10px;margin-bottom:20px}
   .voltar{background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);padding:2px 6px;visibility:hidden}
   .voltar.on{visibility:visible}
@@ -136,6 +147,15 @@
   .fim a.pdf{display:block;margin-top:16px;padding:16px;background:var(--brand);color:#fff;font-weight:700;
     text-decoration:none;font-family:'Barlow Condensed';font-size:18px;text-transform:uppercase;letter-spacing:.05em}
   .fim a.pdf:hover{background:var(--brand-dd)}
+  /* Pagar agora — ação principal da tela final, acima do Pix */
+  .pagar{display:block;width:100%;margin-top:12px;padding:17px;background:var(--ink);
+    color:#fff;border:none;font-family:'Barlow Condensed';font-weight:700;
+    text-transform:uppercase;letter-spacing:.05em;font-size:16px;cursor:pointer}
+  .pagar:hover{background:var(--brand-dd)}
+  .pagar:disabled{opacity:.6;cursor:default}
+  .pg-msg{font-size:13px;margin-top:9px;padding:10px 12px;line-height:1.5}
+  .pg-msg.ok{background:#E8F6EF;color:#1B7F5A}
+  .pg-msg.ruim{background:#FFF6F5;color:#C0392B}
   /* Pix da tela final */
   .pix{margin-top:16px;border:1px solid var(--line);padding:18px;text-align:center}
   .pix-tit{font-family:'Barlow Condensed';font-weight:700;text-transform:uppercase;
@@ -720,37 +740,72 @@ function desenhar(){
           autocomplete="off">
         <small class="dica">Só aparecem os clientes que passaram por você.</small>
         <div id="dlista"></div></div>`:''}
-      <div class="campo"><label>${INTERNO?'Nome do cliente':'Seu nome'}</label><input id="dn" value="${cliente.nome}" placeholder="Nome ou empresa"></div>
-      <div class="campo"><label>CPF ou CNPJ</label>
-        <input id="dd" inputmode="numeric" value="${cliente.documento}" placeholder="000.000.000-00"></div>
-      <div class="campo"><label>WhatsApp</label><input id="dt" inputmode="tel" value="${cliente.telefone}" placeholder="(17) 99999-9999"></div>
-      <div class="campo"><label>E-mail <i style="font-style:normal;color:var(--muted);font-weight:400">(opcional)</i></label>
-        <input id="dm" type="email" value="${cliente.email}" placeholder="voce@email.com"></div>
+      <p class="legenda-obrig"><b>*</b> campos obrigatórios</p>
+
+      <div class="campo"><label>${INTERNO?'Nome do cliente':'Seu nome'} <i>*</i></label>
+        <input id="dn" value="${cliente.nome}" placeholder="Nome ou empresa"
+          onblur="conferirCampo('dn')" oninput="limparErro('dn')">
+        <div class="erro-campo" id="e-dn" hidden></div></div>
+
+      <div class="campo"><label>CPF ou CNPJ <i>*</i></label>
+        <input id="dd" inputmode="numeric" value="${cliente.documento}" placeholder="000.000.000-00"
+          onblur="conferirCampo('dd')" oninput="limparErro('dd')">
+        <small class="dica">Vai no orçamento e na nota fiscal.</small>
+        <div class="erro-campo" id="e-dd" hidden></div></div>
+
+      <div class="campo"><label>WhatsApp <i>*</i></label>
+        <input id="dt" inputmode="tel" value="${cliente.telefone}" placeholder="(17) 99999-9999"
+          onblur="conferirCampo('dt')" oninput="limparErro('dt')">
+        <div class="erro-campo" id="e-dt" hidden></div></div>
+
+      <div class="campo"><label>E-mail <i class="opc">(opcional)</i></label>
+        <input id="dm" type="email" value="${cliente.email}" placeholder="voce@email.com"
+          onblur="conferirCampo('dm')" oninput="limparErro('dm')">
+        <div class="erro-campo" id="e-dm" hidden></div></div>
+
       <span class="eyebrow" style="margin-top:22px">Onde entregar</span>
-      <div class="campo"><label>CEP da obra</label>
+
+      <div class="campo"><label>CEP da obra <i>*</i></label>
         <input id="dp" inputmode="numeric" value="${cliente.cep}" placeholder="15000-000"
-          oninput="buscarCep(this.value)">
-        <small id="cepmsg" class="dica">Digite o CEP que eu preencho o resto — só o número fica com você.</small></div>
+          oninput="limparErro('dp');buscarCep(this.value)" onblur="conferirCampo('dp')">
+        <small id="cepmsg" class="dica">Digite o CEP que eu preencho o resto — só o número fica com você.</small>
+        <div class="erro-campo" id="e-dp" hidden></div></div>
 
       <div class="l2" style="grid-template-columns:1fr 100px">
-        <div class="campo"><label>Rua</label>
-          <input id="dr" value="${cliente.rua}" placeholder="Rua Exemplo"></div>
-        <div class="campo"><label>Número</label>
-          <input id="dnum" value="${cliente.numero}" placeholder="120"></div>
+        <div class="campo"><label>Rua <i>*</i></label>
+          <input id="dr" value="${cliente.rua}" placeholder="Rua Exemplo"
+            onblur="conferirCampo('dr')" oninput="limparErro('dr')">
+          <div class="erro-campo" id="e-dr" hidden></div></div>
+        <div class="campo"><label>Número <i>*</i></label>
+          <input id="dnum" value="${cliente.numero}" placeholder="120"
+            onblur="conferirCampo('dnum')" oninput="limparErro('dnum')">
+          <div class="erro-campo" id="e-dnum" hidden></div></div>
       </div>
+
       <div class="l2">
-        <div class="campo"><label>Bairro</label>
-          <input id="db" value="${cliente.bairro}" placeholder="Centro"></div>
-        <div class="campo"><label>Complemento <i style="font-style:normal;color:var(--muted);font-weight:400">(opcional)</i></label>
+        <div class="campo"><label>Bairro <i>*</i></label>
+          <input id="db" value="${cliente.bairro}" placeholder="Centro"
+            onblur="conferirCampo('db')" oninput="limparErro('db')">
+          <div class="erro-campo" id="e-db" hidden></div></div>
+        <div class="campo"><label>Complemento <i class="opc">(opcional)</i></label>
           <input id="dcp" value="${cliente.complemento}" placeholder="fundos, galpão 2"></div>
       </div>
+
       <div class="l2" style="grid-template-columns:1fr 90px">
-        <div class="campo"><label>Cidade</label>
-          <input id="dc" value="${cliente.cidade}" placeholder="São José do Rio Preto"></div>
-        <div class="campo"><label>Estado</label>
-          <input id="du" value="${cliente.estado}" placeholder="SP" maxlength="2" style="text-transform:uppercase"></div>
+        <div class="campo"><label>Cidade <i>*</i></label>
+          <input id="dc" value="${cliente.cidade}" placeholder="São José do Rio Preto"
+            onblur="conferirCampo('dc')" oninput="limparErro('dc')">
+          <div class="erro-campo" id="e-dc" hidden></div></div>
+        <div class="campo"><label>Estado <i>*</i></label>
+          <input id="du" value="${cliente.estado}" placeholder="SP" maxlength="2"
+            style="text-transform:uppercase"
+            onblur="conferirCampo('du')" oninput="limparErro('du')">
+          <div class="erro-campo" id="e-du" hidden></div></div>
       </div>
+
+      <div id="falta" class="falta" hidden></div>
       <button class="btn" onclick="okDados()">${INTERNO?'Gerar orçamento':'Ver meu orçamento'}</button>`);
+    setTimeout(contarFaltando,0);
   }
 
   /* resultado */
@@ -772,9 +827,56 @@ function desenhar(){
       <div class="parc">${r.pagamentos.map(p=>`<div><span>${p.parcelas}x</span>
         <span>R$ ${BRL(p.valorParcela)}</span></div>`).join('')}</div>
       <a class="pdf" href="${r.pdf}" target="_blank">📄 Baixar orçamento completo</a>
+      ${blocoPagar(r)}
       ${blocoPix(r)}
       <button onclick="location.reload()">Fazer outro orçamento</button></div>`);
   }
+}
+
+/**
+ * PAGAR AGORA — checkout da InfinitePay, Pix ou cartão em até 12x.
+ *
+ * O link é gerado no clique, não junto com o orçamento: a maioria dos
+ * orçamentos nunca é paga, e criar link para todos só gera lixo e espera.
+ *
+ * Some sozinho quando o pagamento online não está configurado.
+ */
+function blocoPagar(r){
+  // só aparece depois que o admin configurou e ligou nas Configurações
+  if(!r||!r.pdf||!r.pagamentoOnline)return '';
+  // o token do nome do PDF prova que este orçamento é de quem está na tela
+  const m=String(r.pdf).match(/-([0-9a-f]{16})\.pdf$/i);
+  if(!m)return '';
+  window._tokenPg=m[1];
+  return `
+    <button type="button" class="pagar" id="bt-pagar" onclick="pagarAgora('${esc(r.numero)}')">
+      Pagar agora · Pix ou cartão em até 12x</button>
+    <div id="pg-msg" class="pg-msg" hidden></div>`;
+}
+
+async function pagarAgora(numero){
+  const btn=g('bt-pagar'), msg=g('pg-msg');
+  btn.disabled=true;btn.textContent='Abrindo o pagamento...';
+  let d;
+  try{
+    d=await fetch('/api/pagamento',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({numero,token:window._tokenPg})}).then(x=>x.json());
+  }catch{ d={error:'Não consegui falar com o servidor.'}; }
+
+  if(d&&d.jaPago){
+    btn.hidden=true;
+    msg.hidden=false;msg.className='pg-msg ok';
+    msg.innerHTML='Este orçamento já está pago. ✓'
+      +(d.recibo?` <a href="${d.recibo}" target="_blank">Ver comprovante</a>`:'');
+    return;
+  }
+  if(!d||d.error||!d.link){
+    btn.disabled=false;btn.textContent='Pagar agora · Pix ou cartão em até 12x';
+    msg.hidden=false;msg.className='pg-msg ruim';
+    msg.textContent=(d&&d.error)||'Não consegui abrir o pagamento. Use o Pix abaixo ou fale com a gente.';
+    return;
+  }
+  location.href=d.link;
 }
 
 /**
@@ -1236,11 +1338,13 @@ function buscarCep(v){
       if(!valor)return;
       cliente[campo]=valor;
       const c=g(id);if(c)c.value=valor;
+      pintarErro(id,null);          // preencheu, some o vermelho
     };
     põe('dc','cidade',r.cidade);
     põe('du','estado',r.uf);
     põe('dr','rua',r.rua);
     põe('db','bairro',r.bairro);
+    contarFaltando();               // atualiza o "faltam N campos"
 
     if(m){
       // cidade de CEP único não tem rua nem bairro na base — avisa em vez
@@ -1297,38 +1401,110 @@ function documentoValido(v){
   return false;
 }
 
+/* ═══════════════ CAMPOS OBRIGATÓRIOS ═══════════════
+   Uma regra por campo, num lugar só. O rótulo é o mesmo que aparece na tela,
+   para a mensagem falar a língua do que a pessoa está vendo.
+
+   ⚠️ O servidor confere tudo de novo (ver gerarOrcamento). Isto aqui é
+   conveniência: avisar antes de o cliente preencher a ficha inteira e levar
+   um erro seco no fim. */
+const REGRAS=[
+  {id:'dn',  campo:'nome',      rotulo:'Nome',        obrig:true,
+   ok:v=>v.length>=2||'Informe o nome completo ou a razão social.'},
+  {id:'dd',  campo:'documento', rotulo:'CPF ou CNPJ', obrig:true,
+   ok:v=>documentoValido(v)||'CPF ou CNPJ inválido — confira os números.'},
+  {id:'dt',  campo:'telefone',  rotulo:'WhatsApp',    obrig:true,
+   ok:v=>{const d=v.replace(/\D/g,'');
+     if(d.length<10)return 'Informe o WhatsApp com DDD.';
+     if(d.length>13)return 'Esse número tem dígitos demais.';
+     return true;}},
+  {id:'dm',  campo:'email',     rotulo:'E-mail',      obrig:false,
+   // opcional, mas e-mail torto é pior que vazio: ninguém descobre que o
+   // orçamento não chegou
+   ok:v=>/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(v)||'Esse e-mail não parece válido.'},
+  {id:'dp',  campo:'cep',       rotulo:'CEP da obra', obrig:true,
+   ok:v=>v.replace(/\D/g,'').length===8||'O CEP tem 8 números.'},
+  // CEP de cidade pequena não traz rua nem bairro — por isso os campos são
+  // sempre editáveis, e sempre exigidos.
+  {id:'dr',  campo:'rua',       rotulo:'Rua',         obrig:true,
+   ok:v=>v.length>=3||'Informe a rua da obra.'},
+  {id:'dnum',campo:'numero',    rotulo:'Número',      obrig:true,
+   ok:v=>/\d/.test(v)||/^s\/?\s?n(º|o)?$/i.test(v)||'Informe o número, ou escreva S/N.'},
+  {id:'db',  campo:'bairro',    rotulo:'Bairro',      obrig:true,
+   ok:v=>v.length>=2||'Informe o bairro.'},
+  {id:'dc',  campo:'cidade',    rotulo:'Cidade',      obrig:true,
+   ok:v=>v.length>=2||'Informe a cidade da obra.'},
+  // ⚠️ A UF entra no frete junto com o CEP para achar a unidade de origem.
+  // Faltando, cidade repetida entre estados cai no lugar errado — e a
+  // distância errada leva o raio de 600 km junto.
+  {id:'du',  campo:'estado',    rotulo:'Estado',      obrig:true,
+   ok:v=>/^[A-Za-z]{2}$/.test(v)||'Informe a UF com 2 letras, ex: SP.'},
+];
+
+const valorDe=(r)=>{const e=g(r.id);return e?e.value.trim():'';};
+
+/** Devolve a mensagem de erro do campo, ou null se está tudo certo. */
+function erroDoCampo(r){
+  const v=valorDe(r);
+  if(!v)return r.obrig?`${r.rotulo} é obrigatório.`:null;
+  const res=r.ok(v);
+  return res===true?null:res;
+}
+
+function pintarErro(id,msg){
+  const inp=g(id), box=g('e-'+id);
+  if(!inp||!box)return;
+  const campo=inp.closest('.campo');
+  if(msg){ if(campo)campo.classList.add('ruim'); box.textContent=msg; box.hidden=false; }
+  else   { if(campo)campo.classList.remove('ruim'); box.textContent=''; box.hidden=true; }
+}
+
+/** Some com o erro assim que a pessoa começa a corrigir — não fica brigando. */
+function limparErro(id){ pintarErro(id,null); contarFaltando(); }
+
+/** Confere UM campo, ao sair dele. Erro aparece na hora, não no fim. */
+function conferirCampo(id){
+  const r=REGRAS.find(x=>x.id===id);
+  if(r)pintarErro(id,erroDoCampo(r));
+  contarFaltando();
+}
+
+/** Aviso acima do botão com o que ainda falta — sem precisar clicar. */
+function contarFaltando(){
+  const box=g('falta');
+  if(!box)return;
+  const faltam=REGRAS.filter(r=>r.obrig&&!valorDe(r)).map(r=>r.rotulo);
+  if(!faltam.length){box.hidden=true;return;}
+  box.hidden=false;
+  box.innerHTML=faltam.length===1
+    ? `Falta preencher: <b>${esc(faltam[0])}</b>.`
+    : `Faltam ${faltam.length} campos: <b>${esc(faltam.join(', '))}</b>.`;
+}
+
 function okDados(){
-  cliente.nome=g('dn').value.trim();
-  cliente.documento=g('dd').value.trim();
-  cliente.telefone=g('dt').value.trim();
-  cliente.email=g('dm').value.trim();
-  cliente.cep=g('dp').value.trim();
-  cliente.rua=g('dr').value.trim();
-  cliente.numero=g('dnum').value.trim();
-  cliente.bairro=g('db').value.trim();
-  cliente.complemento=g('dcp').value.trim();
-  cliente.cidade=g('dc').value.trim();
-  cliente.estado=g('du').value.trim().toUpperCase();
+  for(const r of REGRAS)cliente[r.campo]=valorDe(r);
+  cliente.estado=cliente.estado.toUpperCase();
+  cliente.complemento=g('dcp')?g('dcp').value.trim():'';
   // linha única para o motor, o PDF e a nota
   cliente.endereco=montarEndereco(cliente);
 
-  // aponta o campo que falhou, em vez de só mostrar a mensagem no rodapé
-  const falha=(id,msg)=>{const c=g(id);if(c){c.focus();c.scrollIntoView({block:'center',behavior:'smooth'});}return err(msg);};
+  // Marca TODOS os campos com problema de uma vez. Apontar um por vez faz a
+  // pessoa corrigir, clicar, descobrir o próximo — e desistir no terceiro.
+  let primeiro=null;
+  for(const r of REGRAS){
+    const msg=erroDoCampo(r);
+    pintarErro(r.id,msg);
+    if(msg&&!primeiro)primeiro=r;
+  }
+  contarFaltando();
 
-  if(cliente.nome.length<2)return falha('dn','Informe seu nome.');
-  if(!documentoValido(cliente.documento))
-    return falha('dd','Informe um CPF ou CNPJ válido — é o que vai no orçamento e na nota.');
-  if(cliente.telefone.replace(/\D/g,'').length<10)return falha('dt','Informe um WhatsApp válido com DDD.');
-  if(cliente.email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cliente.email))return falha('dm','Esse e-mail não parece válido.');
-  if(cliente.cep.replace(/\D/g,'').length!==8)
-    return falha('dp','Informe o CEP da obra — é ele que define a unidade de entrega.');
-  // CEP de cidade pequena não traz rua nem bairro — por isso os campos são
-  // sempre editáveis, e sempre exigidos.
-  if(cliente.rua.length<3)return falha('dr','Informe a rua.');
-  if(!cliente.numero)return falha('dnum','Informe o número. Se não tiver, escreva S/N.');
-  if(cliente.bairro.length<2)return falha('db','Informe o bairro.');
-  if(cliente.cidade.length<2)return falha('dc','Informe a cidade.');
-  if(!/^[A-Za-zÀ-ÿ]{2}$/.test(cliente.estado))return falha('du','Informe o estado com 2 letras, ex: SP.');
+  if(primeiro){
+    const inp=g(primeiro.id);
+    if(inp){inp.scrollIntoView({block:'center',behavior:'smooth'});inp.focus();}
+    const n=REGRAS.filter(r=>erroDoCampo(r)).length;
+    return err(n===1?erroDoCampo(primeiro)
+      :`${n} campos precisam de atenção — veja em vermelho.`);
+  }
 
   try{localStorage.setItem('cliente4a',JSON.stringify(cliente));}catch(e){}
   gerar();

@@ -38,12 +38,23 @@ async function calcularFrete(destino, pedido, catalogo) {
   // volume). Duas exceções: raio de entrega e pedido mínimo.
   if (catalogo.fretes?.modo === 'embutido') {
     const cfg = catalogo.fretes;
-    const proxima = await comLimiteDeTempo(unidadeMaisProxima(destino, unidades, pedido.codigos || []));
+    const proxima = await comLimiteDeTempo(
+      unidadeMaisProxima(destino, unidades, pedido.codigos || [], pedido.unidades || null));
 
     if (!proxima) {
+      // Três motivos diferentes caem aqui, e o vendedor precisa distinguir:
+      // endereço do cliente, cadastro da unidade, ou telhas de origens
+      // diferentes no mesmo pedido (carga dupla, que a operação não faz).
+      const marcou = Array.isArray(pedido.unidades);
+      const conflito = marcou && pedido.unidades.length === 0;
       return { valor: 0, embutido: true, km: null, unidade: null,
         descricao: 'Frete grátis',
-        aviso: 'Não consegui identificar a unidade de origem pelo endereço — o vendedor confirma o prazo de entrega.' };
+        origemConflitante: conflito || false,
+        aviso: conflito
+          ? 'As telhas deste pedido saem de unidades diferentes e a carga sai de um lugar só. Separe em dois orçamentos ou confirme a origem com o vendedor.'
+          : marcou
+            ? 'A telha deste pedido sai de uma unidade sem endereço cadastrado — confira o cadastro da unidade. O vendedor confirma o prazo.'
+            : 'Não consegui identificar a unidade de origem pelo endereço — o vendedor confirma o prazo de entrega.' };
     }
 
     const { unidade, km } = proxima;

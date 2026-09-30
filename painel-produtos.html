@@ -27,7 +27,7 @@
    produto existe mas nunca entra numa lista automática — por isso o
    aviso no topo aponta exatamente o que está faltando.
    ═══════════════════════════════════════════════════════════════════ */
-let telhas=[],complementos=[],perfis=[],familias=[];
+let telhas=[],complementos=[],perfis=[],familias=[],unidades=[];
 let aba='telhas', busca='';
 
 const APLICA={cumeeira:'Cumeeira (topo do telhado)',frontal:'Frontal (beiral da frente)',
@@ -52,7 +52,7 @@ async function carregar(){
   try{
     const r=await pegar('/api/painel/produtos');
     telhas=r.produtos||[];complementos=r.complementos||[];perfis=r.perfis||[];
-    familias=r.familias||[];
+    familias=r.familias||[];unidades=r.unidades||[];
     contador('produtos',telhas.length+complementos.length+perfis.length);
     pintarAbas();pintar();diagnostico();
   }catch(e){
@@ -312,6 +312,15 @@ function editarTelha(id){
      </div>
 
      <div class="card">
+       <h2>De onde sai</h2>
+       <p class="d">A unidade define a distância até a obra — e é essa distância
+         que decide o prazo e a regra dos 600 km. Marque de onde esta telha sai.
+         <b>Nada marcado = qualquer unidade</b>, vence a mais perto do cliente.</p>
+       ${caixinhas('pr-unid', unidades, p?(p.unidades??null):undefined,
+                   'Nenhuma unidade cadastrada.', 'buscar unidade: cidade ou nome')}
+     </div>
+
+     <div class="card">
        <h2>O que acompanha esta telha</h2>
        <p class="d">Marque os acabamentos e perfis que servem <b>nesta</b> telha.
          É essa lista que o cliente vê no orçamento e é dela que sai a quantidade —
@@ -562,6 +571,7 @@ async function salvarTelha(){
     comprimento_maximo_m:dec(v('pr-cmax')), comprimento_minimo_m:dec(v('pr-cmin')),
     transpasse_m:dec(v('pr-transp')), vao_maximo_m:dec(v('pr-vao')),
     inclinacao_minima_pct:dec(v('pr-incl')), promocao_ate_m:dec(v('pr-promo')),
+    unidades:marcadas('pr-unid'),
     compativeis:{complementos:marcadas('pr-comp'), perfis:marcadas('pr-perf')},
     forro_integrado:g('pr-forro').value==='sim',
     ativo:g('pr-ativo').value==='sim',

@@ -180,6 +180,24 @@ function validarCatalogo(catalogo) {
   // ── UNIDADES (origem do material → distância e frete) ─────────────
   const ativas = (catalogo.unidades || []).filter((u) => u.ativa !== false);
   if (!ativas.length) problemas.push('Nenhuma unidade ativa cadastrada — não dá para medir a distância da obra.');
+
+  // Marcador apontando para unidade que não existe, está inativa ou está sem
+  // coordenada: o orçamento sai dizendo "não identifiquei a origem" e ninguém
+  // liga uma coisa à outra.
+  for (const t of (catalogo.telhas || []).filter((x) => x.ativo !== false)) {
+    if (!Array.isArray(t.unidades) || !t.unidades.length) continue;
+    const boas = t.unidades.filter((id) => {
+      const u = (catalogo.unidades || []).find((x) => x.id === id);
+      return u && u.ativa !== false && Number.isFinite(u.lat) && Number.isFinite(u.lon);
+    });
+    if (!boas.length) {
+      problemas.push(`Telha ${t.nome || t.id}: marcada para sair de ${t.unidades.join(', ')}, `
+        + 'mas nenhuma dessas unidades está ativa e com endereço. O orçamento vai sair sem origem e sem prazo.');
+    }
+  }
+  for (const u of (catalogo.unidades || [])) {
+    if (u.ativa === false && u._pendente) alertas.push(`Unidade ${u.nome}: ${u._pendente}`);
+  }
   for (const u of ativas) {
     if (!(Number.isFinite(u.lat) && Number.isFinite(u.lon))) {
       problemas.push(`Unidade ${u.nome || u.cidade}: sem coordenadas — fica de fora do cálculo de distância.`);

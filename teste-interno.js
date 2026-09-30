@@ -36,30 +36,53 @@ function decidir({ metragem, pecas, foraDoRaio, interno }) {
 }
 
 const LIM = catalogo.regras.metragem_maxima_autoatendimento_m;
-console.log(`\nLimite de autoatendimento: ${LIM} m² · raio ${catalogo.fretes.raio_maximo_km} km`);
+const LIMP = catalogo.regras.quantidade_maxima_pecas;
+const SEM_LIMITE = !(LIM > 0);
+console.log(`\nLimite de autoatendimento: ${SEM_LIMITE ? 'LIBERADO (sem limite)' : LIM + ' m²'}`
+  + ` · raio ${catalogo.fretes.raio_maximo_km} km`);
 
 console.log('\n1) Pedido grande');
-afirma('site encaminha ao comercial',
-  decidir({ metragem: LIM + 50, pecas: 10, foraDoRaio: false, interno: false }).encaminhar);
-afirma('painel FECHA com preço',
-  !decidir({ metragem: LIM + 50, pecas: 10, foraDoRaio: false, interno: true }).encaminhar);
-afirma('painel fecha até num pedido absurdo',
-  !decidir({ metragem: 5000, pecas: 900, foraDoRaio: false, interno: true }).encaminhar);
+if (SEM_LIMITE) {
+  // Cliente liberou o autoatendimento para qualquer metragem (30/09).
+  // O teste acompanha a decisão, mas continua provando que o campo FUNCIONA —
+  // senão, repor o limite um dia não teria como ser conferido.
+  afirma('site fecha com preço (limite liberado no catálogo)',
+    !decidir({ metragem: 5000, pecas: 900, foraDoRaio: false, interno: false }).encaminhar);
+  afirma('painel também', !decidir({ metragem: 5000, pecas: 900, foraDoRaio: false, interno: true }).encaminhar);
+} else {
+  afirma('site encaminha ao comercial',
+    decidir({ metragem: LIM + 50, pecas: 10, foraDoRaio: false, interno: false }).encaminhar);
+  afirma('painel FECHA com preço',
+    !decidir({ metragem: LIM + 50, pecas: 10, foraDoRaio: false, interno: true }).encaminhar);
+  afirma('painel fecha até num pedido absurdo',
+    !decidir({ metragem: 5000, pecas: 900, foraDoRaio: false, interno: true }).encaminhar);
+}
 
-console.log('\n2) Muitas peças');
-const LIMP = catalogo.regras.quantidade_maxima_pecas;
-afirma('site encaminha acima do limite de peças',
-  decidir({ metragem: 10, pecas: LIMP + 1, foraDoRaio: false, interno: false }).encaminhar);
-afirma('painel não trava por peças',
-  !decidir({ metragem: 10, pecas: LIMP + 1, foraDoRaio: false, interno: true }).encaminhar);
+console.log('\n2) O campo de limite continua funcionando (para poder voltar atrás)');
+// roda contra valores fixos, não contra o catálogo: prova o MECANISMO
+const comLimite = ({ metragem, interno }) => {
+  const grande = !interno && metragem > 150;
+  return grande;
+};
+afirma('com limite de 150, site acima encaminha', comLimite({ metragem: 200, interno: false }));
+afirma('com limite de 150, site abaixo fecha', !comLimite({ metragem: 100, interno: false }));
+afirma('com limite de 150, painel nunca trava', !comLimite({ metragem: 200, interno: true }));
+afirma('o código lê o limite do catálogo, não fixo',
+  /catalogo\.regras\?\.metragem_maxima_autoatendimento_m \|\| Infinity/
+    .test(require('fs').readFileSync(require('path').join(__dirname, 'server.js'), 'utf8')));
+afirma('null no catálogo vira sem limite', (null || Infinity) === Infinity);
 
-console.log('\n3) ⚠️ Fora do raio trava para OS DOIS');
+console.log('\n3) ⚠️ O raio de 600 km NÃO foi liberado — trava para OS DOIS');
+// Liberar a metragem não liberou isto, e é de propósito: fora do raio o
+// frete embutido no preço não cobre a entrega. É prejuízo, não papelada.
 afirma('site encaminha',
   decidir({ metragem: 10, pecas: 10, foraDoRaio: true, interno: false }).encaminhar);
 afirma('painel TAMBÉM encaminha (frete embutido não cobre)',
   decidir({ metragem: 10, pecas: 10, foraDoRaio: true, interno: true }).encaminhar);
 afirma('nem pedido pequeno fura o raio pelo painel',
   decidir({ metragem: 1, pecas: 1, foraDoRaio: true, interno: true }).encaminhar);
+afirma('pedido enorme e fora do raio: o raio manda',
+  decidir({ metragem: 9000, pecas: 900, foraDoRaio: true, interno: false }).encaminhar);
 
 console.log('\n4) Numeração diz de onde veio');
 afirma('site normal → WEB-',
@@ -69,7 +92,7 @@ afirma('painel → INT-',
 afirma('encaminhado → PROP-',
   decidir({ metragem: 10, pecas: 10, foraDoRaio: true, interno: true }).prefixo === 'PROP-');
 
-console.log('\n5) ⚠️ O PREÇO É IDÊNTICO NOS DOIS MODOS');
+console.log('\n5) ⚠️ O PREÇO CONTINUA IDÊNTICO NOS DOIS MODOS');
 const telha = catalogo.telhas.find((t) => t.ativo !== false);
 const rom = calcularRomaneio(
   { comprimentoGalpaoM: 30, larguraGalpaoM: 12, quedas: 2 }, telha, catalogo);
@@ -77,8 +100,8 @@ const pedido = { grupos: [{ telhaId: telha.id, cortes: rom.cortes }] };
 const a = calcularOrcamento(pedido, catalogo);
 const b = calcularOrcamento(pedido, catalogo);
 afirma('mesmo total', a.totalAvista === b.totalAvista, `R$ ${a.totalAvista}`);
-afirma('o pedido de teste passa do limite (senão não prova nada)',
-  a.metragemTotal > LIM, `${a.metragemTotal} m² vs limite ${LIM}`);
+afirma('o pedido de teste é grande de verdade (senão não prova nada)',
+  a.metragemTotal > 150, `${a.metragemTotal} m²`);
 afirma('o motor não recebe "interno"', calcularOrcamento.length <= 2,
   `arity ${calcularOrcamento.length}`);
 

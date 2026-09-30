@@ -183,6 +183,41 @@ function revisar(numero, { cliente, orcamento, grupos, pedido, pdfPath, por }) {
   return r;
 }
 
+/**
+ * PAGAMENTO ONLINE — guarda o link gerado e, depois, a baixa.
+ *
+ * ⚠️ Só é chamado com `pago: true` DEPOIS de confirmar na InfinitePay pelo
+ * /payment_check. O webhook sozinho não é prova: a URL é pública.
+ *
+ * Nunca desmarca um pagamento já registrado — reenvio de webhook é comum, e
+ * o que não pode acontecer é uma venda paga voltar a constar em aberto.
+ */
+function registrarPagamento(numero, dados) {
+  const r = obter(numero);
+  if (!r) return null;
+  const antes = r.pagamento || {};
+  if (antes.pago && !dados.pago) return r;              // não volta atrás
+
+  r.pagamento = { ...antes, ...dados };
+  r.atualizadoEm = new Date().toISOString();
+
+  if (dados.pago && !antes.pago) {
+    r.historico = (r.historico || []).concat({
+      em: r.atualizadoEm, status: r.status, por: 'InfinitePay',
+      nota: `Pagamento confirmado — ${dados.forma}`
+        + (dados.parcelas > 1 ? ` em ${dados.parcelas}x` : '')
+        + ` · R$ ${Number(dados.valorPago || dados.valor || 0).toFixed(2)}`,
+    });
+  }
+  try {
+    fs.writeFileSync(arquivo(numero), JSON.stringify(r, null, 2));
+  } catch (e) {
+    console.error('[orcamentos] falha ao registrar pagamento:', e.message);
+    return null;
+  }
+  return r;
+}
+
 /** Muda o status e registra no histórico (rastreabilidade). */
 function atualizarStatus(numero, status, nota) {
   if (!STATUS.includes(status)) return null;
@@ -219,4 +254,5 @@ function estatisticas(lista) {
   };
 }
 
-module.exports = { salvar, revisar, listar, obter, atualizarStatus, estatisticas, STATUS };
+module.exports = { salvar, revisar, listar, obter, atualizarStatus,
+  registrarPagamento, estatisticas, STATUS };

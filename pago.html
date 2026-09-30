@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pagamento — 4A</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--brand:#01A79D;--brand-dd:#017a73;--ink:#16211F;--muted:#6b7a77;
+    --line:#e2e8e6;--bg:#f6f8f8}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Barlow,system-ui,sans-serif;background:var(--bg);color:var(--ink);
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .cx{background:#fff;border:1px solid var(--line);max-width:460px;width:100%;
+    padding:36px 30px;text-align:center}
+  .ic{font-size:44px;line-height:1;margin-bottom:14px}
+  h1{font-family:'Barlow Condensed';font-size:27px;text-transform:uppercase;
+    letter-spacing:-.005em;line-height:1.1;margin-bottom:10px}
+  p{font-size:14.5px;color:var(--muted);line-height:1.6}
+  .caixa{border:1px solid var(--line);padding:14px;margin-top:18px;text-align:left;font-size:14px}
+  .caixa b{font-family:'Barlow Condensed';text-transform:uppercase;letter-spacing:.04em}
+  a.btn,button.btn{display:block;width:100%;margin-top:14px;padding:15px;
+    background:var(--brand);color:#fff;border:none;text-decoration:none;
+    font-family:'Barlow Condensed';font-weight:700;text-transform:uppercase;
+    letter-spacing:.05em;font-size:15px;cursor:pointer}
+  a.btn:hover,button.btn:hover{background:var(--brand-dd)}
+  a.g{background:#fff;color:var(--brand-dd);border:1px solid var(--line)}
+  a.g:hover{background:var(--bg)}
+  .esperando{color:var(--muted);font-size:13px;margin-top:14px}
+</style>
+</head>
+<body>
+<div class="cx" id="cx">
+  <div class="ic">⏳</div>
+  <h1>Conferindo o pagamento</h1>
+  <p>Só um instante — estamos confirmando com o banco.</p>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   RETORNO DO CHECKOUT DA INFINITEPAY.
+
+   ⚠️ O cliente chegar nesta página NÃO quer dizer que pagou — ele pode ter
+   voltado no meio do caminho. Quem confirma é o webhook, conferido na fonte
+   pelo /payment_check. Aqui a gente só PERGUNTA se a baixa já entrou.
+
+   Por isso a tela nunca diz "pago" por conta própria: ou o servidor confirma,
+   ou ela diz que está processando.
+   ═══════════════════════════════════════════════════════════════════ */
+const params = new URLSearchParams(location.search);
+const numero = params.get('n') || params.get('order_nsu') || '';
+const recibo = params.get('receipt_url') || '';
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g,
+  (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+const cx = document.getElementById('cx');
+let tentativas = 0;
+
+function pintarPago(d) {
+  cx.innerHTML = `
+    <div class="ic">✅</div>
+    <h1>Pagamento confirmado</h1>
+    <p>Recebemos o seu pagamento. Nossa equipe já foi avisada e entra em
+      contato para combinar a entrega.</p>
+    <div class="caixa">
+      <b>Orçamento:</b> ${esc(numero)}<br>
+      ${d.forma ? `<b>Forma:</b> ${esc(d.forma)}${d.parcelas > 1 ? ` em ${d.parcelas}x` : ''}` : ''}
+    </div>
+    ${(d.recibo || recibo) ? `<a class="btn g" href="${esc(d.recibo || recibo)}" target="_blank">Ver comprovante</a>` : ''}
+    <a class="btn" href="/orcamento">Fazer outro orçamento</a>`;
+}
+
+function pintarProcessando() {
+  cx.innerHTML = `
+    <div class="ic">⏱️</div>
+    <h1>Pagamento em processamento</h1>
+    <p>A confirmação do banco pode levar alguns minutos. Assim que entrar,
+      nossa equipe é avisada automaticamente — você não precisa fazer
+      mais nada.</p>
+    <div class="caixa"><b>Orçamento:</b> ${esc(numero)}</div>
+    ${recibo ? `<a class="btn g" href="${esc(recibo)}" target="_blank">Ver comprovante</a>` : ''}
+    <button class="btn" onclick="tentativas=0;conferir()">Conferir de novo</button>`;
+}
+
+async function conferir() {
+  if (!numero) return pintarProcessando();
+  let d = null;
+  try { d = await (await fetch('/api/pagamento/' + encodeURIComponent(numero))).json(); }
+  catch { /* rede instável: tenta de novo abaixo */ }
+
+  if (d && d.pago) return pintarPago(d);
+
+  // o webhook costuma chegar em segundos, mas não é instantâneo
+  if (++tentativas < 8) return setTimeout(conferir, 2500);
+  pintarProcessando();
+}
+
+conferir();
+</script>
+</body>
+</html>
